@@ -6,13 +6,15 @@ The current version is a local demo built with plain HTML, CSS, and JavaScript. 
 
 ## Current Demo
 
-Open `index.html` directly in the browser to test the local demo.
+The project now runs through Vite. Use `npm run dev` for local testing instead of opening
+`index.html` directly in the browser.
 
-The demo currently saves data in `localStorage`, so data stays only in the same browser.
+If Supabase environment variables are not configured, the app falls back to `localStorage`
+so the interface can still be tested locally.
 
 ## Local Development
 
-After installing dependencies:
+Install dependencies and start the local server:
 
 ```bash
 npm install

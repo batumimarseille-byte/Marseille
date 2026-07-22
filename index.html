@@ -7,7 +7,34 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <section class="auth-screen hidden" id="authScreen">
+      <form class="auth-card" id="loginForm">
+        <div class="brand auth-brand">
+          <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
+          <div>
+            <p class="eyebrow">Hotel</p>
+            <h1>Marseille</h1>
+          </div>
+        </div>
+        <div>
+          <p class="eyebrow">Private access</p>
+          <h2>Sign in to dashboard</h2>
+          <p>Use the hotel account to manage stays, rooms, payments, and the calendar.</p>
+        </div>
+        <label>
+          Email
+          <input name="email" type="email" placeholder="batumimarseille@gmail.com" autocomplete="email" required />
+        </label>
+        <label>
+          Password
+          <input name="password" type="password" placeholder="Password" autocomplete="current-password" required />
+        </label>
+        <p class="form-message" id="loginMessage" role="status"></p>
+        <button type="submit" class="primary-button">Sign in</button>
+      </form>
+    </section>
+
+    <div class="app-shell" id="appShell">
       <aside class="sidebar">
         <div class="brand">
           <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
@@ -26,8 +53,9 @@
         </nav>
 
         <div class="sidebar-card">
-          <p>Local demo version</p>
-          <span>Data is currently saved only in this browser.</span>
+          <p id="storageModeTitle">Local demo version</p>
+          <span id="storageModeText">Data is currently saved only in this browser.</span>
+          <button class="ghost-button sidebar-logout hidden" id="logoutButton" type="button">Sign out</button>
         </div>
       </aside>
 
@@ -241,6 +269,6 @@
       </main>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>

@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 const rooms = [
   { id: "101", type: "Suite", group: "lux" },
   { id: "102", type: "Suite", group: "lux" },
@@ -17,6 +19,12 @@ const rooms = [
 const roomTypeOrder = ["Suite", "Standard", "Twin", "Triple", "Junior Suite"];
 const storageKey = "hotel-desk-stays-v1";
 const defaultBookingColor = "#4f7cff";
+const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
+const supabaseUrl = env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || "";
+const configuredLoginEmail = env.VITE_APP_LOGIN_EMAIL || "batumimarseille@gmail.com";
+const supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const usesSupabase = Boolean(supabaseClient);
 const pageHeaders = {
   dashboard: {
     eyebrow: "Admin panel",
@@ -50,7 +58,7 @@ const pageHeaders = {
   },
 };
 
-let stays = loadStays();
+let stays = [];
 let activeFilter = "all";
 let highlightedStayId = null;
 let highlightedCalendarStayId = null;
@@ -97,6 +105,13 @@ const selectors = {
   calendarPrevButton: document.querySelector("#calendarPrevButton"),
   calendarNextButton: document.querySelector("#calendarNextButton"),
   calendarTodayButton: document.querySelector("#calendarTodayButton"),
+  authScreen: document.querySelector("#authScreen"),
+  appShell: document.querySelector("#appShell"),
+  loginForm: document.querySelector("#loginForm"),
+  loginMessage: document.querySelector("#loginMessage"),
+  logoutButton: document.querySelector("#logoutButton"),
+  storageModeTitle: document.querySelector("#storageModeTitle"),
+  storageModeText: document.querySelector("#storageModeText"),
   dateRangeField: document.querySelector("#dateRangeField"),
   dateRangeButton: document.querySelector("#dateRangeButton"),
   dateRangeDisplay: document.querySelector("#dateRangeDisplay"),
@@ -142,7 +157,7 @@ function isSameDate(first, second) {
   return first.getTime() === second.getTime();
 }
 
-function loadStays() {
+function loadLocalStays() {
   try {
     return JSON.parse(localStorage.getItem(storageKey)) || [];
   } catch {
@@ -150,8 +165,118 @@ function loadStays() {
   }
 }
 
-function saveStays() {
+function saveLocalStays() {
   localStorage.setItem(storageKey, JSON.stringify(stays));
+}
+
+function mapStayFromDatabase(row) {
+  return {
+    id: row.id,
+    guestName: row.guest_name,
+    roomId: row.room_id,
+    checkIn: row.check_in,
+    checkOut: row.check_out,
+    total: Number(row.total_amount || 0),
+    cash: Number(row.cash_amount || 0),
+    card: Number(row.card_amount || 0),
+    invoice: Number(row.invoice_amount || 0),
+    debt: Number(row.debt_amount || 0),
+    notes: row.notes || "",
+    color: row.color || defaultBookingColor,
+    status: row.is_cancelled ? "cancelled" : undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapStayToDatabase(stay) {
+  return {
+    id: stay.id,
+    guest_name: stay.guestName,
+    room_id: stay.roomId,
+    check_in: stay.checkIn,
+    check_out: stay.checkOut,
+    color: stay.color || defaultBookingColor,
+    total_amount: Number(stay.total || 0),
+    cash_amount: Number(stay.cash || 0),
+    card_amount: Number(stay.card || 0),
+    invoice_amount: Number(stay.invoice || 0),
+    debt_amount: Number(stay.debt || 0),
+    notes: stay.notes || "",
+    is_cancelled: stay.status === "cancelled",
+  };
+}
+
+async function loadStays() {
+  if (!usesSupabase) {
+    return loadLocalStays();
+  }
+
+  const { data, error } = await supabaseClient
+    .from("stays")
+    .select("*")
+    .order("check_in", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load stays from Supabase", error);
+    return [];
+  }
+
+  return (data || []).map(mapStayFromDatabase);
+}
+
+async function saveStays() {
+  if (!usesSupabase) {
+    saveLocalStays();
+    return true;
+  }
+
+  const nextRows = stays.map(mapStayToDatabase);
+  const nextIds = nextRows.map((row) => row.id);
+
+  const { data: existingRows, error: selectError } = await supabaseClient
+    .from("stays")
+    .select("id");
+
+  if (selectError) {
+    console.error("Failed to read existing stays", selectError);
+    return false;
+  }
+
+  const idsToDelete = (existingRows || [])
+    .map((row) => row.id)
+    .filter((id) => !nextIds.includes(id));
+
+  if (idsToDelete.length > 0) {
+    const { error: deleteError } = await supabaseClient
+      .from("stays")
+      .delete()
+      .in("id", idsToDelete);
+
+    if (deleteError) {
+      console.error("Failed to delete removed stays", deleteError);
+      return false;
+    }
+  }
+
+  if (nextRows.length === 0) return true;
+
+  const { error: upsertError } = await supabaseClient
+    .from("stays")
+    .upsert(nextRows, { onConflict: "id" });
+
+  if (upsertError) {
+    console.error("Failed to save stays", upsertError);
+    return false;
+  }
+
+  return true;
+}
+
+async function refreshStays() {
+  stays = await loadStays();
+  renderAll();
 }
 
 function getRoom(roomId) {
@@ -690,7 +815,7 @@ function readFormStay() {
   };
 }
 
-function handleFormSubmit(event) {
+async function handleFormSubmit(event) {
   event.preventDefault();
 
   const wasEditing = Boolean(editingStayId);
@@ -719,9 +844,14 @@ function handleFormSubmit(event) {
     setFormMessage("Stay saved.", "success");
   }
 
-  saveStays();
+  const saved = await saveStays();
+  if (!saved) {
+    setFormMessage("Could not save this record. Please check the connection and try again.", "error");
+    return;
+  }
+
   resetFormMode();
-  renderAll();
+  await refreshStays();
   showSection(wasEditing ? "stays" : "dashboard");
 }
 
@@ -893,7 +1023,7 @@ function sectionToId(sectionName) {
   }[sectionName];
 }
 
-function seedDemoData() {
+async function seedDemoData() {
   const today = todayDate();
   stays = [
     {
@@ -946,16 +1076,54 @@ function seedDemoData() {
     },
   ];
 
-  saveStays();
-  renderAll();
+  await saveStays();
+  await refreshStays();
 }
 
-function clearData() {
-  if (!confirm("Delete all local records?")) return;
+async function clearData() {
+  if (!confirm("Delete all records?")) return;
   stays = [];
-  saveStays();
+  const saved = await saveStays();
+  if (!saved) {
+    await refreshStays();
+    return;
+  }
   resetFormMode();
-  renderAll();
+  await refreshStays();
+}
+
+async function requireSession() {
+  if (!usesSupabase) {
+    selectors.authScreen?.classList.add("hidden");
+    selectors.appShell?.classList.remove("hidden");
+    if (selectors.storageModeTitle) selectors.storageModeTitle.textContent = "Local demo version";
+    if (selectors.storageModeText) selectors.storageModeText.textContent = "Data is currently saved only in this browser.";
+    selectors.logoutButton?.classList.add("hidden");
+    return true;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  const session = data?.session;
+
+  if (session) {
+    selectors.authScreen?.classList.add("hidden");
+    selectors.appShell?.classList.remove("hidden");
+    if (selectors.storageModeTitle) selectors.storageModeTitle.textContent = "Cloud version";
+    if (selectors.storageModeText) selectors.storageModeText.textContent = "Data is stored in Supabase for the hotel account.";
+    selectors.logoutButton?.classList.remove("hidden");
+    return true;
+  }
+
+  selectors.appShell?.classList.add("hidden");
+  selectors.authScreen?.classList.remove("hidden");
+  selectors.loginForm.email.value = configuredLoginEmail;
+  return false;
+}
+
+function setLoginMessage(message, type) {
+  if (!selectors.loginMessage) return;
+  selectors.loginMessage.textContent = message;
+  selectors.loginMessage.className = `form-message ${type || ""}`;
 }
 
 function bindEvents() {
@@ -1160,8 +1328,10 @@ function bindEvents() {
     if (editingStayId === deleteButton.dataset.delete) resetFormMode();
     if (selectedCalendarStayId === deleteButton.dataset.delete) selectedCalendarStayId = null;
     if (highlightedCalendarStayId === deleteButton.dataset.delete) highlightedCalendarStayId = null;
-    saveStays();
-    renderAll();
+    saveStays().then((saved) => {
+      if (!saved) console.error("Delete was not saved.");
+      refreshStays();
+    });
   });
 
   selectors.occupancyCalendar.addEventListener("click", (event) => {
@@ -1198,8 +1368,10 @@ function bindEvents() {
     stays = stays.filter((stay) => stay.id !== deleteButton.dataset.detailDelete);
     selectedCalendarStayId = null;
     if (highlightedCalendarStayId === deleteButton.dataset.detailDelete) highlightedCalendarStayId = null;
-    saveStays();
-    renderAll();
+    saveStays().then((saved) => {
+      if (!saved) console.error("Delete was not saved.");
+      refreshStays();
+    });
   });
 
   selectors.roomMap.addEventListener("click", (event) => {
@@ -1233,13 +1405,51 @@ function bindEvents() {
 
   selectors.seedDemoButton.addEventListener("click", seedDemoData);
   selectors.clearDataButton.addEventListener("click", clearData);
+
+  selectors.loginForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!usesSupabase) return;
+
+    const formData = new FormData(selectors.loginForm);
+    const email = String(formData.get("email") || "").trim();
+    const password = String(formData.get("password") || "");
+
+    setLoginMessage("Signing in...", "");
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      setLoginMessage("Could not sign in. Check email and password.", "error");
+      return;
+    }
+
+    setLoginMessage("", "");
+    await startApp();
+  });
+
+  selectors.logoutButton?.addEventListener("click", async () => {
+    if (usesSupabase) await supabaseClient.auth.signOut();
+    stays = [];
+    resetFormMode();
+    renderAll();
+    await requireSession();
+  });
 }
 
-function init() {
+async function startApp() {
+  const canStart = await requireSession();
+  if (!canStart) return;
+
+  stays = await loadStays();
+  populateRoomSelect();
+  setDefaultDates();
+  renderAll();
+}
+
+async function init() {
   populateRoomSelect();
   setDefaultDates();
   bindEvents();
-  renderAll();
+  await startApp();
 }
 
 init();
