@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hotel Marseille | Check-in Desk</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
+          <div>
+            <p class="eyebrow">Hotel</p>
+            <h1>Marseille</h1>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Main navigation">
+          <button class="nav-item active" data-section="dashboard">Overview</button>
+          <button class="nav-item" data-section="new-stay">New stay</button>
+          <button class="nav-item" data-section="stays">Records</button>
+          <button class="nav-item" data-section="calendar">Calendar</button>
+          <button class="nav-item" data-section="rooms">Rooms</button>
+        </nav>
+
+        <div class="sidebar-card">
+          <p>Local demo version</p>
+          <span>Data is currently saved only in this browser.</span>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="pageEyebrow">Admin panel</p>
+            <h2 id="pageTitle">Overview</h2>
+            <p class="page-description" id="pageDescription">A quick summary of check-ins, check-outs, debts, and current room occupancy.</p>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="seedDemoButton">Seed demo</button>
+            <button class="danger-button" id="clearDataButton">Clear</button>
+          </div>
+        </header>
+
+        <section class="section-block" id="dashboardSection">
+          <div class="stats-grid">
+            <article class="stat-card stat-link" role="button" tabindex="0" data-stat-filter="checked-in">
+              <span>Occupied</span>
+              <strong id="occupiedStat">0</strong>
+              <p>rooms now</p>
+            </article>
+            <article class="stat-card stat-link" role="button" tabindex="0" data-stat-filter="arrivals-today">
+              <span>Arrivals today</span>
+              <strong id="arrivalsStat">0</strong>
+              <p>waiting for check-in</p>
+            </article>
+            <article class="stat-card stat-link" role="button" tabindex="0" data-stat-filter="departures-today">
+              <span>Departures today</span>
+              <strong id="departuresStat">0</strong>
+              <p>need review</p>
+            </article>
+            <article class="stat-card stat-link debt-card" role="button" tabindex="0" data-stat-filter="debt">
+              <span>Debt</span>
+              <strong id="debtStat">0 ₾</strong>
+              <p>across active records</p>
+            </article>
+          </div>
+
+          <div class="content-grid">
+            <article class="panel wide-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Rooms</p>
+                  <h3>Current occupancy</h3>
+                </div>
+              </div>
+              <div class="room-map" id="roomMap"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Today</p>
+                  <h3>Active guests</h3>
+                </div>
+              </div>
+              <div class="guest-list" id="activeGuestList"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section-block stay-form-section hidden" id="newStaySection">
+          <article class="panel form-panel" id="stayFormPanel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Record</p>
+                <h3 id="formTitle">Add stay</h3>
+              </div>
+            </div>
+
+            <form id="stayForm" class="stay-form">
+              <label class="guest-field">
+                Guest name
+                <input name="guestName" type="text" placeholder="For example, John Smith" required />
+              </label>
+
+              <label class="color-field">
+                Color
+                <input name="color" type="color" value="#4f7cff" />
+              </label>
+
+              <label class="room-field">
+                Room
+                <select name="roomId" id="roomSelect" required></select>
+              </label>
+              <div class="date-range-field full-width" id="dateRangeField">
+                <div class="date-field-label">Stay dates</div>
+                <div class="date-range-picks">
+                  <button type="button" class="date-pick-button date-range-button" id="dateRangeButton">
+                    <strong id="dateRangeDisplay">Select stay dates</strong>
+                  </button>
+                  <button type="button" class="date-clear-button" id="dateClearButton" aria-label="Clear dates">×</button>
+                </div>
+                <input name="checkIn" type="hidden" required />
+                <input name="checkOut" type="hidden" required />
+                <div class="form-date-calendar" id="formDateCalendar" aria-live="polite"></div>
+              </div>
+
+              <label>
+                Total amount, ₾
+                <input name="total" type="number" min="0" step="1" placeholder="0" required />
+              </label>
+              <div class="payment-grid">
+                <label>
+                  Cash, ₾
+                  <input name="cash" type="number" min="0" step="1" value="0" />
+                </label>
+                <label>
+                  Card, ₾
+                  <input name="card" type="number" min="0" step="1" value="0" />
+                </label>
+                <label>
+                  Invoice, ₾
+                  <input name="invoice" type="number" min="0" step="1" value="0" />
+                </label>
+                <label>
+                  Debt, ₾
+                  <input name="debt" type="number" min="0" step="1" value="0" />
+                </label>
+              </div>
+
+              <label class="full-width">
+                Notes
+                <textarea name="notes" rows="4" placeholder="Special requests, contact, notes"></textarea>
+              </label>
+
+              <div class="form-actions">
+                <p id="formMessage" class="form-message" role="status"></p>
+                <button type="button" class="ghost-button hidden" id="cancelEditButton">Cancel</button>
+                <button type="submit" class="primary-button" id="formSubmitButton">Save stay</button>
+              </div>
+            </form>
+          </article>
+        </section>
+
+        <section class="section-block stay-form-section hidden" id="editStaySection"></section>
+
+        <section class="section-block hidden" id="staysSection">
+          <article class="panel table-panel">
+            <div class="panel-header split-header">
+              <div>
+                <p class="eyebrow">Records</p>
+                <h3>All records</h3>
+              </div>
+              <div class="filter-group" aria-label="Record filter">
+                <button class="filter-chip active" data-filter="all">All</button>
+                <button class="filter-chip" data-filter="checked-in">Checked in</button>
+                <button class="filter-chip" data-filter="booked">Bookings</button>
+                <button class="filter-chip" data-filter="checked-out">Checked out</button>
+                <button class="filter-chip" data-filter="debt">Debt</button>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Guest</th>
+                    <th>Room</th>
+                    <th>Dates</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="staysTable"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="section-block hidden" id="calendarSection">
+          <article class="panel calendar-panel">
+            <div class="panel-header split-header">
+              <div>
+                <p class="eyebrow">Calendar</p>
+                <h3>Room occupancy</h3>
+              </div>
+              <div class="calendar-controls">
+                <button class="ghost-button compact" id="calendarPrevButton">←</button>
+                <strong id="calendarRange">-</strong>
+                <button class="ghost-button compact" id="calendarNextButton">→</button>
+                <button class="ghost-button" id="calendarTodayButton">Today</button>
+              </div>
+            </div>
+            <div class="calendar-hint">One column = one day. A colored cell means the room is occupied on that date.</div>
+            <div class="calendar-layout">
+              <div class="calendar-scroll">
+                <div class="occupancy-calendar" id="occupancyCalendar"></div>
+              </div>
+              <aside class="booking-details-panel" id="bookingDetailsPanel">
+                <div class="empty-state">Click a colored calendar cell to view booking details.</div>
+              </aside>
+            </div>
+          </article>
+        </section>
+
+        <section class="section-block hidden" id="roomsSection">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Inventory</p>
+                <h3>13 rooms by category</h3>
+              </div>
+            </div>
+            <div class="room-groups" id="roomGroups"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
