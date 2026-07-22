@@ -97,8 +97,6 @@ const selectors = {
   departuresStat: document.querySelector("#departuresStat"),
   debtStat: document.querySelector("#debtStat"),
   statCards: document.querySelectorAll("[data-stat-filter]"),
-  seedDemoButton: document.querySelector("#seedDemoButton"),
-  clearDataButton: document.querySelector("#clearDataButton"),
   occupancyCalendar: document.querySelector("#occupancyCalendar"),
   bookingDetailsPanel: document.querySelector("#bookingDetailsPanel"),
   calendarRange: document.querySelector("#calendarRange"),
@@ -1023,74 +1021,6 @@ function sectionToId(sectionName) {
   }[sectionName];
 }
 
-async function seedDemoData() {
-  const today = todayDate();
-  stays = [
-    {
-      id: crypto.randomUUID(),
-      guestName: "Anna Koval",
-      roomId: "101",
-      checkIn: toInputDate(addDays(today, -2)),
-      checkOut: toInputDate(addDays(today, 2)),
-      total: 520,
-      cash: 200,
-      card: 220,
-      invoice: 0,
-      debt: 100,
-      notes: "Requests late check-out",
-      color: "#4f7cff",
-      status: "checked-in",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: crypto.randomUUID(),
-      guestName: "Michael Orlov",
-      roomId: "204",
-      checkIn: toInputDate(today),
-      checkOut: toInputDate(addDays(today, 3)),
-      total: 300,
-      cash: 0,
-      card: 300,
-      invoice: 0,
-      debt: 0,
-      notes: "Paid by card",
-      color: "#14b8a6",
-      status: "checked-in",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: crypto.randomUUID(),
-      guestName: "Elena Rossi",
-      roomId: "401",
-      checkIn: toInputDate(addDays(today, 2)),
-      checkOut: toInputDate(addDays(today, 6)),
-      total: 680,
-      cash: 0,
-      card: 0,
-      invoice: 680,
-      debt: 0,
-      notes: "Company invoice",
-      color: "#f59e0b",
-      status: "booked",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  await saveStays();
-  await refreshStays();
-}
-
-async function clearData() {
-  if (!confirm("Delete all records?")) return;
-  stays = [];
-  const saved = await saveStays();
-  if (!saved) {
-    await refreshStays();
-    return;
-  }
-  resetFormMode();
-  await refreshStays();
-}
 
 async function requireSession() {
   if (!usesSupabase) {
@@ -1402,9 +1332,6 @@ function bindEvents() {
     calendarStart = addDays(todayDate(), -3);
     renderCalendar();
   });
-
-  selectors.seedDemoButton.addEventListener("click", seedDemoData);
-  selectors.clearDataButton.addEventListener("click", clearData);
 
   selectors.loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
