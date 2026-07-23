@@ -12,25 +12,25 @@
         <div class="brand auth-brand">
           <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
           <div>
-            <p class="eyebrow">Hotel</p>
+            <p class="eyebrow" data-i18n="brand.eyebrow">Hotel</p>
             <h1>Marseille</h1>
           </div>
         </div>
         <div>
-          <p class="eyebrow">Private access</p>
-          <h2>Sign in to dashboard</h2>
-          <p>Use the hotel account to manage stays, rooms, payments, and the calendar.</p>
+          <p class="eyebrow" data-i18n="auth.privateAccess">Private access</p>
+          <h2 data-i18n="auth.title">Sign in to dashboard</h2>
+          <p data-i18n="auth.description">Use the hotel account to manage stays, rooms, payments, and the calendar.</p>
         </div>
         <label>
-          Email
-          <input name="email" type="email" placeholder="batumimarseille@gmail.com" autocomplete="email" required />
+          <span data-i18n="auth.email">Email</span>
+          <input name="email" type="email" placeholder="batumimarseille@gmail.com" autocomplete="email" required data-i18n-placeholder="auth.emailPlaceholder" />
         </label>
         <label>
-          Password
-          <input name="password" type="password" placeholder="Password" autocomplete="current-password" required />
+          <span data-i18n="auth.password">Password</span>
+          <input name="password" type="password" placeholder="Password" autocomplete="current-password" required data-i18n-placeholder="auth.passwordPlaceholder" />
         </label>
         <p class="form-message" id="loginMessage" role="status"></p>
-        <button type="submit" class="primary-button">Sign in</button>
+        <button type="submit" class="primary-button" data-i18n="auth.signIn">Sign in</button>
       </form>
     </section>
 
@@ -39,23 +39,23 @@
         <div class="brand">
           <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
           <div>
-            <p class="eyebrow">Hotel</p>
+            <p class="eyebrow" data-i18n="brand.eyebrow">Hotel</p>
             <h1>Marseille</h1>
           </div>
         </div>
 
         <nav class="nav-list" aria-label="Main navigation">
-          <button class="nav-item active" data-section="dashboard">Overview</button>
-          <button class="nav-item" data-section="new-stay">New stay</button>
-          <button class="nav-item" data-section="stays">Records</button>
-          <button class="nav-item" data-section="calendar">Calendar</button>
-          <button class="nav-item" data-section="rooms">Rooms</button>
+          <button class="nav-item active" data-section="dashboard" data-i18n="nav.dashboard">Overview</button>
+          <button class="nav-item" data-section="new-stay" data-i18n="nav.new-stay">New stay</button>
+          <button class="nav-item" data-section="stays" data-i18n="nav.stays">Records</button>
+          <button class="nav-item" data-section="calendar" data-i18n="nav.calendar">Calendar</button>
+          <button class="nav-item" data-section="rooms" data-i18n="nav.rooms">Rooms</button>
         </nav>
 
         <div class="sidebar-card">
           <p id="storageModeTitle">Local demo version</p>
           <span id="storageModeText">Data is currently saved only in this browser.</span>
-          <button class="ghost-button sidebar-logout hidden" id="logoutButton" type="button">Sign out</button>
+          <button class="ghost-button sidebar-logout hidden" id="logoutButton" type="button" data-i18n="storage.signOut">Sign out</button>
         </div>
       </aside>
 
@@ -66,29 +66,38 @@
             <h2 id="pageTitle">Overview</h2>
             <p class="page-description" id="pageDescription">A quick summary of check-ins, check-outs, debts, and current room occupancy.</p>
           </div>
+          <div class="topbar-actions">
+            <label class="language-switcher">
+              <span data-i18n="language.label">Language</span>
+              <select id="languageSelect" aria-label="Language">
+                <option value="en">English</option>
+                <option value="ka">ქართული</option>
+              </select>
+            </label>
+          </div>
         </header>
 
         <section class="section-block" id="dashboardSection">
           <div class="stats-grid">
             <article class="stat-card stat-link" role="button" tabindex="0" data-stat-filter="checked-in">
-              <span>Occupied</span>
+              <span data-i18n="stats.occupied">Occupied</span>
               <strong id="occupiedStat">0</strong>
-              <p>rooms now</p>
+              <p data-i18n="stats.roomsNow">rooms now</p>
             </article>
             <article class="stat-card stat-link" role="button" tabindex="0" data-stat-filter="arrivals-today">
-              <span>Arrivals today</span>
+              <span data-i18n="stats.arrivalsToday">Arrivals today</span>
               <strong id="arrivalsStat">0</strong>
-              <p>waiting for check-in</p>
+              <p data-i18n="stats.waitingCheckIn">waiting for check-in</p>
             </article>
             <article class="stat-card stat-link" role="button" tabindex="0" data-stat-filter="departures-today">
-              <span>Departures today</span>
+              <span data-i18n="stats.departuresToday">Departures today</span>
               <strong id="departuresStat">0</strong>
-              <p>need review</p>
+              <p data-i18n="stats.needReview">need review</p>
             </article>
             <article class="stat-card stat-link debt-card" role="button" tabindex="0" data-stat-filter="debt">
-              <span>Debt</span>
+              <span data-i18n="stats.debt">Debt</span>
               <strong id="debtStat">0 ₾</strong>
-              <p>across active records</p>
+              <p data-i18n="stats.activeRecords">across active records</p>
             </article>
           </div>
 
@@ -96,8 +105,8 @@
             <article class="panel wide-panel">
               <div class="panel-header">
                 <div>
-                  <p class="eyebrow">Rooms</p>
-                  <h3>Current occupancy</h3>
+                  <p class="eyebrow" data-i18n="panels.rooms">Rooms</p>
+                  <h3 data-i18n="panels.currentOccupancy">Current occupancy</h3>
                 </div>
               </div>
               <div class="room-map" id="roomMap"></div>
@@ -106,8 +115,8 @@
             <article class="panel">
               <div class="panel-header">
                 <div>
-                  <p class="eyebrow">Today</p>
-                  <h3>Active guests</h3>
+                  <p class="eyebrow" data-i18n="panels.today">Today</p>
+                  <h3 data-i18n="panels.activeGuests">Active guests</h3>
                 </div>
               </div>
               <div class="guest-list" id="activeGuestList"></div>
@@ -119,31 +128,49 @@
           <article class="panel form-panel" id="stayFormPanel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Record</p>
-                <h3 id="formTitle">Add stay</h3>
+                <p class="eyebrow" data-i18n="form.record">Record</p>
+                <h3 id="formTitle" data-i18n="form.addStay">Add stay</h3>
               </div>
             </div>
 
             <form id="stayForm" class="stay-form">
+              <div class="company-field">
+                <div class="company-field-head">
+                  <span data-i18n="form.company">Company</span>
+                  <div class="company-mode" aria-label="Company mode">
+                    <label>
+                      <input type="radio" name="companyMode" value="existing" checked />
+                      <span data-i18n="form.companyExisting">Existing</span>
+                    </label>
+                    <label>
+                      <input type="radio" name="companyMode" value="new" />
+                      <span data-i18n="form.companyNew">New</span>
+                    </label>
+                  </div>
+                </div>
+                <select name="companyId" id="companySelect"></select>
+                <input class="hidden" name="companyNewName" id="companyNewInput" type="text" placeholder="New company name" data-i18n-placeholder="form.companyNewPlaceholder" />
+              </div>
+
               <label class="guest-field">
-                Guest name
-                <input name="guestName" type="text" placeholder="For example, John Smith" required />
+                <span data-i18n="form.guestName">Guest name</span>
+                <input name="guestName" type="text" placeholder="For example, John Smith" data-i18n-placeholder="form.guestPlaceholder" required />
               </label>
 
               <label class="color-field">
-                Color
+                <span data-i18n="form.color">Color</span>
                 <input name="color" type="color" value="#4f7cff" />
               </label>
 
               <label class="room-field">
-                Room
+                <span data-i18n="form.room">Room</span>
                 <select name="roomId" id="roomSelect" required></select>
               </label>
               <div class="date-range-field full-width" id="dateRangeField">
-                <div class="date-field-label">Stay dates</div>
+                <div class="date-field-label" data-i18n="form.stayDates">Stay dates</div>
                 <div class="date-range-picks">
                   <button type="button" class="date-pick-button date-range-button" id="dateRangeButton">
-                    <strong id="dateRangeDisplay">Select stay dates</strong>
+                    <strong id="dateRangeDisplay" data-i18n="form.selectStayDates">Select stay dates</strong>
                   </button>
                   <button type="button" class="date-clear-button" id="dateClearButton" aria-label="Clear dates">×</button>
                 </div>
@@ -152,38 +179,38 @@
                 <div class="form-date-calendar" id="formDateCalendar" aria-live="polite"></div>
               </div>
 
-              <label>
-                Total amount, ₾
+              <label class="total-field">
+                <span data-i18n="form.total">Total amount, ₾</span>
                 <input name="total" type="number" min="0" step="1" placeholder="0" required />
               </label>
               <div class="payment-grid">
                 <label>
-                  Cash, ₾
+                  <span data-i18n="form.cash">Cash, ₾</span>
                   <input name="cash" type="number" min="0" step="1" value="0" />
                 </label>
                 <label>
-                  Card, ₾
+                  <span data-i18n="form.card">Card, ₾</span>
                   <input name="card" type="number" min="0" step="1" value="0" />
                 </label>
                 <label>
-                  Invoice, ₾
+                  <span data-i18n="form.invoice">Invoice, ₾</span>
                   <input name="invoice" type="number" min="0" step="1" value="0" />
                 </label>
                 <label>
-                  Debt, ₾
+                  <span data-i18n="form.debt">Debt, ₾</span>
                   <input name="debt" type="number" min="0" step="1" value="0" />
                 </label>
               </div>
 
-              <label class="full-width">
-                Notes
-                <textarea name="notes" rows="4" placeholder="Special requests, contact, notes"></textarea>
+              <label class="full-width notes-field">
+                <span data-i18n="form.notes">Notes</span>
+                <textarea name="notes" rows="4" placeholder="Special requests, contact, notes" data-i18n-placeholder="form.notesPlaceholder"></textarea>
               </label>
 
               <div class="form-actions">
                 <p id="formMessage" class="form-message" role="status"></p>
-                <button type="button" class="ghost-button hidden" id="cancelEditButton">Cancel</button>
-                <button type="submit" class="primary-button" id="formSubmitButton">Save stay</button>
+                <button type="button" class="ghost-button hidden" id="cancelEditButton" data-i18n="form.cancel">Cancel</button>
+                <button type="submit" class="primary-button" id="formSubmitButton" data-i18n="form.saveStay">Save stay</button>
               </div>
             </form>
           </article>
@@ -195,27 +222,27 @@
           <article class="panel table-panel">
             <div class="panel-header split-header">
               <div>
-                <p class="eyebrow">Records</p>
-                <h3>All records</h3>
+                <p class="eyebrow" data-i18n="panels.records">Records</p>
+                <h3 data-i18n="panels.allRecords">All records</h3>
               </div>
               <div class="filter-group" aria-label="Record filter">
-                <button class="filter-chip active" data-filter="all">All</button>
-                <button class="filter-chip" data-filter="checked-in">Checked in</button>
-                <button class="filter-chip" data-filter="booked">Bookings</button>
-                <button class="filter-chip" data-filter="checked-out">Checked out</button>
-                <button class="filter-chip" data-filter="debt">Debt</button>
+                <button class="filter-chip active" data-filter="all" data-i18n="filters.all">All</button>
+                <button class="filter-chip" data-filter="checked-in" data-i18n="filters.checkedIn">Checked in</button>
+                <button class="filter-chip" data-filter="booked" data-i18n="filters.booked">Bookings</button>
+                <button class="filter-chip" data-filter="checked-out" data-i18n="filters.checkedOut">Checked out</button>
+                <button class="filter-chip" data-filter="debt" data-i18n="filters.debt">Debt</button>
               </div>
             </div>
             <div class="table-scroll">
               <table>
                 <thead>
                   <tr>
-                    <th>Guest</th>
-                    <th>Room</th>
-                    <th>Dates</th>
-                    <th>Total</th>
-                    <th>Payment</th>
-                    <th>Status</th>
+                    <th data-i18n="table.guest">Guest</th>
+                    <th data-i18n="form.room">Room</th>
+                    <th data-i18n="table.dates">Dates</th>
+                    <th data-i18n="table.total">Total</th>
+                    <th data-i18n="table.payment">Payment</th>
+                    <th data-i18n="table.status">Status</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -229,23 +256,23 @@
           <article class="panel calendar-panel">
             <div class="panel-header split-header">
               <div>
-                <p class="eyebrow">Calendar</p>
-                <h3>Room occupancy</h3>
+                <p class="eyebrow" data-i18n="panels.calendar">Calendar</p>
+                <h3 data-i18n="panels.roomOccupancy">Room occupancy</h3>
               </div>
               <div class="calendar-controls">
                 <button class="ghost-button compact" id="calendarPrevButton">←</button>
                 <strong id="calendarRange">-</strong>
                 <button class="ghost-button compact" id="calendarNextButton">→</button>
-                <button class="ghost-button" id="calendarTodayButton">Today</button>
+                <button class="ghost-button" id="calendarTodayButton" data-i18n="calendar.today">Today</button>
               </div>
             </div>
-            <div class="calendar-hint">One column = one day. A colored cell means the room is occupied on that date.</div>
+            <div class="calendar-hint" data-i18n="calendar.hint">One column = one day. A colored cell means the room is occupied on that date.</div>
             <div class="calendar-layout">
               <div class="calendar-scroll">
                 <div class="occupancy-calendar" id="occupancyCalendar"></div>
               </div>
               <aside class="booking-details-panel" id="bookingDetailsPanel">
-                <div class="empty-state">Click a colored calendar cell to view booking details.</div>
+                <div class="empty-state" data-i18n="calendar.emptyDetails">Click a colored calendar cell to view booking details.</div>
               </aside>
             </div>
           </article>
@@ -255,8 +282,8 @@
           <article class="panel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Inventory</p>
-                <h3>13 rooms by category</h3>
+                <p class="eyebrow" data-i18n="panels.inventory">Inventory</p>
+                <h3 data-i18n="panels.roomsByCategory">13 rooms by category</h3>
               </div>
             </div>
             <div class="room-groups" id="roomGroups"></div>

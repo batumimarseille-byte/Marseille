@@ -18,47 +18,422 @@ const rooms = [
 
 const roomTypeOrder = ["Suite", "Standard", "Twin", "Triple", "Junior Suite"];
 const storageKey = "hotel-desk-stays-v1";
+const activeSectionStorageKey = "hotel-desk-active-section-v1";
+const languageStorageKey = "hotel-desk-language-v1";
 const defaultBookingColor = "#4f7cff";
+const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "calendar", "rooms"]);
+const georgianMonthNames = [
+  "იანვარი",
+  "თებერვალი",
+  "მარტი",
+  "აპრილი",
+  "მაისი",
+  "ივნისი",
+  "ივლისი",
+  "აგვისტო",
+  "სექტემბერი",
+  "ოქტომბერი",
+  "ნოემბერი",
+  "დეკემბერი",
+];
+const georgianWeekdayShortNames = ["კვი", "ორშ", "სამ", "ოთხ", "ხუთ", "პარ", "შაბ"];
 const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
-const supabaseUrl = env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || "";
+const supabaseUrl = env.VITE_SUPABASE_URL || window.HOTEL_SUPABASE_URL || "https://clbrcyezqiiuzmwlkydz.supabase.co";
+const supabaseAnonKey =
+  env.VITE_SUPABASE_ANON_KEY ||
+  window.HOTEL_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYnJjeWV6cWlpdXptd2xreWR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzEwMzAsImV4cCI6MjEwMDMwNzAzMH0.1yhkwib_Aqf2DKfbM5eRBQCSzgQ7cy9NWcq08oZg58I";
 const configuredLoginEmail = env.VITE_APP_LOGIN_EMAIL || "batumimarseille@gmail.com";
 const supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const usesSupabase = Boolean(supabaseClient);
-const pageHeaders = {
-  dashboard: {
-    eyebrow: "Admin panel",
-    title: "Overview",
-    description: "A quick summary of check-ins, check-outs, debts, and current room occupancy.",
+
+const translations = {
+  en: {
+    brand: { eyebrow: "Hotel" },
+    language: { label: "Language" },
+    auth: {
+      privateAccess: "Private access",
+      title: "Sign in to dashboard",
+      description: "Use the hotel account to manage stays, rooms, payments, and the calendar.",
+      email: "Email",
+      emailPlaceholder: "batumimarseille@gmail.com",
+      password: "Password",
+      passwordPlaceholder: "Password",
+      signIn: "Sign in",
+      signingIn: "Signing in...",
+      signInError: "Could not sign in. Check email and password.",
+    },
+    nav: {
+      dashboard: "Overview",
+      "new-stay": "New stay",
+      stays: "Records",
+      calendar: "Calendar",
+      rooms: "Rooms",
+    },
+    pageHeaders: {
+      dashboard: {
+        eyebrow: "Admin panel",
+        title: "Overview",
+        description: "A quick summary of check-ins, check-outs, debts, and current room occupancy.",
+      },
+      "new-stay": {
+        eyebrow: "New record",
+        title: "New stay",
+        description: "Add a guest, choose a room, stay dates, calendar color, and payment method.",
+      },
+      "edit-stay": {
+        eyebrow: "Edit record",
+        title: "Edit stay",
+        description: "Update guest details, room, stay dates, payment split, or notes.",
+      },
+      stays: {
+        eyebrow: "History",
+        title: "Records",
+        description: "All bookings and stays in one list: statuses, payments, debts, and quick actions.",
+      },
+      calendar: {
+        eyebrow: "Planning",
+        title: "Occupancy calendar",
+        description: "View available and occupied dates for each room to avoid double-booking.",
+      },
+      rooms: {
+        eyebrow: "Room inventory",
+        title: "Rooms",
+        description: "13 Hotel Marseille rooms grouped by category and capacity.",
+      },
+    },
+    roomTypes: {
+      Suite: "Suite",
+      Standard: "Standard",
+      Twin: "Twin",
+      Triple: "Triple",
+      "Junior Suite": "Junior Suite",
+    },
+    status: {
+      booked: "Booked",
+      "checked-in": "Checked in",
+      "checked-out": "Checked out",
+      cancelled: "Cancelled",
+    },
+    storage: {
+      localTitle: "Local demo version",
+      localText: "Data is currently saved only in this browser.",
+      cloudTitle: "Cloud version",
+      cloudText: "Data is stored in Supabase for the hotel account.",
+      signOut: "Sign out",
+    },
+    stats: {
+      occupied: "Occupied",
+      roomsNow: "rooms now",
+      arrivalsToday: "Arrivals today",
+      waitingCheckIn: "waiting for check-in",
+      departuresToday: "Departures today",
+      needReview: "need review",
+      debt: "Debt",
+      activeRecords: "across active records",
+    },
+    panels: {
+      rooms: "Rooms",
+      currentOccupancy: "Current occupancy",
+      today: "Today",
+      activeGuests: "Active guests",
+      record: "Record",
+      records: "Records",
+      allRecords: "All records",
+      calendar: "Calendar",
+      roomOccupancy: "Room occupancy",
+      inventory: "Inventory",
+      roomsByCategory: "13 rooms by category",
+    },
+    filters: {
+      all: "All",
+      checkedIn: "Checked in",
+      booked: "Bookings",
+      checkedOut: "Checked out",
+      debt: "Debt",
+    },
+    table: {
+      guest: "Guest",
+      room: "Room",
+      dates: "Dates",
+      total: "Total",
+      payment: "Payment",
+      status: "Status",
+      empty: "No records yet.",
+      noNotes: "No notes",
+      paid: "Paid",
+      debt: "Debt",
+      edit: "Edit",
+      delete: "Delete",
+      confirmDelete: "Delete this record?",
+    },
+    form: {
+      record: "Record",
+      addStay: "Add stay",
+      editStay: "Edit stay",
+      saveStay: "Save stay",
+      saveChanges: "Save changes",
+      cancel: "Cancel",
+      guestName: "Guest name",
+      guestPlaceholder: "For example, John Smith",
+      company: "Company",
+      companyExisting: "Existing",
+      companyNew: "New",
+      companyNone: "No company",
+      companyNewPlaceholder: "New company name",
+      color: "Color",
+      room: "Room",
+      stayDates: "Stay dates",
+      selectStayDates: "Select stay dates",
+      selectCheckout: "select check-out",
+      clearDates: "Clear dates",
+      total: "Total amount, ₾",
+      cash: "Cash, ₾",
+      card: "Card, ₾",
+      invoice: "Invoice, ₾",
+      debt: "Debt, ₾",
+      notes: "Notes",
+      notesPlaceholder: "Special requests, contact, notes",
+      chooseCheckIn: "Select check-in date",
+      chooseCheckOut: "Select check-out date",
+      selectedRoom: "Room",
+      selectRoom: "Select a room",
+      occupiedUnavailable: "occupied / unavailable",
+      selectedRange: "selected range",
+      applyDates: "Apply dates",
+      datesApplied: "Dates applied.",
+      selectBothBeforeApply: "Select both check-in and check-out dates before applying.",
+      updateHint: "You can update dates, payment, room, or notes.",
+      editingCancelled: "Editing cancelled.",
+    },
+    calendar: {
+      room: "Room",
+      today: "Today",
+      hint: "One column = one day. A colored cell means the room is occupied on that date.",
+      emptyDetails: "Click a colored calendar cell to view booking details.",
+      to: "to",
+      total: "Total",
+      outstandingDebt: "Outstanding debt",
+      paymentBalanced: "Payment is balanced.",
+      closeDetails: "Close details",
+    },
+    activeGuests: {
+      empty: "No active guests right now.",
+      checkout: "Check-out",
+      review: "Click to review and edit",
+    },
+    common: {
+      available: "Available",
+      room: "room",
+      rooms: "rooms",
+      pastDate: "Past dates cannot be selected",
+      rangeConflict: "Selected range includes occupied dates",
+      selectBothDates: "Select check-in and check-out dates.",
+      selectDates: "Select stay dates",
+      checkoutAfterCheckin: "Check-out date must be after check-in date.",
+      roomConflict: "This room is already occupied for the selected dates.",
+      recordUpdated: "Record updated.",
+      staySaved: "Stay saved.",
+      saveError: "Could not save this record. Please check the connection and try again.",
+      selectRoom: "Select a room",
+    },
+    weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
   },
-  "new-stay": {
-    eyebrow: "New record",
-    title: "New stay",
-    description: "Add a guest, choose a room, stay dates, calendar color, and payment method.",
-  },
-  "edit-stay": {
-    eyebrow: "Edit record",
-    title: "Edit stay",
-    description: "Update guest details, room, stay dates, payment split, or notes.",
-  },
-  stays: {
-    eyebrow: "History",
-    title: "Records",
-    description: "All bookings and stays in one list: statuses, payments, debts, and quick actions.",
-  },
-  calendar: {
-    eyebrow: "Planning",
-    title: "Occupancy calendar",
-    description: "View available and occupied dates for each room to avoid double-booking.",
-  },
-  rooms: {
-    eyebrow: "Room inventory",
-    title: "Rooms",
-    description: "13 Hotel Marseille rooms grouped by category and capacity.",
+  ka: {
+    brand: { eyebrow: "სასტუმრო" },
+    language: { label: "ენა" },
+    auth: {
+      privateAccess: "პირადი წვდომა",
+      title: "პანელში შესვლა",
+      description: "გამოიყენეთ სასტუმროს ანგარიში ჯავშნების, ნომრების, გადახდებისა და კალენდრის სამართავად.",
+      email: "ელფოსტა",
+      emailPlaceholder: "batumimarseille@gmail.com",
+      password: "პაროლი",
+      passwordPlaceholder: "პაროლი",
+      signIn: "შესვლა",
+      signingIn: "შესვლა მიმდინარეობს...",
+      signInError: "შესვლა ვერ მოხერხდა. გადაამოწმეთ ელფოსტა და პაროლი.",
+    },
+    nav: {
+      dashboard: "მიმოხილვა",
+      "new-stay": "ახალი შესახლება",
+      stays: "ჟურნალი",
+      calendar: "კალენდარი",
+      rooms: "ნომრები",
+    },
+    pageHeaders: {
+      dashboard: {
+        eyebrow: "ადმინისტრატორის პანელი",
+        title: "მიმოხილვა",
+        description: "სწრაფი შეჯამება შესახლებებზე, გასვლებზე, ვალებზე და ნომრების მიმდინარე დაკავებაზე.",
+      },
+      "new-stay": {
+        eyebrow: "ახალი ჩანაწერი",
+        title: "ახალი შესახლება",
+        description: "დაამატეთ სტუმარი, აირჩიეთ ნომერი, ცხოვრების თარიღები, კალენდრის ფერი და გადახდის მეთოდი.",
+      },
+      "edit-stay": {
+        eyebrow: "ჩანაწერის რედაქტირება",
+        title: "შესახლების რედაქტირება",
+        description: "განაახლეთ სტუმრის მონაცემები, ნომერი, თარიღები, გადახდა ან შენიშვნები.",
+      },
+      stays: {
+        eyebrow: "ისტორია",
+        title: "ჟურნალი",
+        description: "ყველა ჯავშანი და შესახლება ერთ სიაში: სტატუსები, გადახდები, ვალები და სწრაფი მოქმედებები.",
+      },
+      calendar: {
+        eyebrow: "დაგეგმვა",
+        title: "დაკავებულობის კალენდარი",
+        description: "ნახეთ თავისუფალი და დაკავებული თარიღები თითოეული ნომრისთვის.",
+      },
+      rooms: {
+        eyebrow: "ნომრების სია",
+        title: "ნომრები",
+        description: "Hotel Marseille-ის 13 ნომერი კატეგორიებისა და ტევადობის მიხედვით.",
+      },
+    },
+    roomTypes: {
+      Suite: "ლუქსი",
+      Standard: "სტანდარტი",
+      Twin: "ორი საწოლი",
+      Triple: "სამი საწოლი",
+      "Junior Suite": "ნახევრად ლუქსი",
+    },
+    status: {
+      booked: "ჯავშანი",
+      "checked-in": "შესახლებული",
+      "checked-out": "გასული",
+      cancelled: "გაუქმებული",
+    },
+    storage: {
+      localTitle: "ლოკალური დემო-ვერსია",
+      localText: "მონაცემები დროებით ინახება მხოლოდ ამ ბრაუზერში.",
+      cloudTitle: "ღრუბლოვანი ვერსია",
+      cloudText: "მონაცემები ინახება Supabase-ში სასტუმროს ანგარიშისთვის.",
+      signOut: "გასვლა",
+    },
+    stats: {
+      occupied: "დაკავებულია",
+      roomsNow: "ნომერი ახლა",
+      arrivalsToday: "დღევანდელი შესახლებები",
+      waitingCheckIn: "ელოდება შესახლებას",
+      departuresToday: "დღევანდელი გასვლები",
+      needReview: "საჭიროა შემოწმება",
+      debt: "ვალი",
+      activeRecords: "აქტიურ ჩანაწერებში",
+    },
+    panels: {
+      rooms: "ნომრები",
+      currentOccupancy: "მიმდინარე დაკავება",
+      today: "დღეს",
+      activeGuests: "აქტიური სტუმრები",
+      record: "ჩანაწერი",
+      records: "ჩანაწერები",
+      allRecords: "ყველა ჩანაწერი",
+      calendar: "კალენდარი",
+      roomOccupancy: "ნომრების დაკავება",
+      inventory: "ნომრების სია",
+      roomsByCategory: "13 ნომერი კატეგორიების მიხედვით",
+    },
+    filters: {
+      all: "ყველა",
+      checkedIn: "შესახლებული",
+      booked: "ჯავშნები",
+      checkedOut: "გასული",
+      debt: "ვალი",
+    },
+    table: {
+      guest: "სტუმარი",
+      room: "ნომერი",
+      dates: "თარიღები",
+      total: "ჯამი",
+      payment: "გადახდა",
+      status: "სტატუსი",
+      empty: "ჩანაწერები ჯერ არ არის.",
+      noNotes: "შენიშვნები არ არის",
+      paid: "გადახდილია",
+      debt: "ვალი",
+      edit: "რედაქტირება",
+      delete: "წაშლა",
+      confirmDelete: "წავშალოთ ეს ჩანაწერი?",
+    },
+    form: {
+      record: "ჩანაწერი",
+      addStay: "შესახლების დამატება",
+      editStay: "შესახლების რედაქტირება",
+      saveStay: "შესახლების შენახვა",
+      saveChanges: "ცვლილებების შენახვა",
+      cancel: "გაუქმება",
+      guestName: "სტუმრის სახელი",
+      guestPlaceholder: "მაგალითად, Ivan Petrov",
+      company: "კომპანია",
+      companyExisting: "არსებული",
+      companyNew: "ახალი",
+      companyNone: "კომპანიის გარეშე",
+      companyNewPlaceholder: "ახალი კომპანიის სახელი",
+      color: "ფერი",
+      room: "ნომერი",
+      stayDates: "ცხოვრების თარიღები",
+      selectStayDates: "აირჩიეთ ცხოვრების თარიღები",
+      selectCheckout: "აირჩიეთ გასვლის თარიღი",
+      clearDates: "თარიღების გასუფთავება",
+      total: "ჯამური თანხა, ₾",
+      cash: "ნაღდი, ₾",
+      card: "ბარათი, ₾",
+      invoice: "ინვოისი, ₾",
+      debt: "ვალი, ₾",
+      notes: "კომენტარი",
+      notesPlaceholder: "განსაკუთრებული პირობები, კონტაქტი, შენიშვნა",
+      chooseCheckIn: "აირჩიეთ შესვლის თარიღი",
+      chooseCheckOut: "აირჩიეთ გასვლის თარიღი",
+      selectedRoom: "ნომერი",
+      selectRoom: "აირჩიეთ ნომერი",
+      occupiedUnavailable: "დაკავებული / მიუწვდომელი",
+      selectedRange: "არჩეული პერიოდი",
+      applyDates: "თარიღების დადასტურება",
+      datesApplied: "თარიღები არჩეულია.",
+      selectBothBeforeApply: "დადასტურებამდე აირჩიეთ შესვლის და გასვლის თარიღები.",
+      updateHint: "შეგიძლიათ შეცვალოთ თარიღები, გადახდა, ნომერი ან შენიშვნები.",
+      editingCancelled: "რედაქტირება გაუქმდა.",
+    },
+    calendar: {
+      room: "ნომერი",
+      today: "დღეს",
+      hint: "ერთი სვეტი = ერთი დღე. ფერადი უჯრა ნიშნავს, რომ ნომერი ამ თარიღში დაკავებულია.",
+      emptyDetails: "დეტალების სანახავად დააჭირეთ კალენდარში ფერად უჯრას.",
+      to: "დან",
+      total: "ჯამი",
+      outstandingDebt: "დარჩენილი ვალი",
+      paymentBalanced: "გადახდა დაბალანსებულია.",
+      closeDetails: "დეტალების დახურვა",
+    },
+    activeGuests: {
+      empty: "აქტიური სტუმრები ახლა არ არის.",
+      checkout: "გასვლა",
+      review: "რედაქტირებისთვის დააჭირეთ",
+    },
+    common: {
+      available: "თავისუფალია",
+      room: "ნომერი",
+      rooms: "ნომერი",
+      pastDate: "წარსული თარიღის არჩევა შეუძლებელია",
+      rangeConflict: "არჩეულ პერიოდში არის დაკავებული თარიღები",
+      selectBothDates: "აირჩიეთ შესვლის და გასვლის თარიღები.",
+      selectDates: "აირჩიეთ ცხოვრების თარიღები.",
+      checkoutAfterCheckin: "გასვლის თარიღი უნდა იყოს შესვლის შემდეგ.",
+      roomConflict: "ეს ნომერი არჩეულ თარიღებში უკვე დაკავებულია.",
+      recordUpdated: "ჩანაწერი განახლდა.",
+      staySaved: "ჩანაწერი შენახულია.",
+      saveError: "ჩანაწერის შენახვა ვერ მოხერხდა. გადაამოწმეთ კავშირი და სცადეთ თავიდან.",
+      selectRoom: "აირჩიეთ ნომერი",
+    },
+    weekdays: ["ორშ", "სამ", "ოთხ", "ხუთ", "პარ", "შაბ", "კვი"],
   },
 };
 
 let stays = [];
+let companies = [];
 let activeFilter = "all";
 let highlightedStayId = null;
 let highlightedCalendarStayId = null;
@@ -71,6 +446,9 @@ let isDatePickerOpen = false;
 let formDateHover = null;
 let pendingCheckIn = "";
 let pendingCheckOut = "";
+let currentLanguage = getStoredLanguage();
+let currentSectionName = "dashboard";
+let didJustSignIn = false;
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
@@ -82,6 +460,9 @@ const selectors = {
   pageTitle: document.querySelector("#pageTitle"),
   pageDescription: document.querySelector("#pageDescription"),
   roomSelect: document.querySelector("#roomSelect"),
+  companySelect: document.querySelector("#companySelect"),
+  companyNewInput: document.querySelector("#companyNewInput"),
+  companyModeInputs: document.querySelectorAll('input[name="companyMode"]'),
   stayForm: document.querySelector("#stayForm"),
   formTitle: document.querySelector("#formTitle"),
   formMessage: document.querySelector("#formMessage"),
@@ -115,7 +496,114 @@ const selectors = {
   dateRangeDisplay: document.querySelector("#dateRangeDisplay"),
   dateClearButton: document.querySelector("#dateClearButton"),
   formDateCalendar: document.querySelector("#formDateCalendar"),
+  languageSelect: document.querySelector("#languageSelect"),
 };
+
+
+function getTranslationValue(path, dictionary) {
+  return path.split(".").reduce((value, key) => value?.[key], dictionary);
+}
+
+function getStoredLanguage() {
+  try {
+    const stored = localStorage.getItem(languageStorageKey);
+    return translations[stored] ? stored : "en";
+  } catch {
+    return "en";
+  }
+}
+
+function getStoredSection() {
+  try {
+    const stored = localStorage.getItem(activeSectionStorageKey);
+    return sectionStorageValues.has(stored) ? stored : "dashboard";
+  } catch {
+    return "dashboard";
+  }
+}
+
+function storeActiveSection(sectionName) {
+  if (!sectionStorageValues.has(sectionName)) return;
+
+  try {
+    localStorage.setItem(activeSectionStorageKey, sectionName);
+  } catch {
+    // Browsers can block localStorage in private mode.
+  }
+}
+
+function t(path) {
+  const currentValue = getTranslationValue(path, translations[currentLanguage] || translations.en);
+  if (currentValue !== undefined) return currentValue;
+
+  const fallbackValue = getTranslationValue(path, translations.en);
+  return fallbackValue !== undefined ? fallbackValue : path;
+}
+
+function getLocale() {
+  return currentLanguage === "ka" ? "ka-GE" : "en-GB";
+}
+
+function getNumberLocale() {
+  return currentLanguage === "ka" ? "ka-GE" : "en-US";
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString(getNumberLocale());
+}
+
+function roomTypeLabel(type) {
+  return t(`roomTypes.${type}`) || type;
+}
+
+function getPageHeader(sectionName) {
+  return t(`pageHeaders.${sectionName}`) || translations.en.pageHeaders.dashboard;
+}
+
+function applyStaticTranslations() {
+  document.documentElement.lang = currentLanguage;
+
+  if (selectors.languageSelect) {
+    selectors.languageSelect.value = currentLanguage;
+  }
+
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    const value = t(node.dataset.i18n);
+    if (typeof value === "string") node.textContent = value;
+  });
+
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+    const value = t(node.dataset.i18nPlaceholder);
+    if (typeof value === "string") node.setAttribute("placeholder", value);
+  });
+
+  if (selectors.dateClearButton) {
+    selectors.dateClearButton.setAttribute("aria-label", t("form.clearDates"));
+  }
+}
+
+function setLanguage(language) {
+  if (!translations[language]) return;
+
+  currentLanguage = language;
+  try {
+    localStorage.setItem(languageStorageKey, language);
+  } catch {
+    // Ignore blocked storage.
+  }
+
+  applyStaticTranslations();
+  populateRoomSelect();
+  populateCompanyOptions();
+  updateDateRangeDisplay();
+
+  const header = getPageHeader(currentSectionName);
+  if (selectors.pageEyebrow) selectors.pageEyebrow.textContent = header.eyebrow;
+  if (selectors.pageTitle) selectors.pageTitle.textContent = header.title;
+  if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
+
+  renderAll();
+}
 
 function todayDate() {
   const date = new Date();
@@ -167,10 +655,70 @@ function saveLocalStays() {
   localStorage.setItem(storageKey, JSON.stringify(stays));
 }
 
+function normalizeCompanyName(name) {
+  return String(name || "").trim().replace(/\s+/g, " ");
+}
+
+function getCompanyNameById(companyId) {
+  return companies.find((company) => company.id === companyId)?.name || "";
+}
+
+function populateCompanyOptions(selectedCompanyId = selectors.companySelect?.value || "") {
+  if (!selectors.companySelect) return;
+
+  selectors.companySelect.innerHTML = [
+    `<option value="">${t("form.companyNone")}</option>`,
+    ...companies
+      .slice()
+      .sort((first, second) => normalizeCompanyName(first.name).localeCompare(normalizeCompanyName(second.name), getLocale()))
+      .map((company) => `<option value="${company.id}">${normalizeCompanyName(company.name)}</option>`),
+  ].join("");
+
+  selectors.companySelect.value = companies.some((company) => company.id === selectedCompanyId) ? selectedCompanyId : "";
+}
+
+function setCompanyMode(mode) {
+  const nextMode = mode === "new" ? "new" : "existing";
+
+  selectors.companyModeInputs?.forEach((input) => {
+    input.checked = input.value === nextMode;
+  });
+  selectors.companySelect?.classList.toggle("hidden", nextMode !== "existing");
+  selectors.companyNewInput?.classList.toggle("hidden", nextMode !== "new");
+
+  if (nextMode === "new") {
+    selectors.companySelect.value = "";
+  } else if (selectors.companyNewInput) {
+    selectors.companyNewInput.value = "";
+  }
+}
+
+function getCompanyOptions() {
+  const byName = new Map();
+
+  companies.forEach((company) => {
+    const name = normalizeCompanyName(company.name);
+    if (name) byName.set(name.toLocaleLowerCase(), name);
+  });
+
+  stays.forEach((stay) => {
+    const name = normalizeCompanyName(stay.companyName);
+    if (name) byName.set(name.toLocaleLowerCase(), name);
+  });
+
+  return Array.from(byName.values())
+    .sort((first, second) => first.localeCompare(second, getLocale()))
+    .map((name) => ({ id: name.toLocaleLowerCase(), name }));
+}
+
 function mapStayFromDatabase(row) {
+  const company = row.companies || null;
+
   return {
     id: row.id,
     guestName: row.guest_name,
+    companyId: row.company_id || company?.id || undefined,
+    companyName: company?.name || row.company_name || "",
     roomId: row.room_id,
     checkIn: row.check_in,
     checkOut: row.check_out,
@@ -191,6 +739,7 @@ function mapStayToDatabase(stay) {
   return {
     id: stay.id,
     guest_name: stay.guestName,
+    company_id: stay.companyId || null,
     room_id: stay.roomId,
     check_in: stay.checkIn,
     check_out: stay.checkOut,
@@ -205,6 +754,73 @@ function mapStayToDatabase(stay) {
   };
 }
 
+async function loadCompanies() {
+  if (!usesSupabase) {
+    return getCompanyOptions();
+  }
+
+  const { data, error } = await supabaseClient
+    .from("companies")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load companies from Supabase", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+async function ensureStayCompanies() {
+  const companyNames = Array.from(
+    new Set(stays.map((stay) => normalizeCompanyName(stay.companyName)).filter(Boolean))
+  );
+
+  if (!companyNames.length) return true;
+
+  if (!usesSupabase) {
+    companies = getCompanyOptions();
+    return true;
+  }
+
+  const existingByName = new Map(
+    companies.map((company) => [normalizeCompanyName(company.name).toLocaleLowerCase(), company])
+  );
+  const missingNames = companyNames.filter((name) => !existingByName.has(name.toLocaleLowerCase()));
+
+  if (missingNames.length > 0) {
+    const { data, error } = await supabaseClient
+      .from("companies")
+      .upsert(missingNames.map((name) => ({ name })), { onConflict: "name" })
+      .select("*");
+
+    if (error) {
+      console.error("Failed to save companies", error);
+      return false;
+    }
+
+    (data || []).forEach((company) => {
+      existingByName.set(normalizeCompanyName(company.name).toLocaleLowerCase(), company);
+    });
+    companies = Array.from(existingByName.values()).sort((first, second) => first.name.localeCompare(second.name));
+  }
+
+  stays = stays.map((stay) => {
+    const name = normalizeCompanyName(stay.companyName);
+    if (!name) return { ...stay, companyId: undefined, companyName: "" };
+
+    const company = existingByName.get(name.toLocaleLowerCase());
+    return {
+      ...stay,
+      companyId: company?.id,
+      companyName: company?.name || name,
+    };
+  });
+
+  return true;
+}
+
 async function loadStays() {
   if (!usesSupabase) {
     return loadLocalStays();
@@ -212,7 +828,7 @@ async function loadStays() {
 
   const { data, error } = await supabaseClient
     .from("stays")
-    .select("*")
+    .select("*, companies(id, name)")
     .order("check_in", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -226,9 +842,14 @@ async function loadStays() {
 
 async function saveStays() {
   if (!usesSupabase) {
+    await ensureStayCompanies();
+    populateCompanyOptions();
     saveLocalStays();
     return true;
   }
+
+  const companiesSaved = await ensureStayCompanies();
+  if (!companiesSaved) return false;
 
   const nextRows = stays.map(mapStayToDatabase);
   const nextIds = nextRows.map((row) => row.id);
@@ -274,6 +895,8 @@ async function saveStays() {
 
 async function refreshStays() {
   stays = await loadStays();
+  if (!usesSupabase) companies = await loadCompanies();
+  populateCompanyOptions();
   renderAll();
 }
 
@@ -304,12 +927,7 @@ function getStayStatus(stay) {
 }
 
 function getStatusLabel(status) {
-  return {
-    booked: "Booked",
-    "checked-in": "Checked in",
-    "checked-out": "Checked out",
-    cancelled: "Cancelled",
-  }[status] || "Booked";
+  return t(`status.${status}`) || t("status.booked");
 }
 
 function getStatusClass(status) {
@@ -336,7 +954,7 @@ function hasRoomConflict(nextStay) {
 
 function populateRoomSelect() {
   selectors.roomSelect.innerHTML = rooms
-    .map((room) => `<option value="${room.id}">${room.id} · ${room.type}</option>`)
+    .map((room) => `<option value="${room.id}">${room.id} · ${roomTypeLabel(room.type)}</option>`)
     .join("");
 }
 
@@ -348,13 +966,13 @@ function renderRoomMap() {
         (stay) => stay.roomId === room.id && getStayStatus(stay) === "checked-in"
       );
       const roomClass = currentStay ? (getDebt(currentStay) > 0 ? "room-debt" : "room-busy") : "room-free";
-      const label = currentStay ? currentStay.guestName : "Available";
+      const label = currentStay ? currentStay.guestName : t("common.available");
 
       return `
         <button class="room-card ${roomClass}" ${currentStay ? `data-room-stay="${currentStay.id}" style="--room-color: ${currentStay.color || defaultBookingColor}"` : ""}>
           <div>
             <strong>${room.id}</strong>
-            <span>${room.type}</span>
+            <span>${roomTypeLabel(room.type)}</span>
           </div>
           <p>${label}</p>
         </button>
@@ -370,7 +988,7 @@ function renderRoomGroups() {
       return `
         <div class="room-group-card">
           <span>${groupRooms.length} ${getRoomWord(groupRooms.length)}</span>
-          <h4>${type}</h4>
+          <h4>${roomTypeLabel(type)}</h4>
           <p>${groupRooms.map((room) => room.id).join(", ")}</p>
         </div>
       `;
@@ -379,16 +997,14 @@ function renderRoomGroups() {
 }
 
 function getRoomWord(count) {
-  if (count === 1) return "room";
-  if (count > 1 && count < 5) return "rooms";
-  return "rooms";
+  return count === 1 ? t("common.room") : t("common.rooms");
 }
 
 function renderActiveGuests() {
   const active = stays.filter((stay) => getStayStatus(stay) === "checked-in");
 
   if (!active.length) {
-    selectors.activeGuestList.innerHTML = `<div class="empty-state">No active guests right now.</div>`;
+    selectors.activeGuestList.innerHTML = `<div class="empty-state">${t("activeGuests.empty")}</div>`;
     return;
   }
 
@@ -399,10 +1015,10 @@ function renderActiveGuests() {
         <button type="button" class="guest-card active-guest-card" data-active-stay="${stay.id}" style="--guest-color: ${stay.color || defaultBookingColor}">
           <div>
             <strong>${stay.guestName}</strong>
-            <span>${room.id} · ${room.type}</span>
+            <span>${room.id} · ${roomTypeLabel(room.type)}${stay.companyName ? " · " + stay.companyName : ""}</span>
           </div>
-          <p>Check-out: ${formatDate(stay.checkOut)}</p>
-          <small>Click to review and edit</small>
+          <p>${t("activeGuests.checkout")}: ${formatDate(stay.checkOut)}</p>
+          <small>${t("activeGuests.review")}</small>
         </button>
       `;
     })
@@ -419,7 +1035,7 @@ function renderStats() {
   selectors.occupiedStat.textContent = String(active.length);
   selectors.arrivalsStat.textContent = String(arrivals.length);
   selectors.departuresStat.textContent = String(departures.length);
-  selectors.debtStat.textContent = `${debt.toLocaleString("en-US")} ₾`;
+  selectors.debtStat.textContent = `${formatNumber(debt)} ₾`;
 }
 
 function renderStaysTable() {
@@ -435,7 +1051,7 @@ function renderStaysTable() {
   if (!filtered.length) {
     selectors.staysTable.innerHTML = `
       <tr>
-        <td colspan="7" class="empty-table">No records yet.</td>
+        <td colspan="7" class="empty-table">${t("table.empty")}</td>
       </tr>
     `;
     return;
@@ -452,19 +1068,19 @@ function renderStaysTable() {
         <tr class="${isHighlighted ? "journal-highlight" : ""}" data-stay-row="${stay.id}">
           <td>
             <strong>${stay.guestName}</strong>
-            <span>${stay.notes || "No notes"}</span>
+            <span>${[stay.companyName, stay.notes || t("table.noNotes")].filter(Boolean).join(" · ")}</span>
           </td>
-          <td>${room.id}<span>${room.type}</span></td>
+          <td>${room.id}<span>${roomTypeLabel(room.type)}</span></td>
           <td>${formatDate(stay.checkIn)} - ${formatDate(stay.checkOut)}</td>
-          <td>${Number(stay.total || 0).toLocaleString("en-US")} ₾</td>
+          <td>${formatNumber(stay.total)} ₾</td>
           <td>
-            <span>Paid: ${getPaidAmount(stay).toLocaleString("en-US")} ₾</span>
-            <span class="${debt > 0 ? "debt-text" : "paid-text"}">Debt: ${debt.toLocaleString("en-US")} ₾</span>
+            <span>${t("table.paid")}: ${formatNumber(getPaidAmount(stay))} ₾</span>
+            <span class="${debt > 0 ? "debt-text" : "paid-text"}">${t("table.debt")}: ${formatNumber(debt)} ₾</span>
           </td>
           <td><span class="status-pill ${getStatusClass(status)}">${getStatusLabel(status)}</span></td>
           <td class="row-actions">
-            <button class="edit-row" data-edit="${stay.id}" aria-label="Edit">Edit</button>
-            <button class="delete-row" data-delete="${stay.id}" aria-label="Delete">×</button>
+            <button class="edit-row" data-edit="${stay.id}" aria-label="${t("table.edit")}">${t("table.edit")}</button>
+            <button class="delete-row" data-delete="${stay.id}" aria-label="${t("table.delete")}">×</button>
           </td>
         </tr>
       `;
@@ -472,12 +1088,16 @@ function renderStaysTable() {
     .join("");
 }
 
+function paymentLabel(key) {
+  return t(`form.${key}`).replace(", ₾", "");
+}
+
 function getPaymentBreakdown(stay) {
   return [
-    ["Cash", stay.cash || 0],
-    ["Card", stay.card || 0],
-    ["Invoice", stay.invoice || 0],
-    ["Debt", getDebt(stay)],
+    [paymentLabel("cash"), stay.cash || 0],
+    [paymentLabel("card"), stay.card || 0],
+    [paymentLabel("invoice"), stay.invoice || 0],
+    [paymentLabel("debt"), getDebt(stay)],
   ];
 }
 
@@ -487,7 +1107,7 @@ function renderBookingDetails() {
   selectors.bookingDetailsPanel.classList.remove("hidden");
 
   if (!stay) {
-    selectors.bookingDetailsPanel.innerHTML = '<div class="empty-state">Click a colored calendar cell to view booking details.</div>';
+    selectors.bookingDetailsPanel.innerHTML = `<div class="empty-state">${t("calendar.hint")}</div>`;
     return;
   }
 
@@ -495,23 +1115,24 @@ function renderBookingDetails() {
   const status = getStayStatus(stay);
   const debt = getDebt(stay);
   const payments = getPaymentBreakdown(stay)
-    .map(([label, amount]) => '<div class="detail-payment-row"><span>' + label + '</span><strong>' + Number(amount || 0).toLocaleString("en-US") + ' ₾</strong></div>')
+    .map(([label, amount]) => '<div class="detail-payment-row"><span>' + label + '</span><strong>' + formatNumber(amount) + ' ₾</strong></div>')
     .join("");
 
   selectors.bookingDetailsPanel.innerHTML = [
     '<article class="booking-detail-card">',
-    '  <button type="button" class="detail-close" data-detail-close aria-label="Close details">×</button>',
+    '  <button type="button" class="detail-close" data-detail-close aria-label="' + t("calendar.closeDetails") + '">×</button>',
     '  <div class="booking-detail-color" style="background: ' + (stay.color || defaultBookingColor) + '"></div>',
     '  <h4>' + stay.guestName + '</h4>',
-    '  <div class="detail-meta"><span>Room ' + room.id + '</span><span>' + room.type + '</span><span>' + getStatusLabel(status) + '</span></div>',
-    '  <div class="detail-dates"><strong>' + formatDate(stay.checkIn) + '</strong><span>to</span><strong>' + formatDate(stay.checkOut) + '</strong></div>',
-    '  <div class="detail-total"><span>Total</span><strong>' + Number(stay.total || 0).toLocaleString("en-US") + ' ₾</strong></div>',
+    stay.companyName ? '  <p class="detail-company">' + stay.companyName + '</p>' : '',
+    '  <div class="detail-meta"><span>' + t("calendar.room") + ' ' + room.id + '</span><span>' + roomTypeLabel(room.type) + '</span><span>' + getStatusLabel(status) + '</span></div>',
+    '  <div class="detail-dates"><strong>' + formatDate(stay.checkIn) + '</strong><span>' + t("calendar.to") + '</span><strong>' + formatDate(stay.checkOut) + '</strong></div>',
+    '  <div class="detail-total"><span>' + t("calendar.total") + '</span><strong>' + formatNumber(stay.total) + ' ₾</strong></div>',
     '  <div class="detail-payments">' + payments + '</div>',
-    debt > 0 ? '  <div class="detail-alert">Outstanding debt: ' + debt.toLocaleString("en-US") + ' ₾</div>' : '  <div class="detail-ok">Payment is balanced.</div>',
+    debt > 0 ? '  <div class="detail-alert">' + t("calendar.outstandingDebt") + ': ' + formatNumber(debt) + ' ₾</div>' : '  <div class="detail-ok">' + t("calendar.paymentBalanced") + '</div>',
     stay.notes ? '  <p class="detail-notes">' + stay.notes + '</p>' : '',
     '  <div class="detail-actions">',
-    '    <button type="button" class="primary-button" data-detail-edit="' + stay.id + '">Edit</button>',
-    '    <button type="button" class="danger-button" data-detail-delete="' + stay.id + '">Delete</button>',
+    '    <button type="button" class="primary-button" data-detail-edit="' + stay.id + '">' + t("table.edit") + '</button>',
+    '    <button type="button" class="danger-button" data-detail-delete="' + stay.id + '">' + t("table.delete") + '</button>',
     '  </div>',
     '</article>',
   ].join("");
@@ -526,12 +1147,12 @@ function renderCalendar() {
 
   const header = `
     <div class="calendar-row calendar-header-row">
-      <div class="calendar-room-label calendar-head">Room</div>
+      <div class="calendar-room-label calendar-head">${t("calendar.room")}</div>
       ${days
         .map(
           (day) => `
             <div class="calendar-cell calendar-head ${day.getTime() === today.getTime() ? "calendar-today" : ""}">
-              <span>${day.toLocaleDateString("en-US", { weekday: "short" })}</span>
+              <span>${formatWeekdayShort(day)}</span>
               <strong>${day.getDate()}</strong>
             </div>
           `
@@ -570,7 +1191,7 @@ function renderCalendar() {
         <div class="calendar-row">
           <div class="calendar-room-label">
             <strong>${room.id}</strong>
-            <span>${room.type}</span>
+            <span>${roomTypeLabel(room.type)}</span>
           </div>
           ${cells}
         </div>
@@ -578,16 +1199,42 @@ function renderCalendar() {
     })
     .join("");
 
-  selectors.occupancyCalendar.innerHTML = header + (rows || `<div class="calendar-empty-room">Select a room.</div>`);
+  selectors.occupancyCalendar.innerHTML = header + (rows || `<div class="calendar-empty-room">${t("common.selectRoom")}</div>`);
   renderBookingDetails();
 }
 
 function formatDate(value) {
-  return toDate(value).toLocaleDateString("en-GB", {
+  const date = toDate(value);
+
+  if (currentLanguage === "ka") {
+    return `${date.getDate()} ${georgianMonthNames[date.getMonth()]} ${date.getFullYear()}`;
+  }
+
+  return date.toLocaleDateString(getLocale(), {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+}
+
+function formatMonthYear(value) {
+  const date = toDate(value);
+
+  if (currentLanguage === "ka") {
+    return `${georgianMonthNames[date.getMonth()]} ${date.getFullYear()}`;
+  }
+
+  return date.toLocaleDateString(getLocale(), { month: "long", year: "numeric" });
+}
+
+function formatWeekdayShort(value) {
+  const date = toDate(value);
+
+  if (currentLanguage === "ka") {
+    return georgianWeekdayShortNames[date.getDay()];
+  }
+
+  return date.toLocaleDateString(getLocale(), { weekday: "short" });
 }
 
 function getDateBooking(day, bookings) {
@@ -629,9 +1276,9 @@ function updateDateRangeDisplay() {
     if (checkInValue && checkOutValue) {
       selectors.dateRangeDisplay.textContent = formatDate(checkInValue) + " — " + formatDate(checkOutValue);
     } else if (checkInValue) {
-      selectors.dateRangeDisplay.textContent = formatDate(checkInValue) + " — select check-out";
+      selectors.dateRangeDisplay.textContent = formatDate(checkInValue) + " — " + t("form.selectCheckout");
     } else {
-      selectors.dateRangeDisplay.textContent = "Select stay dates";
+      selectors.dateRangeDisplay.textContent = t("form.selectStayDates");
     }
   }
 
@@ -668,7 +1315,7 @@ function renderFormDateCalendar() {
   const today = todayDate();
   const roomBookings = getFormRoomBookings();
   const visibleMonths = [startOfMonth(formCalendarMonth), addMonths(formCalendarMonth, 1)];
-  const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const weekDays = t("weekdays");
 
   const renderMonth = (monthStart) => {
     const firstWeekOffset = (monthStart.getDay() + 6) % 7;
@@ -728,9 +1375,9 @@ function renderFormDateCalendar() {
         const title = isBusy
           ? booking.guestName + ": " + formatDate(booking.checkIn) + " - " + formatDate(booking.checkOut)
           : isPastDay
-            ? "Past dates cannot be selected"
+            ? t("common.pastDate")
             : rangeWouldConflict
-              ? "Selected range includes occupied dates"
+              ? t("common.rangeConflict")
               : "";
         const style = booking ? "--booking-color: " + (booking.color || defaultBookingColor) : "";
         const disabled = isUnavailable ? " disabled aria-disabled=\"true\"" : "";
@@ -745,7 +1392,7 @@ function renderFormDateCalendar() {
 
     return [
       '<div class="form-date-month">',
-      '  <div class="form-date-month-title">' + monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" }) + '</div>',
+      '  <div class="form-date-month-title">' + formatMonthYear(monthStart) + '</div>',
       '  <div class="form-date-weekdays">' + weekDays.map((day) => '<span>' + day + '</span>').join("") + '</div>',
       '  <div class="form-date-days">' + blanks.join("") + dayButtons + '</div>',
       '</div>',
@@ -756,19 +1403,19 @@ function renderFormDateCalendar() {
     '<div class="form-date-calendar-head booking-calendar-head">',
     '  <button type="button" class="calendar-arrow" data-form-month="prev" aria-label="Previous month">‹</button>',
     '  <div class="booking-calendar-title">',
-    '    <span>' + (activeDateField === "checkOut" ? "Select check-out date" : "Select check-in date") + '</span>',
-    '    <strong>' + (room ? "Room " + room.id + " · " + room.type : "Select a room") + '</strong>',
+    '    <span>' + (activeDateField === "checkOut" ? t("form.chooseCheckOut") : t("form.chooseCheckIn")) + '</span>',
+    '    <strong>' + (room ? t("form.selectedRoom") + " " + room.id + " · " + roomTypeLabel(room.type) : t("form.selectRoom")) + '</strong>',
     '  </div>',
     '  <button type="button" class="calendar-arrow" data-form-month="next" aria-label="Next month">›</button>',
     '</div>',
     '<div class="form-date-months">' + visibleMonths.map(renderMonth).join("") + '</div>',
     '<div class="form-date-legend">',
-    '  <span><i class="legend-busy"></i> occupied / unavailable</span>',
-    '  <span><i class="legend-selected"></i> selected range</span>',
+    '  <span><i class="legend-busy"></i> ' + t("form.occupiedUnavailable") + '</span>',
+    '  <span><i class="legend-selected"></i> ' + t("form.selectedRange") + '</span>',
     '</div>',
     '<div class="form-date-apply-row">',
-    '  <button type="button" class="ghost-button" data-form-date-cancel>Cancel</button>',
-    '  <button type="button" class="primary-button" data-form-date-apply' + (pendingCheckIn && pendingCheckOut ? '' : ' disabled') + '>Apply dates</button>',
+    '  <button type="button" class="ghost-button" data-form-date-cancel>' + t("form.cancel") + '</button>',
+    '  <button type="button" class="primary-button" data-form-date-apply' + (pendingCheckIn && pendingCheckOut ? '' : ' disabled') + '>' + t("form.applyDates") + '</button>',
     '</div>',
   ].join("");
 }
@@ -794,10 +1441,16 @@ function renderAll() {
 function readFormStay() {
   const formData = new FormData(selectors.stayForm);
   const existing = stays.find((stay) => stay.id === editingStayId);
+  const companyMode = String(formData.get("companyMode") || "existing");
+  const selectedCompanyId = String(formData.get("companyId") || "");
+  const selectedCompany = companies.find((company) => company.id === selectedCompanyId);
+  const newCompanyName = normalizeCompanyName(formData.get("companyNewName"));
 
   return {
     id: editingStayId || crypto.randomUUID(),
     guestName: String(formData.get("guestName")).trim(),
+    companyId: companyMode === "existing" ? selectedCompany?.id : undefined,
+    companyName: companyMode === "existing" ? normalizeCompanyName(selectedCompany?.name) : newCompanyName,
     roomId: String(formData.get("roomId")),
     checkIn: String(formData.get("checkIn")),
     checkOut: String(formData.get("checkOut")),
@@ -820,31 +1473,31 @@ async function handleFormSubmit(event) {
   const stay = readFormStay();
 
   if (!stay.checkIn || !stay.checkOut) {
-    setFormMessage("Select check-in and check-out dates.", "error");
+    setFormMessage(t("common.selectBothDates"), "error");
     return;
   }
 
   if (toDate(stay.checkOut) <= toDate(stay.checkIn)) {
-    setFormMessage("Check-out date must be after check-in date.", "error");
+    setFormMessage(t("common.checkoutAfterCheckin"), "error");
     return;
   }
 
   if (hasRoomConflict(stay)) {
-    setFormMessage("This room is already occupied for the selected dates.", "error");
+    setFormMessage(t("common.roomConflict"), "error");
     return;
   }
 
   if (editingStayId) {
     stays = stays.map((item) => (item.id === editingStayId ? stay : item));
-    setFormMessage("Record updated.", "success");
+    setFormMessage(t("common.recordUpdated"), "success");
   } else {
     stays = [stay, ...stays];
-    setFormMessage("Stay saved.", "success");
+    setFormMessage(t("common.staySaved"), "success");
   }
 
   const saved = await saveStays();
   if (!saved) {
-    setFormMessage("Could not save this record. Please check the connection and try again.", "error");
+    setFormMessage(t("common.saveError"), "error");
     return;
   }
 
@@ -859,6 +1512,17 @@ function startEditStay(id) {
 
   editingStayId = id;
   selectors.stayForm.guestName.value = stay.guestName;
+  const companyName = stay.companyName || getCompanyNameById(stay.companyId);
+  const matchingCompany = companies.find(
+    (company) => normalizeCompanyName(company.name).toLocaleLowerCase() === normalizeCompanyName(companyName).toLocaleLowerCase()
+  );
+  populateCompanyOptions(matchingCompany?.id || stay.companyId || "");
+  if (matchingCompany || stay.companyId) {
+    setCompanyMode("existing");
+  } else {
+    setCompanyMode(companyName ? "new" : "existing");
+    selectors.companyNewInput.value = companyName;
+  }
   selectors.stayForm.roomId.value = stay.roomId;
   selectors.stayForm.checkIn.value = stay.checkIn;
   selectors.stayForm.checkOut.value = stay.checkOut;
@@ -874,10 +1538,10 @@ function startEditStay(id) {
   selectors.stayForm.notes.value = stay.notes || "";
   selectors.stayForm.color.value = stay.color || defaultBookingColor;
 
-  selectors.formTitle.textContent = "Edit stay";
-  selectors.formSubmitButton.textContent = "Save changes";
+  selectors.formTitle.textContent = t("form.editStay");
+  selectors.formSubmitButton.textContent = t("form.saveChanges");
   selectors.cancelEditButton.classList.remove("hidden");
-  setFormMessage("You can update dates, payment, room, or notes.", "success");
+  setFormMessage(t("form.updateHint"), "success");
   showSection("edit-stay");
   renderFormDateCalendar();
 }
@@ -885,8 +1549,10 @@ function startEditStay(id) {
 function resetFormMode() {
   editingStayId = null;
   selectors.stayForm.reset();
-  selectors.formTitle.textContent = "Add stay";
-  selectors.formSubmitButton.textContent = "Save stay";
+  populateCompanyOptions();
+  setCompanyMode("existing");
+  selectors.formTitle.textContent = t("form.addStay");
+  selectors.formSubmitButton.textContent = t("form.saveStay");
   selectors.cancelEditButton.classList.add("hidden");
   setFormMessage("", "");
   setDefaultDates();
@@ -994,17 +1660,20 @@ function setDefaultDates() {
 }
 
 function showSection(sectionName) {
-  mountStayForm(sectionName);
+  currentSectionName = sectionName;
+  if (sectionStorageValues.has(sectionName)) {
+    storeActiveSection(sectionName);
+  }
 
+  mountStayForm(sectionName);
   selectors.navItems.forEach((item) => {
     item.classList.toggle("active", item.dataset.section === sectionName);
   });
-
   selectors.sections.forEach((section) => {
     section.classList.toggle("hidden", section.id !== sectionToId(sectionName));
   });
 
-  const header = pageHeaders[sectionName] || pageHeaders.dashboard;
+  const header = getPageHeader(sectionName);
   if (selectors.pageEyebrow) selectors.pageEyebrow.textContent = header.eyebrow;
   if (selectors.pageTitle) selectors.pageTitle.textContent = header.title;
   if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
@@ -1026,8 +1695,8 @@ async function requireSession() {
   if (!usesSupabase) {
     selectors.authScreen?.classList.add("hidden");
     selectors.appShell?.classList.remove("hidden");
-    if (selectors.storageModeTitle) selectors.storageModeTitle.textContent = "Local demo version";
-    if (selectors.storageModeText) selectors.storageModeText.textContent = "Data is currently saved only in this browser.";
+    if (selectors.storageModeTitle) selectors.storageModeTitle.textContent = t("storage.localTitle");
+    if (selectors.storageModeText) selectors.storageModeText.textContent = t("storage.localText");
     selectors.logoutButton?.classList.add("hidden");
     return true;
   }
@@ -1038,8 +1707,8 @@ async function requireSession() {
   if (session) {
     selectors.authScreen?.classList.add("hidden");
     selectors.appShell?.classList.remove("hidden");
-    if (selectors.storageModeTitle) selectors.storageModeTitle.textContent = "Cloud version";
-    if (selectors.storageModeText) selectors.storageModeText.textContent = "Data is stored in Supabase for the hotel account.";
+    if (selectors.storageModeTitle) selectors.storageModeTitle.textContent = t("storage.cloudTitle");
+    if (selectors.storageModeText) selectors.storageModeText.textContent = t("storage.cloudText");
     selectors.logoutButton?.classList.remove("hidden");
     return true;
   }
@@ -1063,7 +1732,17 @@ function bindEvents() {
     });
   });
 
+  selectors.languageSelect?.addEventListener("change", (event) => {
+    setLanguage(event.target.value);
+  });
+
   selectors.stayForm.addEventListener("submit", handleFormSubmit);
+
+  selectors.companyModeInputs?.forEach((input) => {
+    input.addEventListener("change", () => {
+      setCompanyMode(input.value);
+    });
+  });
 
   selectors.stayForm.roomId.addEventListener("change", () => {
     if (!editingStayId) {
@@ -1128,7 +1807,7 @@ function bindEvents() {
     const applyButton = event.target.closest("[data-form-date-apply]");
     if (applyButton) {
       if (!pendingCheckIn || !pendingCheckOut) {
-        setFormMessage("Select both check-in and check-out dates before applying.", "error");
+        setFormMessage(t("form.selectBothBeforeApply"), "error");
         return;
       }
       selectors.stayForm.checkIn.value = pendingCheckIn;
@@ -1136,7 +1815,7 @@ function bindEvents() {
       activeDateField = "checkIn";
       isDatePickerOpen = false;
       formDateHover = null;
-      setFormMessage("Dates applied.", "success");
+      setFormMessage(t("form.datesApplied"), "success");
       renderFormDateCalendar();
       return;
     }
@@ -1224,7 +1903,7 @@ function bindEvents() {
       showSection("stays");
       return;
     }
-    setFormMessage("Editing cancelled.", "success");
+    setFormMessage(t("form.editingCancelled"), "success");
   });
 
   selectors.filterChips.forEach((chip) => {
@@ -1253,7 +1932,7 @@ function bindEvents() {
     }
 
     if (!deleteButton) return;
-    if (!confirm("Delete this record?")) return;
+    if (!confirm(t("table.confirmDelete"))) return;
     stays = stays.filter((stay) => stay.id !== deleteButton.dataset.delete);
     if (editingStayId === deleteButton.dataset.delete) resetFormMode();
     if (selectedCalendarStayId === deleteButton.dataset.delete) selectedCalendarStayId = null;
@@ -1294,7 +1973,7 @@ function bindEvents() {
     }
 
     if (!deleteButton) return;
-    if (!confirm("Delete this record?")) return;
+    if (!confirm(t("table.confirmDelete"))) return;
     stays = stays.filter((stay) => stay.id !== deleteButton.dataset.detailDelete);
     selectedCalendarStayId = null;
     if (highlightedCalendarStayId === deleteButton.dataset.detailDelete) highlightedCalendarStayId = null;
@@ -1341,15 +2020,16 @@ function bindEvents() {
     const email = String(formData.get("email") || "").trim();
     const password = String(formData.get("password") || "");
 
-    setLoginMessage("Signing in...", "");
+    setLoginMessage(t("auth.signingIn"), "");
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     if (error) {
-      setLoginMessage("Could not sign in. Check email and password.", "error");
+      setLoginMessage(t("auth.signInError"), "error");
       return;
     }
 
     setLoginMessage("", "");
+    didJustSignIn = true;
     await startApp();
   });
 
@@ -1366,13 +2046,21 @@ async function startApp() {
   const canStart = await requireSession();
   if (!canStart) return;
 
+  companies = usesSupabase ? await loadCompanies() : [];
   stays = await loadStays();
+  if (!usesSupabase) companies = await loadCompanies();
   populateRoomSelect();
+  populateCompanyOptions();
   setDefaultDates();
+
+  const targetSection = didJustSignIn ? "dashboard" : getStoredSection();
+  didJustSignIn = false;
+  showSection(targetSection);
   renderAll();
 }
 
 async function init() {
+  applyStaticTranslations();
   populateRoomSelect();
   setDefaultDates();
   bindEvents();

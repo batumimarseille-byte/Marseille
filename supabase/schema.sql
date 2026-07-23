@@ -12,9 +12,18 @@ create table if not exists public.rooms (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.companies (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint companies_name_not_blank check (length(btrim(name)) > 0)
+);
+
 create table if not exists public.stays (
   id uuid primary key default gen_random_uuid(),
   guest_name text not null,
+  company_id uuid references public.companies(id) on update cascade on delete set null,
   room_id text not null references public.rooms(id) on update cascade,
   check_in date not null,
   check_out date not null,
@@ -32,7 +41,11 @@ create table if not exists public.stays (
   constraint stays_valid_color check (color ~ '^#[0-9A-Fa-f]{6}$')
 );
 
+alter table public.stays
+add column if not exists company_id uuid references public.companies(id) on update cascade on delete set null;
+
 create index if not exists stays_room_dates_idx on public.stays (room_id, check_in, check_out);
+create index if not exists stays_company_id_idx on public.stays (company_id);
 create index if not exists stays_check_in_idx on public.stays (check_in);
 create index if not exists stays_check_out_idx on public.stays (check_out);
 create index if not exists stays_debt_idx on public.stays (debt_amount);
@@ -50,7 +63,13 @@ create trigger stays_set_updated_at
 before update on public.stays
 for each row execute function public.set_updated_at();
 
+drop trigger if exists companies_set_updated_at on public.companies;
+create trigger companies_set_updated_at
+before update on public.companies
+for each row execute function public.set_updated_at();
+
 alter table public.rooms enable row level security;
+alter table public.companies enable row level security;
 alter table public.stays enable row level security;
 
 -- First stage: one authenticated hotel user can manage everything.
@@ -64,6 +83,13 @@ using (true);
 drop policy if exists "Authenticated users can manage stays" on public.stays;
 create policy "Authenticated users can manage stays"
 on public.stays for all
+to authenticated
+using (true)
+with check (true);
+
+drop policy if exists "Authenticated users can manage companies" on public.companies;
+create policy "Authenticated users can manage companies"
+on public.companies for all
 to authenticated
 using (true)
 with check (true);
