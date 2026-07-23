@@ -1104,12 +1104,13 @@ function getPaymentBreakdown(stay) {
 function renderBookingDetails() {
   const stay = stays.find((item) => item.id === selectedCalendarStayId);
 
-  selectors.bookingDetailsPanel.classList.remove("hidden");
-
   if (!stay) {
-    selectors.bookingDetailsPanel.innerHTML = `<div class="empty-state">${t("calendar.hint")}</div>`;
+    selectors.bookingDetailsPanel.classList.add("hidden");
+    selectors.bookingDetailsPanel.innerHTML = "";
     return;
   }
+
+  selectors.bookingDetailsPanel.classList.remove("hidden");
 
   const room = getRoom(stay.roomId);
   const status = getStayStatus(stay);
