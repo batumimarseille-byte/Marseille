@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import flagGeUrl from "./assets/flag-ge.png";
+import flagUsUrl from "./assets/flag-us.png";
 
 const rooms = [
   { id: "101", type: "Suite", group: "lux" },
@@ -21,6 +23,7 @@ const storageKey = "hotel-desk-stays-v1";
 const activeSectionStorageKey = "hotel-desk-active-section-v1";
 const languageStorageKey = "hotel-desk-language-v1";
 const defaultBookingColor = "#4f7cff";
+const languageFlagIcons = { en: flagUsUrl, ka: flagGeUrl };
 const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "calendar", "rooms"]);
 const georgianMonthNames = [
   "იანვარი",
@@ -496,7 +499,9 @@ const selectors = {
   dateRangeDisplay: document.querySelector("#dateRangeDisplay"),
   dateClearButton: document.querySelector("#dateClearButton"),
   formDateCalendar: document.querySelector("#formDateCalendar"),
-  languageSelect: document.querySelector("#languageSelect"),
+  topbarActions: document.querySelector(".topbar-actions"),
+  languageToggle: document.querySelector("#languageToggle"),
+  languageToggleFlag: document.querySelector("#languageToggleFlag"),
 };
 
 
@@ -562,10 +567,7 @@ function getPageHeader(sectionName) {
 
 function applyStaticTranslations() {
   document.documentElement.lang = currentLanguage;
-
-  if (selectors.languageSelect) {
-    selectors.languageSelect.value = currentLanguage;
-  }
+  updateLanguageToggle();
 
   document.querySelectorAll("[data-i18n]").forEach((node) => {
     const value = t(node.dataset.i18n);
@@ -579,6 +581,18 @@ function applyStaticTranslations() {
 
   if (selectors.dateClearButton) {
     selectors.dateClearButton.setAttribute("aria-label", t("form.clearDates"));
+  }
+}
+
+function updateLanguageToggle() {
+  if (!selectors.languageToggle) return;
+
+  const nextLanguage = currentLanguage === "ka" ? "English" : "ქართული";
+  selectors.languageToggle.setAttribute("aria-label", `${t("language.label")}: ${nextLanguage}`);
+  selectors.languageToggle.setAttribute("title", nextLanguage);
+
+  if (selectors.languageToggleFlag) {
+    selectors.languageToggleFlag.src = languageFlagIcons[currentLanguage] || languageFlagIcons.en;
   }
 }
 
@@ -1678,6 +1692,8 @@ function showSection(sectionName) {
   if (selectors.pageEyebrow) selectors.pageEyebrow.textContent = header.eyebrow;
   if (selectors.pageTitle) selectors.pageTitle.textContent = header.title;
   if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
+  selectors.topbarActions?.classList.toggle("hidden", sectionName !== "dashboard");
+  updateLanguageToggle();
 }
 
 function sectionToId(sectionName) {
@@ -1733,8 +1749,8 @@ function bindEvents() {
     });
   });
 
-  selectors.languageSelect?.addEventListener("change", (event) => {
-    setLanguage(event.target.value);
+  selectors.languageToggle?.addEventListener("click", () => {
+    setLanguage(currentLanguage === "ka" ? "en" : "ka");
   });
 
   selectors.stayForm.addEventListener("submit", handleFormSubmit);

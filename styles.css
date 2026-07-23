@@ -242,6 +242,36 @@ button {
   flex-wrap: wrap;
 }
 
+.language-toggle {
+  width: 46px;
+  height: 46px;
+  padding: 2px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 12px 26px rgba(44, 83, 124, 0.1);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.language-toggle:hover,
+.language-toggle:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(44, 83, 124, 0.14);
+  outline: none;
+}
+
+.flag-disc {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+}
+
 .ghost-button,
 .danger-button,
 .primary-button {
@@ -871,6 +901,10 @@ td span {
 
   .calendar-controls strong {
     width: 100%;
+  }
+
+  .topbar-actions {
+    width: auto;
   }
 }
 
@@ -3107,8 +3141,8 @@ textarea {
 }
 
 .stay-form-section .notes-field textarea {
-  height: 189px;
-  min-height: 189px;
+  height: 177px;
+  min-height: 177px;
   width: 100%;
 }
 
@@ -3161,6 +3195,77 @@ textarea {
 
   .stay-form-section .form-actions {
     align-items: stretch;
+  }
+}
+
+/* Finance and notes live in one shared block so their edges stay aligned. */
+.stay-form-section .finance-notes-layout {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.stay-form-section .money-column {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+}
+
+.stay-form-section .finance-notes-layout .total-field,
+.stay-form-section .finance-notes-layout .payment-grid,
+.stay-form-section .finance-notes-layout .notes-field {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.stay-form-section .finance-notes-layout .payment-grid {
+  min-width: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-self: stretch;
+}
+
+.stay-form-section .finance-notes-layout .notes-field {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: normal;
+  align-self: stretch;
+}
+
+.stay-form-section .finance-notes-layout .notes-field textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.stay-form-section .form-actions {
+  grid-row: auto;
+}
+
+@media (max-width: 1180px) {
+  .stay-form-section .finance-notes-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stay-form-section .finance-notes-layout .payment-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stay-form-section .finance-notes-layout .notes-field textarea {
+    min-height: 140px;
+  }
+}
+
+@media (max-width: 760px) {
+  .stay-form-section .finance-notes-layout .payment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stay-form-section .finance-notes-layout .notes-field textarea {
+    min-height: 120px;
   }
 }
 

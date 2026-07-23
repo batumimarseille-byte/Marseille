@@ -67,13 +67,9 @@
             <p class="page-description" id="pageDescription">A quick summary of check-ins, check-outs, debts, and current room occupancy.</p>
           </div>
           <div class="topbar-actions">
-            <label class="language-switcher">
-              <span data-i18n="language.label">Language</span>
-              <select id="languageSelect" aria-label="Language">
-                <option value="en">English</option>
-                <option value="ka">ქართული</option>
-              </select>
-            </label>
+            <button class="language-toggle" id="languageToggle" type="button" aria-label="Change language">
+              <img class="flag-disc" id="languageToggleFlag" src="assets/flag-us.png" alt="" aria-hidden="true" />
+            </button>
           </div>
         </header>
 
@@ -179,33 +175,37 @@
                 <div class="form-date-calendar" id="formDateCalendar" aria-live="polite"></div>
               </div>
 
-              <label class="total-field">
-                <span data-i18n="form.total">Total amount, ₾</span>
-                <input name="total" type="number" min="0" step="1" placeholder="0" required />
-              </label>
-              <div class="payment-grid">
-                <label>
-                  <span data-i18n="form.cash">Cash, ₾</span>
-                  <input name="cash" type="number" min="0" step="1" value="0" />
-                </label>
-                <label>
-                  <span data-i18n="form.card">Card, ₾</span>
-                  <input name="card" type="number" min="0" step="1" value="0" />
-                </label>
-                <label>
-                  <span data-i18n="form.invoice">Invoice, ₾</span>
-                  <input name="invoice" type="number" min="0" step="1" value="0" />
-                </label>
-                <label>
-                  <span data-i18n="form.debt">Debt, ₾</span>
-                  <input name="debt" type="number" min="0" step="1" value="0" />
+              <div class="finance-notes-layout">
+                <div class="money-column">
+                  <label class="total-field">
+                    <span data-i18n="form.total">Total amount, ₾</span>
+                    <input name="total" type="number" min="0" step="1" placeholder="0" required />
+                  </label>
+                  <div class="payment-grid">
+                    <label>
+                      <span data-i18n="form.cash">Cash, ₾</span>
+                      <input name="cash" type="number" min="0" step="1" value="0" />
+                    </label>
+                    <label>
+                      <span data-i18n="form.card">Card, ₾</span>
+                      <input name="card" type="number" min="0" step="1" value="0" />
+                    </label>
+                    <label>
+                      <span data-i18n="form.invoice">Invoice, ₾</span>
+                      <input name="invoice" type="number" min="0" step="1" value="0" />
+                    </label>
+                    <label>
+                      <span data-i18n="form.debt">Debt, ₾</span>
+                      <input name="debt" type="number" min="0" step="1" value="0" />
+                    </label>
+                  </div>
+                </div>
+
+                <label class="full-width notes-field">
+                  <span data-i18n="form.notes">Notes</span>
+                  <textarea name="notes" rows="4" placeholder="Special requests, contact, notes" data-i18n-placeholder="form.notesPlaceholder"></textarea>
                 </label>
               </div>
-
-              <label class="full-width notes-field">
-                <span data-i18n="form.notes">Notes</span>
-                <textarea name="notes" rows="4" placeholder="Special requests, contact, notes" data-i18n-placeholder="form.notesPlaceholder"></textarea>
-              </label>
 
               <div class="form-actions">
                 <p id="formMessage" class="form-message" role="status"></p>
