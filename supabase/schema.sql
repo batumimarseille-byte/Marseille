@@ -96,20 +96,23 @@ with check (true);
 
 insert into public.rooms (id, type, group_name, sort_order) values
   ('101', 'Suite', 'lux', 101),
-  ('102', 'Suite', 'lux', 102),
-  ('103', 'Suite', 'lux', 103),
-  ('201', 'Standard', 'standard', 201),
+  ('106', 'Suite', 'lux', 106),
+  ('207', 'Suite', 'lux', 207),
+  ('102', 'Standard', 'standard', 102),
+  ('104', 'Standard', 'standard', 104),
   ('202', 'Standard', 'standard', 202),
   ('203', 'Standard', 'standard', 203),
   ('204', 'Standard', 'standard', 204),
   ('205', 'Standard', 'standard', 205),
-  ('206', 'Standard', 'standard', 206),
-  ('301', 'Twin', 'two-beds', 301),
-  ('302', 'Triple', 'three-beds', 302),
-  ('401', 'Junior Suite', 'semi-lux', 401),
-  ('402', 'Junior Suite', 'semi-lux', 402)
+  ('103', 'Twin', 'two-beds', 103),
+  ('105', 'Triple', 'three-beds', 105),
+  ('201', 'Junior Suite', 'semi-lux', 201),
+  ('206', 'Junior Suite', 'semi-lux', 206)
 on conflict (id) do update set
   type = excluded.type,
   group_name = excluded.group_name,
   sort_order = excluded.sort_order,
   is_active = true;
+
+delete from public.rooms
+where id in ('301', '302', '401', '402');

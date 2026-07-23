@@ -12,11 +12,11 @@ The first working version should be simple, reliable, and usable by the hotel st
 
 The hotel has 13 rooms:
 
-- 3 Suites: 101, 102, 103
-- 6 Standard rooms: 201, 202, 203, 204, 205, 206
-- 1 Twin room: 301
-- 1 Triple room: 302
-- 2 Junior Suites: 401, 402
+- 3 Suites: 101, 106, 207
+- 6 Standard rooms: 102, 104, 202, 203, 204, 205
+- 1 Twin room: 103
+- 1 Triple room: 105
+- 2 Junior Suites: 201, 206
 
 ## Stay Data
 

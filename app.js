@@ -2,18 +2,18 @@ import { createClient } from "@supabase/supabase-js";
 
 const rooms = [
   { id: "101", type: "Suite", group: "lux" },
-  { id: "102", type: "Suite", group: "lux" },
-  { id: "103", type: "Suite", group: "lux" },
-  { id: "201", type: "Standard", group: "standard" },
+  { id: "106", type: "Suite", group: "lux" },
+  { id: "207", type: "Suite", group: "lux" },
+  { id: "102", type: "Standard", group: "standard" },
+  { id: "104", type: "Standard", group: "standard" },
   { id: "202", type: "Standard", group: "standard" },
   { id: "203", type: "Standard", group: "standard" },
   { id: "204", type: "Standard", group: "standard" },
   { id: "205", type: "Standard", group: "standard" },
-  { id: "206", type: "Standard", group: "standard" },
-  { id: "301", type: "Twin", group: "two-beds" },
-  { id: "302", type: "Triple", group: "three-beds" },
-  { id: "401", type: "Junior Suite", group: "semi-lux" },
-  { id: "402", type: "Junior Suite", group: "semi-lux" },
+  { id: "103", type: "Twin", group: "two-beds" },
+  { id: "105", type: "Triple", group: "three-beds" },
+  { id: "201", type: "Junior Suite", group: "semi-lux" },
+  { id: "206", type: "Junior Suite", group: "semi-lux" },
 ];
 
 const roomTypeOrder = ["Suite", "Standard", "Twin", "Triple", "Junior Suite"];
