@@ -452,6 +452,8 @@ let pendingCheckOut = "";
 let currentLanguage = getStoredLanguage();
 let currentSectionName = "dashboard";
 let didJustSignIn = false;
+let calendarDragState = null;
+let shouldSuppressCalendarClick = false;
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
@@ -483,6 +485,7 @@ const selectors = {
   statCards: document.querySelectorAll("[data-stat-filter]"),
   occupancyCalendar: document.querySelector("#occupancyCalendar"),
   bookingDetailsPanel: document.querySelector("#bookingDetailsPanel"),
+  calendarScroll: document.querySelector(".calendar-scroll"),
   calendarRange: document.querySelector("#calendarRange"),
   calendarPrevButton: document.querySelector("#calendarPrevButton"),
   calendarNextButton: document.querySelector("#calendarNextButton"),
@@ -491,17 +494,20 @@ const selectors = {
   appShell: document.querySelector("#appShell"),
   loginForm: document.querySelector("#loginForm"),
   loginMessage: document.querySelector("#loginMessage"),
-  logoutButton: document.querySelector("#logoutButton"),
-  storageModeTitle: document.querySelector("#storageModeTitle"),
-  storageModeText: document.querySelector("#storageModeText"),
+  logoutButtons: document.querySelectorAll("[data-logout-button]"),
+  storageModeTitles: document.querySelectorAll("[data-storage-title]"),
+  storageModeTexts: document.querySelectorAll("[data-storage-text]"),
   dateRangeField: document.querySelector("#dateRangeField"),
   dateRangeButton: document.querySelector("#dateRangeButton"),
   dateRangeDisplay: document.querySelector("#dateRangeDisplay"),
   dateClearButton: document.querySelector("#dateClearButton"),
   formDateCalendar: document.querySelector("#formDateCalendar"),
   topbarActions: document.querySelector(".topbar-actions"),
-  languageToggle: document.querySelector("#languageToggle"),
-  languageToggleFlag: document.querySelector("#languageToggleFlag"),
+  languageToggles: document.querySelectorAll("[data-language-toggle]"),
+  languageToggleFlags: document.querySelectorAll("[data-language-flag]"),
+  mobileMenuToggle: document.querySelector("#mobileMenuToggle"),
+  mobileMenuBackdrop: document.querySelector("#mobileMenuBackdrop"),
+  sidebar: document.querySelector(".sidebar"),
 };
 
 
@@ -585,15 +591,17 @@ function applyStaticTranslations() {
 }
 
 function updateLanguageToggle() {
-  if (!selectors.languageToggle) return;
+  if (!selectors.languageToggles?.length) return;
 
   const nextLanguage = currentLanguage === "ka" ? "English" : "ქართული";
-  selectors.languageToggle.setAttribute("aria-label", `${t("language.label")}: ${nextLanguage}`);
-  selectors.languageToggle.setAttribute("title", nextLanguage);
+  selectors.languageToggles.forEach((toggle) => {
+    toggle.setAttribute("aria-label", `${t("language.label")}: ${nextLanguage}`);
+    toggle.setAttribute("title", nextLanguage);
+  });
 
-  if (selectors.languageToggleFlag) {
-    selectors.languageToggleFlag.src = languageFlagIcons[currentLanguage] || languageFlagIcons.en;
-  }
+  selectors.languageToggleFlags.forEach((flag) => {
+    flag.src = languageFlagIcons[currentLanguage] || languageFlagIcons.en;
+  });
 }
 
 function setLanguage(language) {
@@ -1707,14 +1715,23 @@ function sectionToId(sectionName) {
   }[sectionName];
 }
 
+function setStorageCardContent(title, text, showLogout) {
+  selectors.storageModeTitles.forEach((node) => {
+    node.textContent = title;
+  });
+  selectors.storageModeTexts.forEach((node) => {
+    node.textContent = text;
+  });
+  selectors.logoutButtons.forEach((button) => {
+    button.classList.toggle("hidden", !showLogout);
+  });
+}
 
 async function requireSession() {
   if (!usesSupabase) {
     selectors.authScreen?.classList.add("hidden");
     selectors.appShell?.classList.remove("hidden");
-    if (selectors.storageModeTitle) selectors.storageModeTitle.textContent = t("storage.localTitle");
-    if (selectors.storageModeText) selectors.storageModeText.textContent = t("storage.localText");
-    selectors.logoutButton?.classList.add("hidden");
+    setStorageCardContent(t("storage.localTitle"), t("storage.localText"), false);
     return true;
   }
 
@@ -1724,9 +1741,7 @@ async function requireSession() {
   if (session) {
     selectors.authScreen?.classList.add("hidden");
     selectors.appShell?.classList.remove("hidden");
-    if (selectors.storageModeTitle) selectors.storageModeTitle.textContent = t("storage.cloudTitle");
-    if (selectors.storageModeText) selectors.storageModeText.textContent = t("storage.cloudText");
-    selectors.logoutButton?.classList.remove("hidden");
+    setStorageCardContent(t("storage.cloudTitle"), t("storage.cloudText"), true);
     return true;
   }
 
@@ -1743,14 +1758,30 @@ function setLoginMessage(message, type) {
 }
 
 function bindEvents() {
+  const setMobileMenuOpen = (isOpen) => {
+    selectors.sidebar?.classList.toggle("mobile-menu-open", isOpen);
+    selectors.mobileMenuToggle?.setAttribute("aria-expanded", String(isOpen));
+    document.documentElement.classList.toggle("mobile-menu-lock", isOpen);
+    document.body.classList.toggle("mobile-menu-lock", isOpen);
+  };
+
   selectors.navItems.forEach((item) => {
     item.addEventListener("click", () => {
       navigateToSection(item.dataset.section);
+      setMobileMenuOpen(false);
     });
   });
 
-  selectors.languageToggle?.addEventListener("click", () => {
-    setLanguage(currentLanguage === "ka" ? "en" : "ka");
+  selectors.mobileMenuToggle?.addEventListener("click", () => {
+    setMobileMenuOpen(!selectors.sidebar?.classList.contains("mobile-menu-open"));
+  });
+
+  selectors.mobileMenuBackdrop?.addEventListener("click", () => setMobileMenuOpen(false));
+
+  selectors.languageToggles?.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      setLanguage(currentLanguage === "ka" ? "en" : "ka");
+    });
   });
 
   selectors.stayForm.addEventListener("submit", handleFormSubmit);
@@ -1961,6 +1992,13 @@ function bindEvents() {
   });
 
   selectors.occupancyCalendar.addEventListener("click", (event) => {
+    if (shouldSuppressCalendarClick) {
+      event.preventDefault();
+      event.stopPropagation();
+      shouldSuppressCalendarClick = false;
+      return;
+    }
+
     const button = event.target.closest("[data-calendar-stay]");
     if (!button) {
       selectedCalendarStayId = null;
@@ -1972,6 +2010,45 @@ function bindEvents() {
     highlightedCalendarStayId = null;
     renderCalendar();
   });
+
+  selectors.calendarScroll.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const calendarCell = event.target.closest(".calendar-cell");
+    if (!calendarCell) return;
+
+    calendarDragState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: selectors.calendarScroll.scrollLeft,
+      didDrag: false,
+    };
+    selectors.calendarScroll.classList.add("dragging");
+    selectors.calendarScroll.setPointerCapture?.(event.pointerId);
+  });
+
+  selectors.calendarScroll.addEventListener("pointermove", (event) => {
+    if (!calendarDragState || calendarDragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - calendarDragState.startX;
+    if (Math.abs(deltaX) > 8) calendarDragState.didDrag = true;
+    selectors.calendarScroll.scrollLeft = calendarDragState.startScrollLeft - deltaX;
+    if (calendarDragState.didDrag) event.preventDefault();
+  });
+
+  const finishCalendarDrag = (event) => {
+    if (!calendarDragState || calendarDragState.pointerId !== event.pointerId) return;
+    shouldSuppressCalendarClick = calendarDragState.didDrag;
+    selectors.calendarScroll.classList.remove("dragging");
+    selectors.calendarScroll.releasePointerCapture?.(event.pointerId);
+    calendarDragState = null;
+    window.setTimeout(() => {
+      shouldSuppressCalendarClick = false;
+    }, 250);
+  };
+
+  selectors.calendarScroll.addEventListener("pointerup", finishCalendarDrag);
+  selectors.calendarScroll.addEventListener("pointercancel", finishCalendarDrag);
+  selectors.calendarScroll.addEventListener("lostpointercapture", finishCalendarDrag);
 
   selectors.bookingDetailsPanel.addEventListener("click", (event) => {
     const editButton = event.target.closest("[data-detail-edit]");
@@ -2050,12 +2127,14 @@ function bindEvents() {
     await startApp();
   });
 
-  selectors.logoutButton?.addEventListener("click", async () => {
-    if (usesSupabase) await supabaseClient.auth.signOut();
-    stays = [];
-    resetFormMode();
-    renderAll();
-    await requireSession();
+  selectors.logoutButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (usesSupabase) await supabaseClient.auth.signOut();
+      stays = [];
+      resetFormMode();
+      renderAll();
+      await requireSession();
+    });
   });
 }
 

@@ -40,11 +40,23 @@
 
     <div class="app-shell" id="appShell">
       <aside class="sidebar">
-        <div class="brand">
-          <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
-          <div>
-            <p class="eyebrow" data-i18n="brand.eyebrow">Hotel</p>
-            <h1>Marseille</h1>
+        <div class="mobile-nav-header">
+          <div class="brand">
+            <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
+            <div>
+              <p class="eyebrow" data-i18n="brand.eyebrow">Hotel</p>
+              <h1>Marseille</h1>
+            </div>
+          </div>
+          <div class="mobile-nav-actions">
+            <button class="language-toggle mobile-language-toggle" type="button" aria-label="Change language" data-language-toggle>
+              <img class="flag-disc" src="assets/flag-us.png" alt="" aria-hidden="true" data-language-flag />
+            </button>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-label="Open menu" aria-expanded="false">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
           </div>
         </div>
 
@@ -56,12 +68,14 @@
           <button class="nav-item" data-section="rooms" data-i18n="nav.rooms">Rooms</button>
         </nav>
 
-        <div class="sidebar-card">
-          <p id="storageModeTitle">Local demo version</p>
-          <span id="storageModeText">Data is currently saved only in this browser.</span>
-          <button class="ghost-button sidebar-logout hidden" id="logoutButton" type="button" data-i18n="storage.signOut">Sign out</button>
+        <div class="sidebar-card desktop-sidebar-card">
+          <p data-storage-title>Local demo version</p>
+          <span data-storage-text>Data is currently saved only in this browser.</span>
+          <button class="ghost-button sidebar-logout hidden" type="button" data-i18n="storage.signOut" data-logout-button>Sign out</button>
         </div>
       </aside>
+
+      <div class="mobile-menu-backdrop" id="mobileMenuBackdrop" aria-hidden="true"></div>
 
       <main class="main-content">
         <header class="topbar">
@@ -71,8 +85,8 @@
             <p class="page-description" id="pageDescription">A quick summary of check-ins, check-outs, debts, and current room occupancy.</p>
           </div>
           <div class="topbar-actions">
-            <button class="language-toggle" id="languageToggle" type="button" aria-label="Change language">
-              <img class="flag-disc" id="languageToggleFlag" src="assets/flag-us.png" alt="" aria-hidden="true" />
+            <button class="language-toggle" id="languageToggle" type="button" aria-label="Change language" data-language-toggle>
+              <img class="flag-disc" id="languageToggleFlag" src="assets/flag-us.png" alt="" aria-hidden="true" data-language-flag />
             </button>
           </div>
         </header>
@@ -294,6 +308,12 @@
           </article>
         </section>
       </main>
+
+      <div class="sidebar-card mobile-sidebar-card">
+        <p data-storage-title>Local demo version</p>
+        <span data-storage-text>Data is currently saved only in this browser.</span>
+        <button class="ghost-button sidebar-logout hidden" type="button" data-i18n="storage.signOut" data-logout-button>Sign out</button>
+      </div>
     </div>
 
     <script type="module" src="app.js"></script>
