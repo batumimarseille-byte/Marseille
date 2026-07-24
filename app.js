@@ -1638,6 +1638,7 @@ function updateDateRangeDisplay() {
   selectors.dateRangeButton?.classList.toggle("has-value", hasSelectedDates || hasCommittedDates);
   selectors.dateRangeField?.classList.toggle("open", isDatePickerOpen);
   selectors.dateRangeField?.classList.toggle("has-dates", hasSelectedDates || hasCommittedDates);
+  selectors.dateRangeField?.classList.toggle("editing-dates", Boolean(editingStayId));
 }
 
 function getFormRoomBookings() {
@@ -2242,16 +2243,7 @@ function bindEvents() {
 
   selectors.dateClearButton?.addEventListener("click", (event) => {
     event.stopPropagation();
-    if (isCheckoutOnlyDateEdit()) {
-      syncPendingDatesFromForm();
-      pendingCheckOut = "";
-      activeDateField = "checkOut";
-      isDatePickerOpen = true;
-      formDateHover = null;
-      formCalendarMonth = startOfMonth(todayDate());
-      renderFormDateCalendar();
-      return;
-    }
+    if (editingStayId) return;
     resetFormDates();
     renderFormDateCalendar();
   });

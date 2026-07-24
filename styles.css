@@ -2460,6 +2460,10 @@ select {
   display: grid;
 }
 
+.date-range-field.editing-dates .date-clear-button {
+  display: none;
+}
+
 .date-clear-button:hover {
   color: var(--accent-strong);
   background: rgba(79, 124, 255, 0.14);
@@ -2709,6 +2713,19 @@ tr.journal-highlight td:first-child {
 
 .stay-form-section .company-field {
   grid-column: span 4;
+  position: relative;
+}
+
+.stay-form-section .company-field-head {
+  min-height: 24px;
+  align-items: center;
+  padding-right: 170px;
+}
+
+.stay-form-section .company-field .company-mode {
+  position: absolute;
+  top: -7px;
+  right: 0;
 }
 
 .stay-form-section .color-field {
@@ -3128,7 +3145,7 @@ textarea {
 .stay-form-section .stay-form > label,
 .stay-form-section .date-field-label {
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .stay-form-section input:not([type="color"]),
@@ -3545,6 +3562,14 @@ textarea {
 
 .stay-form-section .form-actions {
   grid-row: auto;
+}
+
+.stay-form-section .company-field-head,
+.stay-form-section .date-field-label,
+.stay-form-section .stay-form label > span,
+.stay-form-section .payment-grid label > span {
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 @media (max-width: 1024px) {
