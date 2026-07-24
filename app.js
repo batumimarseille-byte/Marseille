@@ -200,13 +200,14 @@ const translations = {
       selectStayDates: "Select stay dates",
       selectCheckout: "select check-out",
       clearDates: "Clear dates",
-      nightlyRate: "Price per night, ₾",
-      discount: "Discount, ₾",
-      total: "Total amount, ₾",
-      cash: "Cash, ₾",
-      card: "Card, ₾",
-      invoice: "Invoice, ₾",
-      debt: "Debt, ₾",
+      nightlyRate: "Price per night",
+      nights: "Nights",
+      discount: "Discount",
+      total: "Total amount",
+      cash: "Cash",
+      card: "Card",
+      invoice: "Invoice",
+      debt: "Debt",
       notes: "Notes",
       notesPlaceholder: "Special requests, contact, notes",
       chooseCheckIn: "Select check-in date",
@@ -394,13 +395,14 @@ const translations = {
       selectStayDates: "აირჩიეთ ცხოვრების თარიღები",
       selectCheckout: "აირჩიეთ გასვლის თარიღი",
       clearDates: "თარიღების გასუფთავება",
-      nightlyRate: "ღამის ფასი, ₾",
-      discount: "ფასდაკლება, ₾",
-      total: "ჯამური თანხა, ₾",
-      cash: "ნაღდი, ₾",
-      card: "ბარათი, ₾",
-      invoice: "ინვოისი, ₾",
-      debt: "ვალი, ₾",
+      nightlyRate: "ღამის ფასი",
+      nights: "ღამეები",
+      discount: "ფასდაკლება",
+      total: "ჯამური თანხა",
+      cash: "ნაღდი",
+      card: "ბარათი",
+      invoice: "ინვოისი",
+      debt: "ვალი",
       notes: "კომენტარი",
       notesPlaceholder: "განსაკუთრებული პირობები, კონტაქტი, შენიშვნა",
       chooseCheckIn: "აირჩიეთ შესვლის თარიღი",
@@ -725,7 +727,7 @@ function populateCompanyOptions(selectedCompanyId = selectors.companySelect?.val
     ...companies
       .slice()
       .sort((first, second) => normalizeCompanyName(first.name).localeCompare(normalizeCompanyName(second.name), getLocale()))
-      .map((company) => `<option value="${company.id}">${normalizeCompanyName(company.name)} · ${getCompanyColor(company)}</option>`),
+      .map((company) => `<option value="${company.id}">${normalizeCompanyName(company.name)}</option>`),
   ].join("");
 
   selectors.companySelect.value = companies.some((company) => company.id === selectedCompanyId) ? selectedCompanyId : "";
@@ -1138,8 +1140,32 @@ function getNightCount(checkIn, checkOut) {
   return Math.round((end - start) / 86400000);
 }
 
-function calculateEstimatedTotal() {
+function getFormNightCount() {
   const nights = getNightCount(selectors.stayForm?.checkIn?.value, selectors.stayForm?.checkOut?.value);
+  return nights;
+}
+
+function updateEmptyNumberState(input) {
+  if (!input) return;
+  input.classList.toggle("empty-number", String(input.value || "") === "0");
+}
+
+function updateFormNumberStates() {
+  ["nightlyRate", "nights", "discount", "total", "cash", "card", "invoice", "debt"].forEach((fieldName) => {
+    updateEmptyNumberState(selectors.stayForm?.[fieldName]);
+  });
+}
+
+function updateNightCountDisplay() {
+  const nightsInput = selectors.stayForm?.nights;
+  if (!nightsInput) return;
+  const nights = getFormNightCount();
+  nightsInput.value = String(nights);
+  updateEmptyNumberState(nightsInput);
+}
+
+function calculateEstimatedTotal() {
+  const nights = getFormNightCount();
   if (nights <= 0) return 0;
   const subtotal = nights * Number(selectors.stayForm?.nightlyRate?.value || 0);
   const discount = Number(selectors.stayForm?.discount?.value || 0);
@@ -1151,6 +1177,7 @@ function setNightlyRateValue(value) {
   if (!nightlyInput) return;
   isUpdatingNightlyRate = true;
   nightlyInput.value = String(value);
+  updateEmptyNumberState(nightlyInput);
   isUpdatingNightlyRate = false;
 }
 
@@ -1161,6 +1188,7 @@ function setTotalAmountValue(value) {
   isUpdatingTotalAmount = true;
   totalInput.value = nextValue;
   lastAutoTotalAmount = nextValue;
+  updateEmptyNumberState(totalInput);
   isUpdatingTotalAmount = false;
 }
 
@@ -1181,6 +1209,7 @@ function updateEstimatedTotal({ force = false, forceNightly = false } = {}) {
   if (!totalInput) return;
 
   updateNightlyRateFromRoom({ force: forceNightly });
+  updateNightCountDisplay();
   const estimatedTotal = calculateEstimatedTotal();
   const currentValue = String(totalInput.value || "");
   const canAutoUpdate =
@@ -1190,9 +1219,13 @@ function updateEstimatedTotal({ force = false, forceNightly = false } = {}) {
     Number(currentValue) === 0 ||
     currentValue === lastAutoTotalAmount;
 
-  if (!canAutoUpdate) return;
+  if (!canAutoUpdate) {
+    updateFormNumberStates();
+    return;
+  }
   setTotalAmountValue(estimatedTotal);
   totalAmountWasEdited = false;
+  updateFormNumberStates();
 }
 
 function hasRoomConflict(nextStay) {
@@ -1853,6 +1886,7 @@ function startEditStay(id) {
   selectors.stayForm.debt.value = stay.debt || 0;
   selectors.stayForm.notes.value = stay.notes || "";
   selectors.stayForm.color.value = stay.color || defaultBookingColor;
+  updateFormNumberStates();
 
   selectors.formTitle.textContent = t("form.editStay");
   selectors.formSubmitButton.textContent = t("form.saveChanges");
@@ -1866,6 +1900,7 @@ function resetFormMode() {
   editingStayId = null;
   checkoutOnlyEditStayId = null;
   selectors.stayForm.reset();
+  updateFormNumberStates();
   lastAutoTotalAmount = "";
   totalAmountWasEdited = false;
   nightlyRateWasEdited = false;
@@ -2111,17 +2146,41 @@ function bindEvents() {
 
   selectors.stayForm.nightlyRate.addEventListener("input", () => {
     if (isUpdatingNightlyRate) return;
+    updateEmptyNumberState(selectors.stayForm.nightlyRate);
     nightlyRateWasEdited = true;
     updateEstimatedTotal({ force: true });
   });
 
   selectors.stayForm.discount.addEventListener("input", () => {
+    updateEmptyNumberState(selectors.stayForm.discount);
     updateEstimatedTotal({ force: true });
   });
 
   selectors.stayForm.total.addEventListener("input", () => {
     if (isUpdatingTotalAmount) return;
+    updateEmptyNumberState(selectors.stayForm.total);
     totalAmountWasEdited = String(selectors.stayForm.total.value || "") !== lastAutoTotalAmount;
+  });
+
+  ["nightlyRate", "discount", "total", "cash", "card", "invoice", "debt"].forEach((fieldName) => {
+    const input = selectors.stayForm[fieldName];
+    input?.addEventListener("focus", () => {
+      if (input.value === "0") input.select();
+    });
+    input?.addEventListener("input", () => updateEmptyNumberState(input));
+    input?.addEventListener("blur", () => {
+      if (input.value !== "") return;
+      input.value = "0";
+      updateEmptyNumberState(input);
+      if (fieldName === "nightlyRate") {
+        nightlyRateWasEdited = true;
+        updateEstimatedTotal({ force: true });
+      } else if (fieldName === "discount") {
+        updateEstimatedTotal({ force: true });
+      } else if (fieldName === "total") {
+        totalAmountWasEdited = String(input.value || "") !== lastAutoTotalAmount;
+      }
+    });
   });
 
   selectors.dateRangeButton?.addEventListener("click", (event) => {

@@ -126,7 +126,7 @@
               <div class="room-map" id="roomMap"></div>
             </article>
 
-            <article class="panel">
+            <article class="panel active-guests-panel">
               <div class="panel-header">
                 <div>
                   <p class="eyebrow" data-i18n="panels.today">Today</p>
@@ -196,32 +196,36 @@
               <div class="finance-notes-layout">
                 <div class="money-column">
                   <label class="nightly-rate-field">
-                    <span data-i18n="form.nightlyRate">Price per night, ₾</span>
+                    <span data-i18n="form.nightlyRate">Price per night</span>
                     <input name="nightlyRate" type="number" min="0" step="1" placeholder="0" />
                   </label>
+                  <label class="nights-field">
+                    <span data-i18n="form.nights">Nights</span>
+                    <input name="nights" type="number" min="0" step="1" value="0" readonly />
+                  </label>
                   <label class="discount-field">
-                    <span data-i18n="form.discount">Discount, ₾</span>
+                    <span data-i18n="form.discount">Discount</span>
                     <input name="discount" type="number" min="0" step="1" value="0" />
                   </label>
                   <label class="total-field">
-                    <span data-i18n="form.total">Total amount, ₾</span>
+                    <span data-i18n="form.total">Total amount</span>
                     <input name="total" type="number" min="0" step="1" placeholder="0" required />
                   </label>
                   <div class="payment-grid">
                     <label>
-                      <span data-i18n="form.cash">Cash, ₾</span>
+                      <span data-i18n="form.cash">Cash</span>
                       <input name="cash" type="number" min="0" step="1" value="0" />
                     </label>
                     <label>
-                      <span data-i18n="form.card">Card, ₾</span>
+                      <span data-i18n="form.card">Card</span>
                       <input name="card" type="number" min="0" step="1" value="0" />
                     </label>
                     <label>
-                      <span data-i18n="form.invoice">Invoice, ₾</span>
+                      <span data-i18n="form.invoice">Invoice</span>
                       <input name="invoice" type="number" min="0" step="1" value="0" />
                     </label>
                     <label>
-                      <span data-i18n="form.debt">Debt, ₾</span>
+                      <span data-i18n="form.debt">Debt</span>
                       <input name="debt" type="number" min="0" step="1" value="0" />
                     </label>
                   </div>

@@ -405,6 +405,20 @@ button {
   gap: 12px;
 }
 
+.active-guests-panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.active-guests-panel .guest-list {
+  min-height: 0;
+  max-height: clamp(260px, calc(100vh - 360px), 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
 .panel {
   padding: 18px;
   border-radius: var(--radius-lg);
@@ -521,7 +535,7 @@ button {
 
 .company-field {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   font-family: Arial, sans-serif;
   font-weight: 800;
   color: var(--accent-strong);
@@ -1126,6 +1140,18 @@ select,
 textarea,
 button {
   font-size: 14px;
+}
+
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .stay-form label {
@@ -2528,10 +2554,11 @@ select {
   color: var(--accent-strong);
   font-family: Arial, sans-serif;
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .date-range-field .date-range-picks {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .date-range-button {
@@ -2660,8 +2687,20 @@ tr.journal-highlight td:first-child {
 .stay-form-section .date-field-label {
   gap: 7px;
   font-size: 13px;
+  font-family: Arial, sans-serif;
+  font-weight: 800;
   line-height: 1.2;
   color: var(--accent-strong);
+}
+
+.stay-form-section .stay-form > label > span,
+.stay-form-section .company-field-head,
+.stay-form-section .date-field-label,
+.stay-form-section .notes-field > span,
+.stay-form-section .payment-grid label > span {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
 }
 
 .stay-form-section .guest-field {
@@ -2683,7 +2722,14 @@ tr.journal-highlight td:first-child {
 
 .stay-form-section .date-range-field {
   grid-column: 1 / -1;
-  margin-top: 2px;
+  display: grid;
+  gap: 7px;
+  margin-top: 0;
+}
+
+.stay-form-section .date-field-label {
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 .stay-form-section .stay-form > label:not(.guest-field):not(.company-field):not(.color-field):not(.room-field):not(.total-field):not(.full-width) {
@@ -3407,39 +3453,85 @@ textarea {
 .stay-form-section .finance-notes-layout {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
 }
 
 .stay-form-section .money-column {
   min-width: 0;
-  display: grid;
-  grid-template-rows: auto 1fr;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  display: contents;
 }
 
-.stay-form-section .finance-notes-layout .nightly-rate-field,
-.stay-form-section .finance-notes-layout .discount-field,
-.stay-form-section .finance-notes-layout .total-field,
-.stay-form-section .finance-notes-layout .payment-grid,
-.stay-form-section .finance-notes-layout .notes-field {
-  grid-column: auto;
-  grid-row: auto;
+.stay-form-section .finance-notes-layout .nightly-rate-field {
+  grid-column: 1 / 2;
+  grid-row: 1;
+}
+
+.stay-form-section .finance-notes-layout .nights-field {
+  grid-column: 2 / 3;
+  grid-row: 1;
+}
+
+.stay-form-section .finance-notes-layout .discount-field {
+  grid-column: 3 / 4;
+  grid-row: 1;
+}
+
+.stay-form-section .finance-notes-layout .total-field {
+  grid-column: 4 / 5;
+  grid-row: 1;
 }
 
 .stay-form-section .finance-notes-layout .payment-grid {
   min-width: 0;
-  grid-column: 1 / -1;
+  grid-column: 1 / 5;
+  grid-row: 2;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-self: stretch;
 }
 
+.stay-form-section .finance-notes-layout label {
+  position: relative;
+  gap: 7px;
+}
+
+.stay-form-section .finance-notes-layout label > span {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.stay-form-section .finance-notes-layout label:not(.nights-field):not(.notes-field)::after,
+.stay-form-section .payment-grid label::after {
+  content: "₾";
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  color: rgba(15, 34, 58, 0.34);
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.stay-form-section .finance-notes-layout label:not(.nights-field):not(.notes-field) input {
+  padding-right: 34px;
+}
+
+.stay-form-section input.empty-number {
+  color: rgba(15, 34, 58, 0.48);
+}
+
 .stay-form-section .finance-notes-layout .notes-field {
   min-width: 0;
+  grid-column: 5 / 9;
+  grid-row: 1 / 3;
   display: grid;
   grid-template-rows: auto 1fr;
+  gap: 7px;
   align-content: normal;
   align-self: stretch;
 }
@@ -3448,6 +3540,7 @@ textarea {
   width: 100%;
   height: 100%;
   min-height: 0;
+  grid-row: 2;
 }
 
 .stay-form-section .form-actions {
@@ -3457,10 +3550,23 @@ textarea {
 @media (max-width: 1024px) {
   .stay-form-section .finance-notes-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
 
   .stay-form-section .money-column {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .stay-form-section .finance-notes-layout .nightly-rate-field,
+  .stay-form-section .finance-notes-layout .nights-field,
+  .stay-form-section .finance-notes-layout .discount-field,
+  .stay-form-section .finance-notes-layout .total-field,
+  .stay-form-section .finance-notes-layout .payment-grid,
+  .stay-form-section .finance-notes-layout .notes-field {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .stay-form-section .finance-notes-layout .payment-grid {
@@ -3470,10 +3576,25 @@ textarea {
   .stay-form-section .finance-notes-layout .notes-field textarea {
     min-height: 140px;
   }
+
+  .stay-form-section .finance-notes-layout .notes-field {
+    grid-template-rows: auto 1fr;
+    gap: 7px;
+  }
 }
 
 @media (max-width: 1024px) {
+  .active-guests-panel .guest-list {
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+  }
+
   .stay-form-section .finance-notes-layout .payment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stay-form-section .money-column {
     grid-template-columns: 1fr;
   }
 
