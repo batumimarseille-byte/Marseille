@@ -457,6 +457,7 @@ let activeFilter = "all";
 let highlightedStayId = null;
 let highlightedCalendarStayId = null;
 let editingStayId = null;
+let checkoutOnlyEditStayId = null;
 let calendarStart = todayDate();
 let selectedCalendarStayId = null;
 let formCalendarMonth = new Date(todayDate().getFullYear(), todayDate().getMonth(), 1);
@@ -1108,6 +1109,10 @@ function getStayStatus(stay) {
   return "checked-in";
 }
 
+function isCheckoutOnlyDateEdit() {
+  return Boolean(editingStayId && checkoutOnlyEditStayId === editingStayId);
+}
+
 function getStatusLabel(status) {
   return t(`status.${status}`) || t("status.booked");
 }
@@ -1611,6 +1616,7 @@ function renderFormDateCalendar() {
   const roomBookings = getFormRoomBookings();
   const visibleMonths = [startOfMonth(formCalendarMonth), addMonths(formCalendarMonth, 1)];
   const weekDays = t("weekdays");
+  const checkoutOnlyEdit = isCheckoutOnlyDateEdit();
 
   const renderMonth = (monthStart) => {
     const firstWeekOffset = (monthStart.getDay() + 6) % 7;
@@ -1632,6 +1638,8 @@ function renderFormDateCalendar() {
         const hasConfirmedRange = Boolean(checkIn && checkOut);
         const hasHoverRange = Boolean(activeDateField === "checkOut" && checkIn && hoverDate && hoverDate > checkIn);
         const selectedStart = checkIn && isSameDate(day, checkIn);
+        const isLockedCheckIn = checkoutOnlyEdit && selectedStart;
+        const isBeforeCheckoutWindow = checkoutOnlyEdit && checkIn && (day < today || day <= checkIn);
         const selectedConfirmedEnd = hasConfirmedRange && checkOut && isSameDate(day, checkOut);
         const selectedHoverEnd = hasHoverRange && hoverDate && isSameDate(day, hoverDate);
         const inConfirmedRange = hasConfirmedRange && day > checkIn && day < checkOut;
@@ -1651,7 +1659,7 @@ function renderFormDateCalendar() {
           day > checkIn &&
           hasBusyDateBetween(checkIn, day, roomBookings);
         const isBusy = Boolean(booking) && !canCheckoutBeforeBooking;
-        const isUnavailable = isBusy || isPastDay || rangeWouldConflict;
+        const isUnavailable = isBusy || isPastDay || rangeWouldConflict || isLockedCheckIn || isBeforeCheckoutWindow;
         const className = [
           "form-date-day",
           isSameDate(day, today) ? "today-day" : "",
@@ -1812,6 +1820,7 @@ function startEditStay(id) {
   if (!stay) return;
 
   editingStayId = id;
+  checkoutOnlyEditStayId = getStayStatus(stay) === "checked-in" ? id : null;
   selectors.stayForm.guestName.value = stay.guestName;
   const companyName = stay.companyName || getCompanyNameById(stay.companyId);
   const matchingCompany = companies.find(
@@ -1830,7 +1839,7 @@ function startEditStay(id) {
   formDateHover = null;
   activeDateField = "checkOut";
   isDatePickerOpen = false;
-  formCalendarMonth = startOfMonth(toDate(stay.checkIn));
+  formCalendarMonth = startOfMonth(checkoutOnlyEditStayId ? todayDate() : toDate(stay.checkIn));
   const stayNightCount = getNightCount(stay.checkIn, stay.checkOut);
   setNightlyRateValue(stayNightCount > 0 ? Math.round((Number(stay.total || 0) + Number(stay.discount || 0)) / stayNightCount) : getRoomNightPrice(getRoom(stay.roomId)));
   nightlyRateWasEdited = true;
@@ -1855,6 +1864,7 @@ function startEditStay(id) {
 
 function resetFormMode() {
   editingStayId = null;
+  checkoutOnlyEditStayId = null;
   selectors.stayForm.reset();
   lastAutoTotalAmount = "";
   totalAmountWasEdited = false;
@@ -2129,7 +2139,10 @@ function bindEvents() {
       return;
     }
 
-    if (editingStayId && pendingCheckIn && pendingCheckOut) {
+    if (isCheckoutOnlyDateEdit() && pendingCheckIn && pendingCheckOut) {
+      activeDateField = "checkOut";
+      formCalendarMonth = startOfMonth(todayDate());
+    } else if (editingStayId && pendingCheckIn && pendingCheckOut) {
       activeDateField = "checkIn";
       formCalendarMonth = startOfMonth(toDate(pendingCheckIn));
     } else if (!pendingCheckIn || pendingCheckOut) {
@@ -2146,6 +2159,16 @@ function bindEvents() {
 
   selectors.dateClearButton?.addEventListener("click", (event) => {
     event.stopPropagation();
+    if (isCheckoutOnlyDateEdit()) {
+      syncPendingDatesFromForm();
+      pendingCheckOut = "";
+      activeDateField = "checkOut";
+      isDatePickerOpen = true;
+      formDateHover = null;
+      formCalendarMonth = startOfMonth(todayDate());
+      renderFormDateCalendar();
+      return;
+    }
     resetFormDates();
     renderFormDateCalendar();
   });
@@ -2169,8 +2192,8 @@ function bindEvents() {
       }
       selectors.stayForm.checkIn.value = pendingCheckIn;
       selectors.stayForm.checkOut.value = pendingCheckOut;
-      updateEstimatedTotal();
-      activeDateField = "checkIn";
+      updateEstimatedTotal({ force: isCheckoutOnlyDateEdit() });
+      activeDateField = isCheckoutOnlyDateEdit() ? "checkOut" : "checkIn";
       isDatePickerOpen = false;
       formDateHover = null;
       setFormMessage(t("form.datesApplied"), "success");
@@ -2193,6 +2216,16 @@ function bindEvents() {
     const pickedDate = toDate(value);
     const currentCheckIn = pendingCheckIn;
     formDateHover = null;
+
+    if (isCheckoutOnlyDateEdit()) {
+      if (!currentCheckIn || pickedDate <= toDate(currentCheckIn) || pickedDate < todayDate()) return;
+
+      pendingCheckOut = value;
+      activeDateField = "checkOut";
+      isDatePickerOpen = true;
+      renderFormDateCalendar();
+      return;
+    }
 
     if (!currentCheckIn || activeDateField === "checkIn") {
       pendingCheckIn = value;
