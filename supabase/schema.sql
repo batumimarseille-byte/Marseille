@@ -44,6 +44,7 @@ create table if not exists public.stays (
   room_id text not null references public.rooms(id) on update cascade,
   check_in date not null,
   check_out date not null,
+  night_count integer not null default 0,
   color text not null default '#4f7cff',
   total_amount numeric(12, 2) not null default 0,
   discount_amount numeric(12, 2) not null default 0,
@@ -64,6 +65,13 @@ add column if not exists company_id uuid references public.companies(id) on upda
 
 alter table public.stays
 add column if not exists discount_amount numeric(12, 2) not null default 0;
+
+alter table public.stays
+add column if not exists night_count integer not null default 0;
+
+update public.stays
+set night_count = greatest(check_out - check_in, 0)
+where night_count = 0;
 
 create index if not exists stays_room_dates_idx on public.stays (room_id, check_in, check_out);
 create index if not exists stays_company_id_idx on public.stays (company_id);

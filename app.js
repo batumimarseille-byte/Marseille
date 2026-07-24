@@ -693,7 +693,7 @@ function isSameDate(first, second) {
 
 function loadLocalStays() {
   try {
-    return JSON.parse(localStorage.getItem(storageKey)) || [];
+    return (JSON.parse(localStorage.getItem(storageKey)) || []).map(normalizeStayNights);
   } catch {
     return [];
   }
@@ -849,6 +849,7 @@ function mapStayFromDatabase(row) {
     roomId: row.room_id,
     checkIn: row.check_in,
     checkOut: row.check_out,
+    nights: Number(row.night_count ?? getNightCount(row.check_in, row.check_out)),
     total: Number(row.total_amount || 0),
     discount: Number(row.discount_amount || 0),
     cash: Number(row.cash_amount || 0),
@@ -871,6 +872,7 @@ function mapStayToDatabase(stay) {
     room_id: stay.roomId,
     check_in: stay.checkIn,
     check_out: stay.checkOut,
+    night_count: Number(stay.nights ?? getNightCount(stay.checkIn, stay.checkOut)),
     color: stay.color || defaultBookingColor,
     total_amount: Number(stay.total || 0),
     discount_amount: Number(stay.discount || 0),
@@ -1055,9 +1057,17 @@ async function saveStays() {
 
   if (nextRows.length === 0) return true;
 
-  const { error: upsertError } = await supabaseClient
+  let { error: upsertError } = await supabaseClient
     .from("stays")
     .upsert(nextRows, { onConflict: "id" });
+
+  if (upsertError && String(upsertError.message || "").includes("night_count")) {
+    const rowsWithoutNightCount = nextRows.map(({ night_count: _nightCount, ...row }) => row);
+    const retryResult = await supabaseClient
+      .from("stays")
+      .upsert(rowsWithoutNightCount, { onConflict: "id" });
+    upsertError = retryResult.error;
+  }
 
   if (upsertError) {
     console.error("Failed to save stays", upsertError);
@@ -1138,6 +1148,15 @@ function getNightCount(checkIn, checkOut) {
   const end = toDate(checkOut);
   if (end <= start) return 0;
   return Math.round((end - start) / 86400000);
+}
+
+function normalizeStayNights(stay) {
+  if (!stay) return stay;
+  const calculatedNights = getNightCount(stay.checkIn, stay.checkOut);
+  return {
+    ...stay,
+    nights: Number(stay.nights ?? stay.nightCount ?? calculatedNights),
+  };
 }
 
 function getFormNightCount() {
@@ -1781,6 +1800,9 @@ function readFormStay() {
   const selectedCompanyId = String(formData.get("companyId") || "");
   const selectedCompany = companies.find((company) => company.id === selectedCompanyId);
   const newCompanyName = normalizeCompanyName(formData.get("companyNewName"));
+  const checkIn = String(formData.get("checkIn"));
+  const checkOut = String(formData.get("checkOut"));
+  const nights = Number(formData.get("nights") || getNightCount(checkIn, checkOut));
 
   return {
     id: editingStayId || crypto.randomUUID(),
@@ -1788,8 +1810,9 @@ function readFormStay() {
     companyId: companyMode === "existing" ? selectedCompany?.id : undefined,
     companyName: companyMode === "existing" ? normalizeCompanyName(selectedCompany?.name) : newCompanyName,
     roomId: String(formData.get("roomId")),
-    checkIn: String(formData.get("checkIn")),
-    checkOut: String(formData.get("checkOut")),
+    checkIn,
+    checkOut,
+    nights,
     total: Number(formData.get("total") || 0),
     discount: Number(formData.get("discount") || 0),
     cash: Number(formData.get("cash") || 0),
@@ -1874,6 +1897,7 @@ function startEditStay(id) {
   isDatePickerOpen = false;
   formCalendarMonth = startOfMonth(checkoutOnlyEditStayId ? todayDate() : toDate(stay.checkIn));
   const stayNightCount = getNightCount(stay.checkIn, stay.checkOut);
+  selectors.stayForm.nights.value = stay.nights ?? stayNightCount;
   setNightlyRateValue(stayNightCount > 0 ? Math.round((Number(stay.total || 0) + Number(stay.discount || 0)) / stayNightCount) : getRoomNightPrice(getRoom(stay.roomId)));
   nightlyRateWasEdited = true;
   selectors.stayForm.discount.value = stay.discount || 0;
