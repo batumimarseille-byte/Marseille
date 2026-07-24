@@ -46,6 +46,7 @@ create table if not exists public.stays (
   check_out date not null,
   color text not null default '#4f7cff',
   total_amount numeric(12, 2) not null default 0,
+  discount_amount numeric(12, 2) not null default 0,
   cash_amount numeric(12, 2) not null default 0,
   card_amount numeric(12, 2) not null default 0,
   invoice_amount numeric(12, 2) not null default 0,
@@ -60,6 +61,9 @@ create table if not exists public.stays (
 
 alter table public.stays
 add column if not exists company_id uuid references public.companies(id) on update cascade on delete set null;
+
+alter table public.stays
+add column if not exists discount_amount numeric(12, 2) not null default 0;
 
 create index if not exists stays_room_dates_idx on public.stays (room_id, check_in, check_out);
 create index if not exists stays_company_id_idx on public.stays (company_id);

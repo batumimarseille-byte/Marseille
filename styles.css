@@ -1258,6 +1258,16 @@ button {
   border-top: 1px solid var(--line);
 }
 
+.detail-discount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 10px;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .detail-total span,
 .detail-payment-row span {
   color: var(--muted);
@@ -3406,11 +3416,12 @@ textarea {
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
 .stay-form-section .finance-notes-layout .nightly-rate-field,
+.stay-form-section .finance-notes-layout .discount-field,
 .stay-form-section .finance-notes-layout .total-field,
 .stay-form-section .finance-notes-layout .payment-grid,
 .stay-form-section .finance-notes-layout .notes-field {

@@ -201,6 +201,7 @@ const translations = {
       selectCheckout: "select check-out",
       clearDates: "Clear dates",
       nightlyRate: "Price per night, ₾",
+      discount: "Discount, ₾",
       total: "Total amount, ₾",
       cash: "Cash, ₾",
       card: "Card, ₾",
@@ -394,6 +395,7 @@ const translations = {
       selectCheckout: "აირჩიეთ გასვლის თარიღი",
       clearDates: "თარიღების გასუფთავება",
       nightlyRate: "ღამის ფასი, ₾",
+      discount: "ფასდაკლება, ₾",
       total: "ჯამური თანხა, ₾",
       cash: "ნაღდი, ₾",
       card: "ბარათი, ₾",
@@ -845,6 +847,7 @@ function mapStayFromDatabase(row) {
     checkIn: row.check_in,
     checkOut: row.check_out,
     total: Number(row.total_amount || 0),
+    discount: Number(row.discount_amount || 0),
     cash: Number(row.cash_amount || 0),
     card: Number(row.card_amount || 0),
     invoice: Number(row.invoice_amount || 0),
@@ -867,6 +870,7 @@ function mapStayToDatabase(stay) {
     check_out: stay.checkOut,
     color: stay.color || defaultBookingColor,
     total_amount: Number(stay.total || 0),
+    discount_amount: Number(stay.discount || 0),
     cash_amount: Number(stay.cash || 0),
     card_amount: Number(stay.card || 0),
     invoice_amount: Number(stay.invoice || 0),
@@ -1132,7 +1136,9 @@ function getNightCount(checkIn, checkOut) {
 function calculateEstimatedTotal() {
   const nights = getNightCount(selectors.stayForm?.checkIn?.value, selectors.stayForm?.checkOut?.value);
   if (nights <= 0) return 0;
-  return nights * Number(selectors.stayForm?.nightlyRate?.value || 0);
+  const subtotal = nights * Number(selectors.stayForm?.nightlyRate?.value || 0);
+  const discount = Number(selectors.stayForm?.discount?.value || 0);
+  return Math.max(subtotal - discount, 0);
 }
 
 function setNightlyRateValue(value) {
@@ -1195,7 +1201,7 @@ function hasRoomConflict(nextStay) {
 
 function populateRoomSelect() {
   selectors.roomSelect.innerHTML = rooms
-    .map((room) => `<option value="${room.id}">${room.id} · ${roomTypeLabel(room.type)} · ${formatNumber(getRoomNightPrice(room))} ₾</option>`)
+    .map((room) => `<option value="${room.id}">${room.id} · ${roomTypeLabel(room.type)}</option>`)
     .join("");
 }
 
@@ -1315,7 +1321,7 @@ function renderStaysTable() {
           </td>
           <td>${room.id}<span>${roomTypeLabel(room.type)}</span></td>
           <td>${formatDate(stay.checkIn)} - ${formatDate(stay.checkOut)}</td>
-          <td>${formatNumber(stay.total)} ₾</td>
+          <td>${formatNumber(stay.total)} ₾${Number(stay.discount || 0) > 0 ? `<span>${t("form.discount")}: ${formatNumber(stay.discount)} ₾</span>` : ""}</td>
           <td>
             <span>${t("table.paid")}: ${formatNumber(getPaidAmount(stay))} ₾</span>
             <span class="${debt > 0 ? "debt-text" : "paid-text"}">${t("table.debt")}: ${formatNumber(debt)} ₾</span>
@@ -1358,6 +1364,7 @@ function renderBookingDetails() {
   const room = getRoom(stay.roomId);
   const status = getStayStatus(stay);
   const debt = getDebt(stay);
+  const discount = Number(stay.discount || 0);
   const payments = getPaymentBreakdown(stay)
     .map(([label, amount]) => '<div class="detail-payment-row"><span>' + label + '</span><strong>' + formatNumber(amount) + ' ₾</strong></div>')
     .join("");
@@ -1371,6 +1378,7 @@ function renderBookingDetails() {
     '  <div class="detail-meta"><span>' + t("calendar.room") + ' ' + room.id + '</span><span>' + roomTypeLabel(room.type) + '</span><span>' + getStatusLabel(status) + '</span></div>',
     '  <div class="detail-dates"><strong>' + formatDate(stay.checkIn) + '</strong><span>' + t("calendar.to") + '</span><strong>' + formatDate(stay.checkOut) + '</strong></div>',
     '  <div class="detail-total"><span>' + t("calendar.total") + '</span><strong>' + formatNumber(stay.total) + ' ₾</strong></div>',
+    discount > 0 ? '  <div class="detail-discount"><span>' + t("form.discount") + '</span><strong>-' + formatNumber(discount) + ' ₾</strong></div>' : '',
     '  <div class="detail-payments">' + payments + '</div>',
     debt > 0 ? '  <div class="detail-alert">' + t("calendar.outstandingDebt") + ': ' + formatNumber(debt) + ' ₾</div>' : '  <div class="detail-ok">' + t("calendar.paymentBalanced") + '</div>',
     stay.notes ? '  <p class="detail-notes">' + stay.notes + '</p>' : '',
@@ -1742,6 +1750,7 @@ function readFormStay() {
     checkIn: String(formData.get("checkIn")),
     checkOut: String(formData.get("checkOut")),
     total: Number(formData.get("total") || 0),
+    discount: Number(formData.get("discount") || 0),
     cash: Number(formData.get("cash") || 0),
     card: Number(formData.get("card") || 0),
     invoice: Number(formData.get("invoice") || 0),
@@ -1823,8 +1832,9 @@ function startEditStay(id) {
   isDatePickerOpen = false;
   formCalendarMonth = startOfMonth(toDate(stay.checkIn));
   const stayNightCount = getNightCount(stay.checkIn, stay.checkOut);
-  setNightlyRateValue(stayNightCount > 0 ? Math.round(Number(stay.total || 0) / stayNightCount) : getRoomNightPrice(getRoom(stay.roomId)));
+  setNightlyRateValue(stayNightCount > 0 ? Math.round((Number(stay.total || 0) + Number(stay.discount || 0)) / stayNightCount) : getRoomNightPrice(getRoom(stay.roomId)));
   nightlyRateWasEdited = true;
+  selectors.stayForm.discount.value = stay.discount || 0;
   selectors.stayForm.total.value = stay.total;
   lastAutoTotalAmount = "";
   totalAmountWasEdited = true;
@@ -2092,6 +2102,10 @@ function bindEvents() {
   selectors.stayForm.nightlyRate.addEventListener("input", () => {
     if (isUpdatingNightlyRate) return;
     nightlyRateWasEdited = true;
+    updateEstimatedTotal({ force: true });
+  });
+
+  selectors.stayForm.discount.addEventListener("input", () => {
     updateEstimatedTotal({ force: true });
   });
 
