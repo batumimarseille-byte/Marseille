@@ -231,7 +231,7 @@ button {
 .main-content {
   grid-area: main;
   padding: 26px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .topbar {
@@ -749,6 +749,7 @@ td span {
 }
 
 .occupancy-calendar {
+  --calendar-days: 14;
   min-width: 1160px;
   padding: 0 18px 18px;
   font-family: Arial, sans-serif;
@@ -756,7 +757,7 @@ td span {
 
 .calendar-row {
   display: grid;
-  grid-template-columns: 132px repeat(14, minmax(48px, 1fr));
+  grid-template-columns: 132px repeat(var(--calendar-days), minmax(72px, 1fr));
   min-height: 44px;
 }
 
@@ -863,13 +864,48 @@ td span {
 }
 
 .room-group-card {
+  position: relative;
   padding: 20px;
   border-radius: 22px;
+}
+
+.room-price-edit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(31, 79, 154, 0.14);
+  border-radius: 10px;
+  color: var(--accent-strong);
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.room-group-card:hover .room-price-edit,
+.room-group-card:focus-within .room-price-edit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.room-price-edit:hover {
+  box-shadow: 0 10px 22px rgba(44, 83, 124, 0.14);
 }
 
 .room-group-card h4 {
   margin: 8px 0;
   font-size: 20px;
+}
+
+.room-group-price {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--accent-strong);
+  font-size: 13px;
 }
 
 .room-group-card p {
@@ -3176,9 +3212,15 @@ textarea {
 
 /* Compact date picker so Apply/Cancel stays visible on laptop screens. */
 .stay-form-section .date-range-field.open .form-date-calendar {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 100%;
   max-height: min(500px, calc(100vh - 250px));
+  margin-top: 10px;
   padding: 14px;
   overflow-y: auto;
+  transform: none;
 }
 
 .stay-form-section .form-date-months {
@@ -3364,9 +3406,11 @@ textarea {
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
+.stay-form-section .finance-notes-layout .nightly-rate-field,
 .stay-form-section .finance-notes-layout .total-field,
 .stay-form-section .finance-notes-layout .payment-grid,
 .stay-form-section .finance-notes-layout .notes-field {
@@ -3376,6 +3420,7 @@ textarea {
 
 .stay-form-section .finance-notes-layout .payment-grid {
   min-width: 0;
+  grid-column: 1 / -1;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-self: stretch;
 }
@@ -3400,6 +3445,10 @@ textarea {
 
 @media (max-width: 1024px) {
   .stay-form-section .finance-notes-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stay-form-section .money-column {
     grid-template-columns: 1fr;
   }
 

@@ -2,7 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import flagGeUrl from "./assets/flag-ge.png";
 import flagUsUrl from "./assets/flag-us.png";
 
-const rooms = [
+const roomTypeOrder = ["Suite", "Standard", "Twin", "Triple", "Junior Suite"];
+const roomNightPrices = {
+  Suite: 350,
+  Standard: 170,
+  Twin: 160,
+  Triple: 300,
+  "Junior Suite": 250,
+};
+const defaultRooms = [
   { id: "101", type: "Suite", group: "lux" },
   { id: "106", type: "Suite", group: "lux" },
   { id: "207", type: "Suite", group: "lux" },
@@ -16,15 +24,16 @@ const rooms = [
   { id: "105", type: "Triple", group: "three-beds" },
   { id: "201", type: "Junior Suite", group: "semi-lux" },
   { id: "206", type: "Junior Suite", group: "semi-lux" },
-];
-
-const roomTypeOrder = ["Suite", "Standard", "Twin", "Triple", "Junior Suite"];
+].map((room) => ({ ...room, nightlyPrice: roomNightPrices[room.type] || 0 }));
 const storageKey = "hotel-desk-stays-v1";
+const roomPricesStorageKey = "hotel-desk-room-prices-v1";
 const activeSectionStorageKey = "hotel-desk-active-section-v1";
 const languageStorageKey = "hotel-desk-language-v1";
 const defaultBookingColor = "#4f7cff";
 const languageFlagIcons = { en: flagUsUrl, ka: flagGeUrl };
 const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "calendar", "rooms"]);
+const calendarVisibleDays = 14;
+const calendarBufferDays = 14;
 const georgianMonthNames = [
   "იანვარი",
   "თებერვალი",
@@ -147,6 +156,7 @@ const translations = {
       roomOccupancy: "Room occupancy",
       inventory: "Inventory",
       roomsByCategory: "13 rooms by category",
+      perNight: "per night",
     },
     filters: {
       all: "All",
@@ -190,6 +200,7 @@ const translations = {
       selectStayDates: "Select stay dates",
       selectCheckout: "select check-out",
       clearDates: "Clear dates",
+      nightlyRate: "Price per night, ₾",
       total: "Total amount, ₾",
       cash: "Cash, ₾",
       card: "Card, ₾",
@@ -338,6 +349,7 @@ const translations = {
       roomOccupancy: "ნომრების დაკავება",
       inventory: "ნომრების სია",
       roomsByCategory: "13 ნომერი კატეგორიების მიხედვით",
+      perNight: "ღამეში",
     },
     filters: {
       all: "ყველა",
@@ -381,6 +393,7 @@ const translations = {
       selectStayDates: "აირჩიეთ ცხოვრების თარიღები",
       selectCheckout: "აირჩიეთ გასვლის თარიღი",
       clearDates: "თარიღების გასუფთავება",
+      nightlyRate: "ღამის ფასი, ₾",
       total: "ჯამური თანხა, ₾",
       cash: "ნაღდი, ₾",
       card: "ბარათი, ₾",
@@ -435,13 +448,14 @@ const translations = {
   },
 };
 
+let rooms = defaultRooms.slice();
 let stays = [];
 let companies = [];
 let activeFilter = "all";
 let highlightedStayId = null;
 let highlightedCalendarStayId = null;
 let editingStayId = null;
-let calendarStart = addDays(todayDate(), -3);
+let calendarStart = todayDate();
 let selectedCalendarStayId = null;
 let formCalendarMonth = new Date(todayDate().getFullYear(), todayDate().getMonth(), 1);
 let activeDateField = "checkIn";
@@ -454,6 +468,13 @@ let currentSectionName = "dashboard";
 let didJustSignIn = false;
 let calendarDragState = null;
 let shouldSuppressCalendarClick = false;
+let pendingCalendarScrollLeft = null;
+let totalAmountWasEdited = false;
+let isUpdatingTotalAmount = false;
+let lastAutoTotalAmount = "";
+let nightlyRateWasEdited = false;
+let isUpdatingNightlyRate = false;
+let pendingCompanyColorUpdates = new Map();
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
@@ -685,6 +706,14 @@ function getCompanyNameById(companyId) {
   return companies.find((company) => company.id === companyId)?.name || "";
 }
 
+function getCompanyById(companyId) {
+  return companies.find((company) => company.id === companyId);
+}
+
+function getCompanyColor(company) {
+  return company?.color || defaultBookingColor;
+}
+
 function populateCompanyOptions(selectedCompanyId = selectors.companySelect?.value || "") {
   if (!selectors.companySelect) return;
 
@@ -693,7 +722,7 @@ function populateCompanyOptions(selectedCompanyId = selectors.companySelect?.val
     ...companies
       .slice()
       .sort((first, second) => normalizeCompanyName(first.name).localeCompare(normalizeCompanyName(second.name), getLocale()))
-      .map((company) => `<option value="${company.id}">${normalizeCompanyName(company.name)}</option>`),
+      .map((company) => `<option value="${company.id}">${normalizeCompanyName(company.name)} · ${getCompanyColor(company)}</option>`),
   ].join("");
 
   selectors.companySelect.value = companies.some((company) => company.id === selectedCompanyId) ? selectedCompanyId : "";
@@ -720,17 +749,88 @@ function getCompanyOptions() {
 
   companies.forEach((company) => {
     const name = normalizeCompanyName(company.name);
-    if (name) byName.set(name.toLocaleLowerCase(), name);
+    const key = name.toLocaleLowerCase();
+    if (name) byName.set(key, { name, color: pendingCompanyColorUpdates.get(key) || getCompanyColor(company) });
   });
 
   stays.forEach((stay) => {
     const name = normalizeCompanyName(stay.companyName);
-    if (name) byName.set(name.toLocaleLowerCase(), name);
+    const key = name.toLocaleLowerCase();
+    if (name && (!byName.has(key) || pendingCompanyColorUpdates.has(key))) {
+      byName.set(key, { name, color: pendingCompanyColorUpdates.get(key) || stay.color || defaultBookingColor });
+    }
   });
 
   return Array.from(byName.values())
-    .sort((first, second) => first.localeCompare(second, getLocale()))
-    .map((name) => ({ id: name.toLocaleLowerCase(), name }));
+    .sort((first, second) => first.name.localeCompare(second.name, getLocale()))
+    .map((company) => ({ id: company.name.toLocaleLowerCase(), name: company.name, color: company.color }));
+}
+
+function applySelectedCompanyColor() {
+  const company = getCompanyById(selectors.companySelect?.value);
+  if (!company || !selectors.stayForm?.color) return;
+  selectors.stayForm.color.value = getCompanyColor(company);
+}
+
+function mapRoomFromDatabase(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    group: row.group_name,
+    nightlyPrice: Number(row.nightly_price ?? roomNightPrices[row.type] ?? 0),
+  };
+}
+
+async function loadRooms() {
+  if (!usesSupabase) {
+    const storedPrices = JSON.parse(localStorage.getItem(roomPricesStorageKey) || "{}");
+    return defaultRooms.map((room) => ({
+      ...room,
+      nightlyPrice: Number(storedPrices[room.type] ?? room.nightlyPrice ?? 0),
+    }));
+  }
+
+  const { data, error } = await supabaseClient
+    .from("rooms")
+    .select("id, type, group_name, sort_order, nightly_price, is_active")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load rooms from Supabase", error);
+    return defaultRooms.slice();
+  }
+
+  return (data || []).map(mapRoomFromDatabase);
+}
+
+async function saveRoomTypePrice(type, nightlyPrice) {
+  const nextPrice = Math.max(Number(nightlyPrice || 0), 0);
+
+  rooms = rooms.map((room) => (
+    room.type === type ? { ...room, nightlyPrice: nextPrice } : room
+  ));
+
+  if (!usesSupabase) {
+    const nextPrices = roomTypeOrder.reduce((prices, roomType) => {
+      prices[roomType] = getRoomNightPrice(roomType);
+      return prices;
+    }, {});
+    localStorage.setItem(roomPricesStorageKey, JSON.stringify(nextPrices));
+    return true;
+  }
+
+  const { error } = await supabaseClient
+    .from("rooms")
+    .update({ nightly_price: nextPrice })
+    .eq("type", type);
+
+  if (error) {
+    console.error("Failed to save room price", error);
+    return false;
+  }
+
+  return true;
 }
 
 function mapStayFromDatabase(row) {
@@ -795,14 +895,25 @@ async function loadCompanies() {
 }
 
 async function ensureStayCompanies() {
-  const companyNames = Array.from(
-    new Set(stays.map((stay) => normalizeCompanyName(stay.companyName)).filter(Boolean))
-  );
+  const companyColorByName = new Map();
+  stays.forEach((stay) => {
+    const name = normalizeCompanyName(stay.companyName);
+    if (!name) return;
+    const key = name.toLocaleLowerCase();
+    companyColorByName.set(key, {
+      name,
+      color: pendingCompanyColorUpdates.get(key) || companyColorByName.get(key)?.color || stay.color || defaultBookingColor,
+    });
+  });
+
+  const companyEntries = Array.from(companyColorByName.values());
+  const companyNames = companyEntries.map((company) => company.name);
 
   if (!companyNames.length) return true;
 
   if (!usesSupabase) {
     companies = getCompanyOptions();
+    pendingCompanyColorUpdates.clear();
     return true;
   }
 
@@ -814,7 +925,13 @@ async function ensureStayCompanies() {
   if (missingNames.length > 0) {
     const { data, error } = await supabaseClient
       .from("companies")
-      .upsert(missingNames.map((name) => ({ name })), { onConflict: "name" })
+      .upsert(
+        missingNames.map((name) => ({
+          name,
+          color: companyColorByName.get(name.toLocaleLowerCase())?.color || defaultBookingColor,
+        })),
+        { onConflict: "name" }
+      )
       .select("*");
 
     if (error) {
@@ -824,6 +941,33 @@ async function ensureStayCompanies() {
 
     (data || []).forEach((company) => {
       existingByName.set(normalizeCompanyName(company.name).toLocaleLowerCase(), company);
+    });
+    companies = Array.from(existingByName.values()).sort((first, second) => first.name.localeCompare(second.name));
+  }
+
+  const colorUpdates = Array.from(pendingCompanyColorUpdates.entries()).filter(([nameKey]) => existingByName.has(nameKey));
+  if (colorUpdates.length > 0) {
+    const results = await Promise.all(
+      colorUpdates.map(([nameKey, color]) => {
+        const company = existingByName.get(nameKey);
+        return supabaseClient
+          .from("companies")
+          .update({ color })
+          .eq("id", company.id)
+          .select("*")
+          .single();
+      })
+    );
+
+    const failed = results.find((result) => result.error);
+    if (failed) {
+      console.error("Failed to update company color", failed.error);
+      return false;
+    }
+
+    results.forEach((result) => {
+      const company = result.data;
+      if (company) existingByName.set(normalizeCompanyName(company.name).toLocaleLowerCase(), company);
     });
     companies = Array.from(existingByName.values()).sort((first, second) => first.name.localeCompare(second.name));
   }
@@ -840,6 +984,7 @@ async function ensureStayCompanies() {
     };
   });
 
+  pendingCompanyColorUpdates.clear();
   return true;
 }
 
@@ -850,7 +995,7 @@ async function loadStays() {
 
   const { data, error } = await supabaseClient
     .from("stays")
-    .select("*, companies(id, name)")
+    .select("*, companies(id, name, color)")
     .order("check_in", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -916,14 +1061,25 @@ async function saveStays() {
 }
 
 async function refreshStays() {
+  rooms = await loadRooms();
   stays = await loadStays();
   if (!usesSupabase) companies = await loadCompanies();
+  populateRoomSelect();
   populateCompanyOptions();
   renderAll();
 }
 
 function getRoom(roomId) {
   return rooms.find((room) => room.id === roomId);
+}
+
+function getRoomNightPrice(roomOrType) {
+  if (typeof roomOrType !== "string") {
+    return Number(roomOrType?.nightlyPrice ?? roomNightPrices[roomOrType?.type] ?? 0);
+  }
+
+  const room = rooms.find((item) => item.type === roomOrType);
+  return Number(room?.nightlyPrice ?? roomNightPrices[roomOrType] ?? 0);
 }
 
 function getPaidAmount(stay) {
@@ -965,6 +1121,69 @@ function datesOverlap(startA, endA, startB, endB) {
   return toDate(startA) < toDate(endB) && toDate(endA) > toDate(startB);
 }
 
+function getNightCount(checkIn, checkOut) {
+  if (!checkIn || !checkOut) return 0;
+  const start = toDate(checkIn);
+  const end = toDate(checkOut);
+  if (end <= start) return 0;
+  return Math.round((end - start) / 86400000);
+}
+
+function calculateEstimatedTotal() {
+  const nights = getNightCount(selectors.stayForm?.checkIn?.value, selectors.stayForm?.checkOut?.value);
+  if (nights <= 0) return 0;
+  return nights * Number(selectors.stayForm?.nightlyRate?.value || 0);
+}
+
+function setNightlyRateValue(value) {
+  const nightlyInput = selectors.stayForm?.nightlyRate;
+  if (!nightlyInput) return;
+  isUpdatingNightlyRate = true;
+  nightlyInput.value = String(value);
+  isUpdatingNightlyRate = false;
+}
+
+function setTotalAmountValue(value) {
+  const totalInput = selectors.stayForm?.total;
+  if (!totalInput) return;
+  const nextValue = String(value);
+  isUpdatingTotalAmount = true;
+  totalInput.value = nextValue;
+  lastAutoTotalAmount = nextValue;
+  isUpdatingTotalAmount = false;
+}
+
+function updateNightlyRateFromRoom({ force = false } = {}) {
+  const nightlyInput = selectors.stayForm?.nightlyRate;
+  const room = getRoom(selectors.stayForm?.roomId?.value);
+  if (!nightlyInput || !room) return;
+
+  const roomPrice = getRoomNightPrice(room);
+  if (force || !nightlyRateWasEdited) {
+    setNightlyRateValue(roomPrice);
+    nightlyRateWasEdited = false;
+  }
+}
+
+function updateEstimatedTotal({ force = false, forceNightly = false } = {}) {
+  const totalInput = selectors.stayForm?.total;
+  if (!totalInput) return;
+
+  updateNightlyRateFromRoom({ force: forceNightly });
+  const estimatedTotal = calculateEstimatedTotal();
+  const currentValue = String(totalInput.value || "");
+  const canAutoUpdate =
+    force ||
+    !totalAmountWasEdited ||
+    currentValue === "" ||
+    Number(currentValue) === 0 ||
+    currentValue === lastAutoTotalAmount;
+
+  if (!canAutoUpdate) return;
+  setTotalAmountValue(estimatedTotal);
+  totalAmountWasEdited = false;
+}
+
 function hasRoomConflict(nextStay) {
   return stays.some((stay) => {
     if (stay.id === nextStay.id) return false;
@@ -976,7 +1195,7 @@ function hasRoomConflict(nextStay) {
 
 function populateRoomSelect() {
   selectors.roomSelect.innerHTML = rooms
-    .map((room) => `<option value="${room.id}">${room.id} · ${roomTypeLabel(room.type)}</option>`)
+    .map((room) => `<option value="${room.id}">${room.id} · ${roomTypeLabel(room.type)} · ${formatNumber(getRoomNightPrice(room))} ₾</option>`)
     .join("");
 }
 
@@ -1008,9 +1227,11 @@ function renderRoomGroups() {
     .map((type) => {
       const groupRooms = rooms.filter((room) => room.type === type);
       return `
-        <div class="room-group-card">
+        <div class="room-group-card" data-room-type="${type}">
+          <button type="button" class="room-price-edit" data-edit-room-price="${type}" aria-label="Edit ${roomTypeLabel(type)} price">Edit</button>
           <span>${groupRooms.length} ${getRoomWord(groupRooms.length)}</span>
           <h4>${roomTypeLabel(type)}</h4>
+          <strong class="room-group-price">${formatNumber(getRoomNightPrice(type))} ₾ / ${t("panels.perNight")}</strong>
           <p>${groupRooms.map((room) => room.id).join(", ")}</p>
         </div>
       `;
@@ -1161,12 +1382,47 @@ function renderBookingDetails() {
   ].join("");
 }
 
-function renderCalendar() {
-  const days = Array.from({ length: 14 }, (_, index) => addDays(calendarStart, index));
-  const today = todayDate();
-  const lastDay = days[days.length - 1];
+function shouldUseCalendarBuffer() {
+  return window.matchMedia("(min-width: 1025px)").matches;
+}
 
-  selectors.calendarRange.textContent = `${formatDate(days[0])} - ${formatDate(lastDay)}`;
+function getCalendarDayWidth() {
+  const row = selectors.occupancyCalendar.querySelector(".calendar-row");
+  if (!row) return 0;
+  const label = row.querySelector(".calendar-room-label");
+  const rowWidth = row.scrollWidth || row.getBoundingClientRect().width;
+  const labelWidth = label?.getBoundingClientRect().width || 132;
+  const daysCount = Number(selectors.occupancyCalendar.style.getPropertyValue("--calendar-days")) || calendarVisibleDays;
+  return daysCount > 0 ? (rowWidth - labelWidth) / daysCount : 0;
+}
+
+function queueCalendarScrollLeft(scrollLeft) {
+  pendingCalendarScrollLeft = scrollLeft;
+}
+
+function applyPendingCalendarScroll() {
+  if (pendingCalendarScrollLeft === null || !selectors.calendarScroll) return;
+  selectors.calendarScroll.scrollLeft = Math.max(0, pendingCalendarScrollLeft);
+  pendingCalendarScrollLeft = null;
+}
+
+function openCalendarStay(stayId) {
+  selectedCalendarStayId = stayId;
+  highlightedCalendarStayId = null;
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const hasBuffer = shouldUseCalendarBuffer();
+  const leadingDays = hasBuffer ? calendarBufferDays : 0;
+  const dayCount = hasBuffer ? calendarVisibleDays + calendarBufferDays * 2 : calendarVisibleDays;
+  const renderStart = addDays(calendarStart, -leadingDays);
+  const days = Array.from({ length: dayCount }, (_, index) => addDays(renderStart, index));
+  const visibleLastDay = addDays(calendarStart, calendarVisibleDays - 1);
+  const today = todayDate();
+
+  selectors.calendarRange.textContent = `${formatDate(calendarStart)} - ${formatDate(visibleLastDay)}`;
+  selectors.occupancyCalendar.style.setProperty("--calendar-days", String(dayCount));
 
   const header = `
     <div class="calendar-row calendar-header-row">
@@ -1223,6 +1479,14 @@ function renderCalendar() {
     .join("");
 
   selectors.occupancyCalendar.innerHTML = header + (rows || `<div class="calendar-empty-room">${t("common.selectRoom")}</div>`);
+  if (pendingCalendarScrollLeft === null && hasBuffer) {
+    requestAnimationFrame(() => {
+      const dayWidth = getCalendarDayWidth();
+      selectors.calendarScroll.scrollLeft = dayWidth * calendarBufferDays;
+    });
+  } else {
+    requestAnimationFrame(applyPendingCalendarScroll);
+  }
   renderBookingDetails();
 }
 
@@ -1510,6 +1774,11 @@ async function handleFormSubmit(event) {
     return;
   }
 
+  const companyName = normalizeCompanyName(stay.companyName);
+  if (companyName) {
+    pendingCompanyColorUpdates.set(companyName.toLocaleLowerCase(), stay.color || defaultBookingColor);
+  }
+
   if (editingStayId) {
     stays = stays.map((item) => (item.id === editingStayId ? stay : item));
     setFormMessage(t("common.recordUpdated"), "success");
@@ -1553,7 +1822,12 @@ function startEditStay(id) {
   activeDateField = "checkOut";
   isDatePickerOpen = false;
   formCalendarMonth = startOfMonth(toDate(stay.checkIn));
+  const stayNightCount = getNightCount(stay.checkIn, stay.checkOut);
+  setNightlyRateValue(stayNightCount > 0 ? Math.round(Number(stay.total || 0) / stayNightCount) : getRoomNightPrice(getRoom(stay.roomId)));
+  nightlyRateWasEdited = true;
   selectors.stayForm.total.value = stay.total;
+  lastAutoTotalAmount = "";
+  totalAmountWasEdited = true;
   selectors.stayForm.cash.value = stay.cash || 0;
   selectors.stayForm.card.value = stay.card || 0;
   selectors.stayForm.invoice.value = stay.invoice || 0;
@@ -1572,6 +1846,9 @@ function startEditStay(id) {
 function resetFormMode() {
   editingStayId = null;
   selectors.stayForm.reset();
+  lastAutoTotalAmount = "";
+  totalAmountWasEdited = false;
+  nightlyRateWasEdited = false;
   populateCompanyOptions();
   setCompanyMode("existing");
   selectors.formTitle.textContent = t("form.addStay");
@@ -1579,6 +1856,7 @@ function resetFormMode() {
   selectors.cancelEditButton.classList.add("hidden");
   setFormMessage("", "");
   setDefaultDates();
+  updateEstimatedTotal({ force: true, forceNightly: true });
   renderFormDateCalendar();
 }
 
@@ -1676,6 +1954,7 @@ function resetFormDates() {
   isDatePickerOpen = false;
   formDateHover = null;
   formCalendarMonth = startOfMonth(todayDate());
+  updateEstimatedTotal();
 }
 
 function setDefaultDates() {
@@ -1789,11 +2068,15 @@ function bindEvents() {
   selectors.companyModeInputs?.forEach((input) => {
     input.addEventListener("change", () => {
       setCompanyMode(input.value);
+      if (input.value === "existing" && input.checked) applySelectedCompanyColor();
     });
   });
 
+  selectors.companySelect?.addEventListener("change", applySelectedCompanyColor);
+
   selectors.stayForm.roomId.addEventListener("change", () => {
     if (!editingStayId) {
+      nightlyRateWasEdited = false;
       resetFormDates();
     } else {
       isDatePickerOpen = false;
@@ -1802,7 +2085,19 @@ function bindEvents() {
       const anchorDate = selectors.stayForm.checkIn.value ? toDate(selectors.stayForm.checkIn.value) : todayDate();
       formCalendarMonth = startOfMonth(anchorDate);
     }
+    updateEstimatedTotal({ forceNightly: !editingStayId });
     renderFormDateCalendar();
+  });
+
+  selectors.stayForm.nightlyRate.addEventListener("input", () => {
+    if (isUpdatingNightlyRate) return;
+    nightlyRateWasEdited = true;
+    updateEstimatedTotal({ force: true });
+  });
+
+  selectors.stayForm.total.addEventListener("input", () => {
+    if (isUpdatingTotalAmount) return;
+    totalAmountWasEdited = String(selectors.stayForm.total.value || "") !== lastAutoTotalAmount;
   });
 
   selectors.dateRangeButton?.addEventListener("click", (event) => {
@@ -1860,6 +2155,7 @@ function bindEvents() {
       }
       selectors.stayForm.checkIn.value = pendingCheckIn;
       selectors.stayForm.checkOut.value = pendingCheckOut;
+      updateEstimatedTotal();
       activeDateField = "checkIn";
       isDatePickerOpen = false;
       formDateHover = null;
@@ -1900,7 +2196,6 @@ function bindEvents() {
       isDatePickerOpen = true;
     }
 
-    formCalendarMonth = startOfMonth(pickedDate);
     renderFormDateCalendar();
   });
 
@@ -1992,6 +2287,8 @@ function bindEvents() {
   });
 
   selectors.occupancyCalendar.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-calendar-stay]");
+
     if (shouldSuppressCalendarClick) {
       event.preventDefault();
       event.stopPropagation();
@@ -1999,16 +2296,13 @@ function bindEvents() {
       return;
     }
 
-    const button = event.target.closest("[data-calendar-stay]");
     if (!button) {
       selectedCalendarStayId = null;
       highlightedCalendarStayId = null;
       renderCalendar();
       return;
     }
-    selectedCalendarStayId = button.dataset.calendarStay;
-    highlightedCalendarStayId = null;
-    renderCalendar();
+    openCalendarStay(button.dataset.calendarStay);
   });
 
   selectors.calendarScroll.addEventListener("pointerdown", (event) => {
@@ -2016,15 +2310,45 @@ function bindEvents() {
     const calendarCell = event.target.closest(".calendar-cell");
     if (!calendarCell) return;
 
+    const dayWidth = getCalendarDayWidth();
     calendarDragState = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startScrollLeft: selectors.calendarScroll.scrollLeft,
+      dayWidth,
       didDrag: false,
     };
     selectors.calendarScroll.classList.add("dragging");
     selectors.calendarScroll.setPointerCapture?.(event.pointerId);
   });
+
+  const extendCalendarDragRange = () => {
+    if (!calendarDragState || !shouldUseCalendarBuffer()) return;
+    const dayWidth = calendarDragState.dayWidth || getCalendarDayWidth();
+    if (!dayWidth) return;
+
+    const scroll = selectors.calendarScroll;
+    const edgeSize = dayWidth * 4;
+    const shiftSize = dayWidth * calendarVisibleDays;
+    const maxScrollLeft = scroll.scrollWidth - scroll.clientWidth;
+
+    if (scroll.scrollLeft < edgeSize) {
+      calendarStart = addDays(calendarStart, -calendarVisibleDays);
+      calendarDragState.startScrollLeft += shiftSize;
+      queueCalendarScrollLeft(scroll.scrollLeft + shiftSize);
+      renderCalendar();
+      selectors.calendarScroll.classList.add("dragging");
+      return;
+    }
+
+    if (scroll.scrollLeft > maxScrollLeft - edgeSize) {
+      calendarStart = addDays(calendarStart, calendarVisibleDays);
+      calendarDragState.startScrollLeft -= shiftSize;
+      queueCalendarScrollLeft(scroll.scrollLeft - shiftSize);
+      renderCalendar();
+      selectors.calendarScroll.classList.add("dragging");
+    }
+  };
 
   selectors.calendarScroll.addEventListener("pointermove", (event) => {
     if (!calendarDragState || calendarDragState.pointerId !== event.pointerId) return;
@@ -2032,15 +2356,23 @@ function bindEvents() {
     const deltaX = event.clientX - calendarDragState.startX;
     if (Math.abs(deltaX) > 8) calendarDragState.didDrag = true;
     selectors.calendarScroll.scrollLeft = calendarDragState.startScrollLeft - deltaX;
+    extendCalendarDragRange();
     if (calendarDragState.didDrag) event.preventDefault();
   });
 
   const finishCalendarDrag = (event) => {
     if (!calendarDragState || calendarDragState.pointerId !== event.pointerId) return;
+    const didDrag = calendarDragState.didDrag;
+    const releasedElement = document.elementFromPoint(event.clientX, event.clientY);
+    const releasedStayButton = releasedElement?.closest?.("[data-calendar-stay]");
     shouldSuppressCalendarClick = calendarDragState.didDrag;
     selectors.calendarScroll.classList.remove("dragging");
     selectors.calendarScroll.releasePointerCapture?.(event.pointerId);
     calendarDragState = null;
+    if (!didDrag && releasedStayButton) {
+      shouldSuppressCalendarClick = true;
+      openCalendarStay(releasedStayButton.dataset.calendarStay);
+    }
     window.setTimeout(() => {
       shouldSuppressCalendarClick = false;
     }, 250);
@@ -2085,6 +2417,26 @@ function bindEvents() {
     showStayInCalendar(stay);
   });
 
+  selectors.roomGroups.addEventListener("click", async (event) => {
+    const editButton = event.target.closest("[data-edit-room-price]");
+    if (!editButton) return;
+
+    const type = editButton.dataset.editRoomPrice;
+    const currentPrice = getRoomNightPrice(type);
+    const value = prompt(`${roomTypeLabel(type)} price per night, ₾`, String(currentPrice));
+    if (value === null) return;
+
+    const nextPrice = Number(value);
+    if (!Number.isFinite(nextPrice) || nextPrice < 0) return;
+
+    const saved = await saveRoomTypePrice(type, nextPrice);
+    if (!saved) return;
+
+    populateRoomSelect();
+    updateEstimatedTotal({ forceNightly: !nightlyRateWasEdited });
+    renderRoomGroups();
+  });
+
   selectors.activeGuestList.addEventListener("click", (event) => {
     const guestButton = event.target.closest("[data-active-stay]");
     if (!guestButton) return;
@@ -2102,7 +2454,7 @@ function bindEvents() {
   });
 
   selectors.calendarTodayButton.addEventListener("click", () => {
-    calendarStart = addDays(todayDate(), -3);
+    calendarStart = todayDate();
     renderCalendar();
   });
 
@@ -2142,6 +2494,7 @@ async function startApp() {
   const canStart = await requireSession();
   if (!canStart) return;
 
+  rooms = await loadRooms();
   companies = usesSupabase ? await loadCompanies() : [];
   stays = await loadStays();
   if (!usesSupabase) companies = await loadCompanies();

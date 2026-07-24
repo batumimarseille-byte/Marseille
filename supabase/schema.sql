@@ -8,17 +8,34 @@ create table if not exists public.rooms (
   type text not null,
   group_name text not null,
   sort_order integer not null,
+  nightly_price numeric(12, 2) not null default 0,
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
 
+alter table public.rooms
+add column if not exists nightly_price numeric(12, 2) not null default 0;
+
 create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
+  color text not null default '#4f7cff',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint companies_name_not_blank check (length(btrim(name)) > 0)
+  constraint companies_name_not_blank check (length(btrim(name)) > 0),
+  constraint companies_valid_color check (color ~ '^#[0-9A-Fa-f]{6}$')
 );
+
+alter table public.companies
+add column if not exists color text not null default '#4f7cff';
+
+do $$
+begin
+  alter table public.companies
+  add constraint companies_valid_color check (color ~ '^#[0-9A-Fa-f]{6}$');
+exception
+  when duplicate_object then null;
+end $$;
 
 create table if not exists public.stays (
   id uuid primary key default gen_random_uuid(),
@@ -75,10 +92,12 @@ alter table public.stays enable row level security;
 -- First stage: one authenticated hotel user can manage everything.
 -- Later we can add roles if the hotel needs several staff accounts.
 drop policy if exists "Authenticated users can read rooms" on public.rooms;
-create policy "Authenticated users can read rooms"
-on public.rooms for select
+drop policy if exists "Authenticated users can manage rooms" on public.rooms;
+create policy "Authenticated users can manage rooms"
+on public.rooms for all
 to authenticated
-using (true);
+using (true)
+with check (true);
 
 drop policy if exists "Authenticated users can manage stays" on public.stays;
 create policy "Authenticated users can manage stays"
@@ -94,24 +113,25 @@ to authenticated
 using (true)
 with check (true);
 
-insert into public.rooms (id, type, group_name, sort_order) values
-  ('101', 'Suite', 'lux', 101),
-  ('106', 'Suite', 'lux', 106),
-  ('207', 'Suite', 'lux', 207),
-  ('102', 'Standard', 'standard', 102),
-  ('104', 'Standard', 'standard', 104),
-  ('202', 'Standard', 'standard', 202),
-  ('203', 'Standard', 'standard', 203),
-  ('204', 'Standard', 'standard', 204),
-  ('205', 'Standard', 'standard', 205),
-  ('103', 'Twin', 'two-beds', 103),
-  ('105', 'Triple', 'three-beds', 105),
-  ('201', 'Junior Suite', 'semi-lux', 201),
-  ('206', 'Junior Suite', 'semi-lux', 206)
+insert into public.rooms (id, type, group_name, sort_order, nightly_price) values
+  ('101', 'Suite', 'lux', 101, 350),
+  ('106', 'Suite', 'lux', 106, 350),
+  ('207', 'Suite', 'lux', 207, 350),
+  ('102', 'Standard', 'standard', 102, 170),
+  ('104', 'Standard', 'standard', 104, 170),
+  ('202', 'Standard', 'standard', 202, 170),
+  ('203', 'Standard', 'standard', 203, 170),
+  ('204', 'Standard', 'standard', 204, 170),
+  ('205', 'Standard', 'standard', 205, 170),
+  ('103', 'Twin', 'two-beds', 103, 160),
+  ('105', 'Triple', 'three-beds', 105, 300),
+  ('201', 'Junior Suite', 'semi-lux', 201, 250),
+  ('206', 'Junior Suite', 'semi-lux', 206, 250)
 on conflict (id) do update set
   type = excluded.type,
   group_name = excluded.group_name,
   sort_order = excluded.sort_order,
+  nightly_price = excluded.nightly_price,
   is_active = true;
 
 delete from public.rooms
