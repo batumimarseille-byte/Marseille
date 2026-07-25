@@ -34,6 +34,7 @@ const languageFlagIcons = { en: flagUsUrl, ka: flagGeUrl };
 const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "calendar", "rooms"]);
 const calendarVisibleDays = 14;
 const calendarBufferDays = 14;
+const calendarTodayOffsetDays = Math.floor(calendarVisibleDays / 2);
 const georgianMonthNames = [
   "იანვარი",
   "თებერვალი",
@@ -460,7 +461,7 @@ let highlightedStayId = null;
 let highlightedCalendarStayId = null;
 let editingStayId = null;
 let checkoutOnlyEditStayId = null;
-let calendarStart = todayDate();
+let calendarStart = getCenteredCalendarStart();
 let selectedCalendarStayId = null;
 let formCalendarMonth = new Date(todayDate().getFullYear(), todayDate().getMonth(), 1);
 let activeDateField = "checkIn";
@@ -677,6 +678,10 @@ function addDays(date, days) {
   next.setDate(next.getDate() + days);
   next.setHours(0, 0, 0, 0);
   return next;
+}
+
+function getCenteredCalendarStart() {
+  return addDays(todayDate(), -calendarTodayOffsetDays);
 }
 
 function startOfMonth(date) {
@@ -1121,6 +1126,14 @@ function getStayStatus(stay) {
   return "checked-in";
 }
 
+function canExtendCheckoutOnly(stay) {
+  if (!stay || stay.status === "cancelled") return false;
+  const today = todayDate();
+  const checkIn = toDate(stay.checkIn);
+  const checkOut = toDate(stay.checkOut);
+  return today >= checkIn && today <= checkOut;
+}
+
 function isCheckoutOnlyDateEdit() {
   return Boolean(editingStayId && checkoutOnlyEditStayId === editingStayId);
 }
@@ -1271,9 +1284,12 @@ function renderRoomMap() {
       );
       const roomClass = currentStay ? (getDebt(currentStay) > 0 ? "room-debt" : "room-busy") : "room-free";
       const label = currentStay ? currentStay.guestName : t("common.available");
+      const roomAttributes = currentStay
+        ? `data-room-stay="${currentStay.id}" style="--room-color: ${currentStay.color || defaultBookingColor}"`
+        : `data-room-id="${room.id}"`;
 
       return `
-        <button class="room-card ${roomClass}" ${currentStay ? `data-room-stay="${currentStay.id}" style="--room-color: ${currentStay.color || defaultBookingColor}"` : ""}>
+        <button class="room-card ${roomClass}" ${roomAttributes}>
           <div>
             <strong>${room.id}</strong>
             <span>${roomTypeLabel(room.type)}</span>
@@ -1878,7 +1894,7 @@ function startEditStay(id) {
   if (!stay) return;
 
   editingStayId = id;
-  checkoutOnlyEditStayId = getStayStatus(stay) === "checked-in" ? id : null;
+  checkoutOnlyEditStayId = canExtendCheckoutOnly(stay) ? id : null;
   selectors.stayForm.guestName.value = stay.guestName;
   const companyName = stay.companyName || getCompanyNameById(stay.companyId);
   const matchingCompany = companies.find(
@@ -1938,6 +1954,15 @@ function resetFormMode() {
   setFormMessage("", "");
   setDefaultDates();
   updateEstimatedTotal({ force: true, forceNightly: true });
+  renderFormDateCalendar();
+}
+
+function startNewStayForRoom(roomId) {
+  if (!rooms.some((room) => room.id === roomId)) return;
+  resetFormMode();
+  selectors.stayForm.roomId.value = roomId;
+  updateEstimatedTotal({ force: true, forceNightly: true });
+  showSection("new-stay");
   renderFormDateCalendar();
 }
 
@@ -2534,11 +2559,17 @@ function bindEvents() {
   });
 
   selectors.roomMap.addEventListener("click", (event) => {
-    const roomButton = event.target.closest("[data-room-stay]");
-    if (!roomButton) return;
-    const stay = stays.find((item) => item.id === roomButton.dataset.roomStay);
-    if (!stay) return;
-    showStayInCalendar(stay);
+    const occupiedRoomButton = event.target.closest("[data-room-stay]");
+    if (occupiedRoomButton) {
+      const stay = stays.find((item) => item.id === occupiedRoomButton.dataset.roomStay);
+      if (!stay) return;
+      showStayInCalendar(stay);
+      return;
+    }
+
+    const freeRoomButton = event.target.closest("[data-room-id]");
+    if (!freeRoomButton) return;
+    startNewStayForRoom(freeRoomButton.dataset.roomId);
   });
 
   selectors.roomGroups.addEventListener("click", async (event) => {
@@ -2578,7 +2609,7 @@ function bindEvents() {
   });
 
   selectors.calendarTodayButton.addEventListener("click", () => {
-    calendarStart = todayDate();
+    calendarStart = getCenteredCalendarStart();
     renderCalendar();
   });
 
