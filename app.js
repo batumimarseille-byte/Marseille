@@ -473,6 +473,7 @@ let currentLanguage = getStoredLanguage();
 let currentSectionName = "dashboard";
 let didJustSignIn = false;
 let calendarDragState = null;
+let calendarResizeState = null;
 let shouldSuppressCalendarClick = false;
 let pendingCalendarScrollLeft = null;
 let totalAmountWasEdited = false;
@@ -1104,6 +1105,16 @@ function getRoomNightPrice(roomOrType) {
   return Number(room?.nightlyPrice ?? roomNightPrices[roomOrType] ?? 0);
 }
 
+function getStayNightlyRate(stay) {
+  const nights = getNightCount(stay?.checkIn, stay?.checkOut);
+  if (nights > 0) {
+    const subtotal = Number(stay.total || 0) + Number(stay.discount || 0);
+    const nightlyRate = subtotal / nights;
+    if (nightlyRate > 0) return Math.round(nightlyRate);
+  }
+  return getRoomNightPrice(getRoom(stay?.roomId));
+}
+
 function getPaidAmount(stay) {
   return Number(stay.cash || 0) + Number(stay.card || 0) + Number(stay.invoice || 0);
 }
@@ -1266,6 +1277,15 @@ function hasRoomConflict(nextStay) {
     if (stay.roomId !== nextStay.roomId) return false;
     if (["checked-out", "cancelled"].includes(getStayStatus(stay))) return false;
     return datesOverlap(nextStay.checkIn, nextStay.checkOut, stay.checkIn, stay.checkOut);
+  });
+}
+
+function hasRoomConflictForRange(stayId, roomId, checkIn, checkOut) {
+  return stays.some((stay) => {
+    if (stay.id === stayId) return false;
+    if (stay.roomId !== roomId) return false;
+    if (["checked-out", "cancelled"].includes(getStayStatus(stay))) return false;
+    return datesOverlap(checkIn, checkOut, stay.checkIn, stay.checkOut);
   });
 }
 
@@ -1528,20 +1548,36 @@ function renderCalendar() {
           const stay = stays.find((item) => {
             if (item.roomId !== room.id) return false;
             const checkIn = toDate(item.checkIn);
-            const checkOut = toDate(item.checkOut);
+            const checkOut =
+              calendarResizeState?.stayId === item.id && calendarResizeState.previewCheckOut
+                ? toDate(calendarResizeState.previewCheckOut)
+                : toDate(item.checkOut);
             return day >= checkIn && day < checkOut;
           });
 
           if (!stay) {
-            return `<div class="calendar-cell ${day.getTime() === today.getTime() ? "calendar-today" : ""}"></div>`;
+            return `<div class="calendar-cell ${day.getTime() === today.getTime() ? "calendar-today" : ""}" data-calendar-day="${toInputDate(day)}" data-calendar-room="${room.id}"></div>`;
           }
 
           const status = getStayStatus(stay);
           const debtClass = getDebt(stay) > 0 ? "calendar-debt" : "";
-          if (status === "cancelled") return `<div class="calendar-cell ${day.getTime() === today.getTime() ? "calendar-today" : ""}"></div>`;
+          if (status === "cancelled") return `<div class="calendar-cell ${day.getTime() === today.getTime() ? "calendar-today" : ""}" data-calendar-day="${toInputDate(day)}" data-calendar-room="${room.id}"></div>`;
+          const visibleCheckOut =
+            calendarResizeState?.stayId === stay.id && calendarResizeState.previewCheckOut
+              ? calendarResizeState.previewCheckOut
+              : stay.checkOut;
+          const previewEnd = toDate(visibleCheckOut);
+          const inResizePreview =
+            calendarResizeState?.stayId === stay.id && day >= toDate(stay.checkOut) && day < previewEnd;
+          const isLastStayDay = isSameDate(day, addDays(previewEnd, -1));
+          const resizeHandle =
+            canExtendCheckoutOnly(stay) && isLastStayDay
+              ? '<span class="calendar-resize-handle" data-calendar-resize="' + stay.id + '" aria-hidden="true"></span>'
+              : "";
           return `
-            <button class="calendar-cell calendar-booked calendar-${status} ${debtClass} ${selectedCalendarStayId === stay.id ? "calendar-selected" : ""} ${highlightedCalendarStayId === stay.id ? "calendar-highlighted" : ""}" data-calendar-stay="${stay.id}" style="--booking-color: ${stay.color || defaultBookingColor}" title="${stay.guestName}">
+            <button class="calendar-cell calendar-booked calendar-${status} ${debtClass} ${inResizePreview ? "calendar-resize-preview" : ""} ${selectedCalendarStayId === stay.id ? "calendar-selected" : ""} ${highlightedCalendarStayId === stay.id ? "calendar-highlighted" : ""}" data-calendar-stay="${stay.id}" data-calendar-day="${toInputDate(day)}" data-calendar-room="${room.id}" style="--booking-color: ${stay.color || defaultBookingColor}" title="${stay.guestName}">
               <span>${stay.guestName.slice(0, 1)}</span>
+              ${resizeHandle}
             </button>
           `;
         })
@@ -1569,6 +1605,57 @@ function renderCalendar() {
     requestAnimationFrame(applyPendingCalendarScroll);
   }
   renderBookingDetails();
+}
+
+function getCalendarDateCellFromPoint(clientX, clientY, roomId) {
+  const element = document.elementFromPoint(clientX, clientY);
+  const cell = element?.closest?.("[data-calendar-day]");
+  if (!cell) return null;
+  if (roomId && cell.dataset.calendarRoom !== roomId) return null;
+  return cell;
+}
+
+function getExtendedCheckoutFromCell(stay, cell) {
+  if (!stay || !cell?.dataset.calendarDay) return "";
+  const targetDay = toDate(cell.dataset.calendarDay);
+  const originalCheckOut = toDate(stay.checkOut);
+  const nextCheckOut = addDays(targetDay, 1);
+  return toInputDate(nextCheckOut > originalCheckOut ? nextCheckOut : originalCheckOut);
+}
+
+function canPreviewCheckoutExtension(stay, nextCheckOut) {
+  if (!stay || !nextCheckOut) return false;
+  if (toDate(nextCheckOut) <= toDate(stay.checkOut)) return true;
+  return !hasRoomConflictForRange(stay.id, stay.roomId, stay.checkIn, nextCheckOut);
+}
+
+function extendStayCheckout(stayId, nextCheckOut) {
+  const stay = stays.find((item) => item.id === stayId);
+  if (!stay || !nextCheckOut || toDate(nextCheckOut) <= toDate(stay.checkOut)) return false;
+  if (!canPreviewCheckoutExtension(stay, nextCheckOut)) {
+    setFormMessage(t("common.roomConflict"), "error");
+    return false;
+  }
+
+  const nightlyRate = getStayNightlyRate(stay);
+  const nights = getNightCount(stay.checkIn, nextCheckOut);
+  const total = Math.max(nightlyRate * nights - Number(stay.discount || 0), 0);
+  const paid = getPaidAmount(stay);
+  const debt = Math.max(Number(stay.debt || 0), total - paid, 0);
+
+  stays = stays.map((item) =>
+    item.id === stayId
+      ? {
+          ...item,
+          checkOut: nextCheckOut,
+          nights,
+          total,
+          debt,
+          updatedAt: new Date().toISOString(),
+        }
+      : item
+  );
+  return true;
 }
 
 function formatDate(value) {
@@ -2454,8 +2541,31 @@ function bindEvents() {
     openCalendarStay(button.dataset.calendarStay);
   });
 
+  selectors.occupancyCalendar.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const handle = event.target.closest("[data-calendar-resize]");
+    if (!handle) return;
+    const stay = stays.find((item) => item.id === handle.dataset.calendarResize);
+    if (!stay || !canExtendCheckoutOnly(stay)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    calendarResizeState = {
+      pointerId: event.pointerId,
+      stayId: stay.id,
+      roomId: stay.roomId,
+      originalCheckOut: stay.checkOut,
+      previewCheckOut: stay.checkOut,
+      didDrag: false,
+    };
+    shouldSuppressCalendarClick = true;
+    selectors.calendarScroll.classList.add("resizing-booking");
+    selectors.occupancyCalendar.setPointerCapture?.(event.pointerId);
+  });
+
   selectors.calendarScroll.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    if (event.target.closest("[data-calendar-resize]")) return;
     const calendarCell = event.target.closest(".calendar-cell");
     if (!calendarCell) return;
 
@@ -2509,6 +2619,30 @@ function bindEvents() {
     if (calendarDragState.didDrag) event.preventDefault();
   });
 
+  selectors.occupancyCalendar.addEventListener("pointermove", (event) => {
+    if (!calendarResizeState || calendarResizeState.pointerId !== event.pointerId) return;
+    const stay = stays.find((item) => item.id === calendarResizeState.stayId);
+    if (!stay) return;
+
+    const cell = getCalendarDateCellFromPoint(event.clientX, event.clientY, calendarResizeState.roomId);
+    if (!cell) return;
+
+    const nextCheckOut = getExtendedCheckoutFromCell(
+      { ...stay, checkOut: calendarResizeState.originalCheckOut },
+      cell
+    );
+    if (!nextCheckOut || !canPreviewCheckoutExtension({ ...stay, checkOut: calendarResizeState.originalCheckOut }, nextCheckOut)) return;
+
+    if (nextCheckOut !== calendarResizeState.previewCheckOut) {
+      calendarResizeState.previewCheckOut = nextCheckOut;
+      calendarResizeState.didDrag = true;
+      selectedCalendarStayId = stay.id;
+      renderCalendar();
+      selectors.calendarScroll.classList.add("resizing-booking");
+    }
+    event.preventDefault();
+  });
+
   const finishCalendarDrag = (event) => {
     if (!calendarDragState || calendarDragState.pointerId !== event.pointerId) return;
     const didDrag = calendarDragState.didDrag;
@@ -2530,6 +2664,36 @@ function bindEvents() {
   selectors.calendarScroll.addEventListener("pointerup", finishCalendarDrag);
   selectors.calendarScroll.addEventListener("pointercancel", finishCalendarDrag);
   selectors.calendarScroll.addEventListener("lostpointercapture", finishCalendarDrag);
+
+  const finishCalendarResize = (event) => {
+    if (!calendarResizeState || calendarResizeState.pointerId !== event.pointerId) return;
+    const resizeState = calendarResizeState;
+    calendarResizeState = null;
+    selectors.calendarScroll.classList.remove("resizing-booking");
+    selectors.occupancyCalendar.releasePointerCapture?.(event.pointerId);
+
+    const didExtend = extendStayCheckout(resizeState.stayId, resizeState.previewCheckOut);
+    selectedCalendarStayId = resizeState.stayId;
+    shouldSuppressCalendarClick = true;
+    renderAll();
+
+    if (!didExtend) {
+      requestAnimationFrame(() => {
+        shouldSuppressCalendarClick = false;
+      });
+      return;
+    }
+
+    saveStays().then((saved) => {
+      if (!saved) console.error("Calendar resize was not saved.");
+      refreshStays();
+      shouldSuppressCalendarClick = false;
+    });
+  };
+
+  selectors.occupancyCalendar.addEventListener("pointerup", finishCalendarResize);
+  selectors.occupancyCalendar.addEventListener("pointercancel", finishCalendarResize);
+  selectors.occupancyCalendar.addEventListener("lostpointercapture", finishCalendarResize);
 
   selectors.bookingDetailsPanel.addEventListener("click", (event) => {
     const editButton = event.target.closest("[data-detail-edit]");
