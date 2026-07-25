@@ -875,13 +875,11 @@ td span {
 
 .calendar-booked:hover .calendar-resize-handle,
 .calendar-selected .calendar-resize-handle,
-.calendar-highlighted .calendar-resize-handle,
-.calendar-scroll.resizing-booking .calendar-resize-handle {
+.calendar-highlighted .calendar-resize-handle {
   opacity: 1;
 }
 
-.calendar-resize-handle:hover,
-.calendar-scroll.resizing-booking .calendar-resize-handle {
+.calendar-resize-handle:hover {
   transform: scaleX(1.18);
 }
 

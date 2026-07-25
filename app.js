@@ -1571,7 +1571,7 @@ function renderCalendar() {
             calendarResizeState?.stayId === stay.id && day >= toDate(stay.checkOut) && day < previewEnd;
           const isLastStayDay = isSameDate(day, addDays(previewEnd, -1));
           const resizeHandle =
-            canExtendCheckoutOnly(stay) && isLastStayDay
+            selectedCalendarStayId === stay.id && canExtendCheckoutOnly(stay) && isLastStayDay
               ? '<span class="calendar-resize-handle" data-calendar-resize="' + stay.id + '" aria-hidden="true"></span>'
               : "";
           return `
@@ -1596,7 +1596,12 @@ function renderCalendar() {
     .join("");
 
   selectors.occupancyCalendar.innerHTML = header + (rows || `<div class="calendar-empty-room">${t("common.selectRoom")}</div>`);
-  if (pendingCalendarScrollLeft === null && hasBuffer) {
+  if (pendingCalendarScrollLeft === null && calendarResizeState && selectors.calendarScroll) {
+    const resizeScrollLeft = selectors.calendarScroll.scrollLeft;
+    requestAnimationFrame(() => {
+      selectors.calendarScroll.scrollLeft = resizeScrollLeft;
+    });
+  } else if (pendingCalendarScrollLeft === null && hasBuffer) {
     requestAnimationFrame(() => {
       const dayWidth = getCalendarDayWidth();
       selectors.calendarScroll.scrollLeft = dayWidth * calendarBufferDays;
@@ -1618,20 +1623,22 @@ function getCalendarDateCellFromPoint(clientX, clientY, roomId) {
 function getExtendedCheckoutFromCell(stay, cell) {
   if (!stay || !cell?.dataset.calendarDay) return "";
   const targetDay = toDate(cell.dataset.calendarDay);
-  const originalCheckOut = toDate(stay.checkOut);
   const nextCheckOut = addDays(targetDay, 1);
-  return toInputDate(nextCheckOut > originalCheckOut ? nextCheckOut : originalCheckOut);
+  const minCheckOut = new Date(Math.max(addDays(toDate(stay.checkIn), 1).getTime(), todayDate().getTime()));
+  return toInputDate(nextCheckOut < minCheckOut ? minCheckOut : nextCheckOut);
 }
 
 function canPreviewCheckoutExtension(stay, nextCheckOut) {
   if (!stay || !nextCheckOut) return false;
+  const minCheckOut = new Date(Math.max(addDays(toDate(stay.checkIn), 1).getTime(), todayDate().getTime()));
+  if (toDate(nextCheckOut) < minCheckOut) return false;
   if (toDate(nextCheckOut) <= toDate(stay.checkOut)) return true;
   return !hasRoomConflictForRange(stay.id, stay.roomId, stay.checkIn, nextCheckOut);
 }
 
 function extendStayCheckout(stayId, nextCheckOut) {
   const stay = stays.find((item) => item.id === stayId);
-  if (!stay || !nextCheckOut || toDate(nextCheckOut) <= toDate(stay.checkOut)) return false;
+  if (!stay || !nextCheckOut || toInputDate(toDate(nextCheckOut)) === stay.checkOut) return false;
   if (!canPreviewCheckoutExtension(stay, nextCheckOut)) {
     setFormMessage(t("common.roomConflict"), "error");
     return false;
@@ -2634,6 +2641,7 @@ function bindEvents() {
     if (!nextCheckOut || !canPreviewCheckoutExtension({ ...stay, checkOut: calendarResizeState.originalCheckOut }, nextCheckOut)) return;
 
     if (nextCheckOut !== calendarResizeState.previewCheckOut) {
+      queueCalendarScrollLeft(selectors.calendarScroll.scrollLeft);
       calendarResizeState.previewCheckOut = nextCheckOut;
       calendarResizeState.didDrag = true;
       selectedCalendarStayId = stay.id;
