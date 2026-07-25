@@ -1603,7 +1603,8 @@ function hasBusyDateBetween(start, end, bookings) {
 
 function syncPendingDatesFromForm() {
   if (!selectors.stayForm) return;
-  pendingCheckIn = selectors.stayForm.checkIn.value;
+  const existing = stays.find((stay) => stay.id === editingStayId);
+  pendingCheckIn = isCheckoutOnlyDateEdit() && existing?.checkIn ? existing.checkIn : selectors.stayForm.checkIn.value;
   pendingCheckOut = selectors.stayForm.checkOut.value;
 }
 
@@ -1801,7 +1802,7 @@ function readFormStay() {
   const selectedCompanyId = String(formData.get("companyId") || "");
   const selectedCompany = companies.find((company) => company.id === selectedCompanyId);
   const newCompanyName = normalizeCompanyName(formData.get("companyNewName"));
-  const checkIn = String(formData.get("checkIn"));
+  const checkIn = isCheckoutOnlyDateEdit() && existing?.checkIn ? existing.checkIn : String(formData.get("checkIn"));
   const checkOut = String(formData.get("checkOut"));
   const nights = Number(formData.get("nights") || getNightCount(checkIn, checkOut));
 
@@ -2265,7 +2266,8 @@ function bindEvents() {
         setFormMessage(t("form.selectBothBeforeApply"), "error");
         return;
       }
-      selectors.stayForm.checkIn.value = pendingCheckIn;
+      const existing = stays.find((stay) => stay.id === editingStayId);
+      selectors.stayForm.checkIn.value = isCheckoutOnlyDateEdit() && existing?.checkIn ? existing.checkIn : pendingCheckIn;
       selectors.stayForm.checkOut.value = pendingCheckOut;
       updateEstimatedTotal({ force: isCheckoutOnlyDateEdit() });
       activeDateField = isCheckoutOnlyDateEdit() ? "checkOut" : "checkIn";
