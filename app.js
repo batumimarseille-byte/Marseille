@@ -1393,7 +1393,7 @@ function renderStaysTable() {
   if (!filtered.length) {
     selectors.staysTable.innerHTML = `
       <tr>
-        <td colspan="7" class="empty-table">${t("table.empty")}</td>
+        <td colspan="6" class="empty-table">${t("table.empty")}</td>
       </tr>
     `;
     return;
@@ -1407,7 +1407,7 @@ function renderStaysTable() {
       const isHighlighted = highlightedStayId === stay.id;
 
       return `
-        <tr class="${isHighlighted ? "journal-highlight" : ""}" data-stay-row="${stay.id}">
+        <tr class="clickable-record-row ${isHighlighted ? "journal-highlight" : ""}" data-stay-row="${stay.id}">
           <td>
             <strong>${stay.guestName}</strong>
             <span>${[stay.companyName, stay.notes || t("table.noNotes")].filter(Boolean).join(" · ")}</span>
@@ -1420,10 +1420,6 @@ function renderStaysTable() {
             <span class="${debt > 0 ? "debt-text" : "paid-text"}">${t("table.debt")}: ${formatNumber(debt)} ₾</span>
           </td>
           <td><span class="status-pill ${getStatusClass(status)}">${getStatusLabel(status)}</span></td>
-          <td class="row-actions">
-            <button class="edit-row" data-edit="${stay.id}" aria-label="${t("table.edit")}">${t("table.edit")}</button>
-            <button class="delete-row" data-delete="${stay.id}" aria-label="${t("table.delete")}">×</button>
-          </td>
         </tr>
       `;
     })
@@ -1501,6 +1497,11 @@ function queueCalendarScrollLeft(scrollLeft) {
   pendingCalendarScrollLeft = scrollLeft;
 }
 
+function preserveCalendarScrollPosition() {
+  if (!selectors.calendarScroll) return;
+  queueCalendarScrollLeft(selectors.calendarScroll.scrollLeft);
+}
+
 function applyPendingCalendarScroll() {
   if (pendingCalendarScrollLeft === null || !selectors.calendarScroll) return;
   selectors.calendarScroll.scrollLeft = Math.max(0, pendingCalendarScrollLeft);
@@ -1508,6 +1509,7 @@ function applyPendingCalendarScroll() {
 }
 
 function openCalendarStay(stayId) {
+  preserveCalendarScrollPosition();
   selectedCalendarStayId = stayId;
   highlightedCalendarStayId = null;
   renderCalendar();
@@ -2062,16 +2064,10 @@ function startNewStayForRoom(roomId) {
 
 function showStayInCalendar(stay) {
   if (!stay) return;
-  selectedCalendarStayId = null;
-  highlightedCalendarStayId = stay.id;
-  calendarStart = addDays(toDate(stay.checkIn), -3);
+  selectedCalendarStayId = stay.id;
+  highlightedCalendarStayId = null;
   showSection("calendar");
   renderCalendar();
-
-  requestAnimationFrame(() => {
-    const cell = selectors.occupancyCalendar.querySelector(`[data-calendar-stay="${stay.id}"]`);
-    cell?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
-  });
 }
 
 function getVisibleJournalFilter(filter) {
@@ -2509,24 +2505,9 @@ function bindEvents() {
   });
 
   selectors.staysTable.addEventListener("click", (event) => {
-    const editButton = event.target.closest("[data-edit]");
-    const deleteButton = event.target.closest("[data-delete]");
-
-    if (editButton) {
-      startEditStay(editButton.dataset.edit);
-      return;
-    }
-
-    if (!deleteButton) return;
-    if (!confirm(t("table.confirmDelete"))) return;
-    stays = stays.filter((stay) => stay.id !== deleteButton.dataset.delete);
-    if (editingStayId === deleteButton.dataset.delete) resetFormMode();
-    if (selectedCalendarStayId === deleteButton.dataset.delete) selectedCalendarStayId = null;
-    if (highlightedCalendarStayId === deleteButton.dataset.delete) highlightedCalendarStayId = null;
-    saveStays().then((saved) => {
-      if (!saved) console.error("Delete was not saved.");
-      refreshStays();
-    });
+    const row = event.target.closest("[data-stay-row]");
+    if (!row) return;
+    startEditStay(row.dataset.stayRow);
   });
 
   selectors.occupancyCalendar.addEventListener("click", (event) => {
@@ -2539,12 +2520,7 @@ function bindEvents() {
       return;
     }
 
-    if (!button) {
-      selectedCalendarStayId = null;
-      highlightedCalendarStayId = null;
-      renderCalendar();
-      return;
-    }
+    if (!button) return;
     openCalendarStay(button.dataset.calendarStay);
   });
 
@@ -2709,6 +2685,7 @@ function bindEvents() {
     const closeButton = event.target.closest("[data-detail-close]");
 
     if (closeButton) {
+      preserveCalendarScrollPosition();
       selectedCalendarStayId = null;
       highlightedCalendarStayId = null;
       renderCalendar();
