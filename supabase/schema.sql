@@ -69,6 +69,9 @@ add column if not exists discount_amount numeric(12, 2) not null default 0;
 alter table public.stays
 add column if not exists night_count integer not null default 0;
 
+alter table public.stays
+add column if not exists is_pinned boolean not null default false;
+
 update public.stays
 set night_count = greatest(check_out - check_in, 0)
 where night_count = 0;
@@ -78,6 +81,14 @@ create index if not exists stays_company_id_idx on public.stays (company_id);
 create index if not exists stays_check_in_idx on public.stays (check_in);
 create index if not exists stays_check_out_idx on public.stays (check_out);
 create index if not exists stays_debt_idx on public.stays (debt_amount);
+create index if not exists stays_pinned_idx on public.stays (is_pinned) where is_pinned = true;
+
+create table if not exists public.booking_colors (
+  id uuid primary key default gen_random_uuid(),
+  color text not null unique,
+  created_at timestamptz not null default now(),
+  constraint booking_colors_valid_color check (color ~ '^#[0-9A-Fa-f]{6}$')
+);
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -100,6 +111,7 @@ for each row execute function public.set_updated_at();
 alter table public.rooms enable row level security;
 alter table public.companies enable row level security;
 alter table public.stays enable row level security;
+alter table public.booking_colors enable row level security;
 
 -- First stage: one authenticated hotel user can manage everything.
 -- Later we can add roles if the hotel needs several staff accounts.
@@ -114,6 +126,13 @@ with check (true);
 drop policy if exists "Authenticated users can manage stays" on public.stays;
 create policy "Authenticated users can manage stays"
 on public.stays for all
+to authenticated
+using (true)
+with check (true);
+
+drop policy if exists "Authenticated users can manage booking colors" on public.booking_colors;
+create policy "Authenticated users can manage booking colors"
+on public.booking_colors for all
 to authenticated
 using (true)
 with check (true);

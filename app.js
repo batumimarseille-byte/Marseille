@@ -29,7 +29,14 @@ const storageKey = "hotel-desk-stays-v1";
 const roomPricesStorageKey = "hotel-desk-room-prices-v1";
 const activeSectionStorageKey = "hotel-desk-active-section-v1";
 const languageStorageKey = "hotel-desk-language-v1";
+const favoriteGuestStorageKey = "hotel-desk-favorite-guests-v1";
+const favoriteGuestMigrationStorageKey = "hotel-desk-favorite-guests-supabase-migrated-v1";
 const defaultBookingColor = "#4f7cff";
+const bookingCustomColorsStorageKey = "hotel-desk-booking-custom-colors-v2";
+const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df3", "#e978e0", "#e978b7", "#ef6669", "#ee8061", "#e89b43", "#d6bf38", "#b9df42", "#75c95d", "#6bcd65", "#3fbc83", "#2fb8aa", "#1cb7b8", "#22b8cf", "#36a4e9", "#5d85f2"];
+let pendingBookingColor = null;
+let customColorTone = 220;
+let customBookingColors = [];
 const languageFlagIcons = { en: flagUsUrl, ka: flagGeUrl };
 const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "calendar", "rooms"]);
 const calendarVisibleDays = 14;
@@ -64,6 +71,17 @@ const translations = {
   en: {
     brand: { eyebrow: "Hotel" },
     language: { label: "Language" },
+    settings: {
+      account: "Account",
+      title: "Account",
+      administrator: "Administrator",
+      role: "Hotel staff",
+      preferences: "Preferences",
+      language: "Language",
+      languageHint: "Choose the interface language",
+      session: "Session",
+      signOut: "Sign out",
+    },
     auth: {
       privateAccess: "Private access",
       title: "Sign in to dashboard",
@@ -259,6 +277,17 @@ const translations = {
   ka: {
     brand: { eyebrow: "სასტუმრო" },
     language: { label: "ენა" },
+    settings: {
+      account: "ანგარიში",
+      title: "ანგარიში",
+      administrator: "ადმინისტრატორი",
+      role: "სასტუმროს პერსონალი",
+      preferences: "პარამეტრები",
+      language: "ენა",
+      languageHint: "აირჩიეთ ინტერფეისის ენა",
+      session: "სესია",
+      signOut: "გასვლა",
+    },
     auth: {
       privateAccess: "პირადი წვდომა",
       title: "პანელში შესვლა",
@@ -497,6 +526,17 @@ const selectors = {
   companyNewInput: document.querySelector("#companyNewInput"),
   companyModeInputs: document.querySelectorAll('input[name="companyMode"]'),
   stayForm: document.querySelector("#stayForm"),
+  colorPalette: document.querySelector("#colorPalette"),
+  customColorPalette: document.querySelector("#customColorPalette"),
+  colorPaletteDivider: document.querySelector("#colorPaletteDivider"),
+  colorPicker: document.querySelector("#colorPicker"),
+  colorPickerTrigger: document.querySelector("#colorPickerTrigger"),
+  colorAddSwatch: document.querySelector("#colorAddSwatch"),
+  colorRemoveSwatch: document.querySelector("#colorRemoveSwatch"),
+  colorApplyButton: document.querySelector("#colorApplyButton"),
+  colorCustomControls: document.querySelector("#colorCustomControls"),
+  colorConfirmSwatch: document.querySelector("#colorConfirmSwatch"),
+  colorToneRange: document.querySelector("#colorToneRange"),
   formTitle: document.querySelector("#formTitle"),
   formMessage: document.querySelector("#formMessage"),
   formSubmitButton: document.querySelector("#formSubmitButton"),
@@ -536,6 +576,13 @@ const selectors = {
   mobileMenuToggle: document.querySelector("#mobileMenuToggle"),
   mobileMenuBackdrop: document.querySelector("#mobileMenuBackdrop"),
   sidebar: document.querySelector(".sidebar"),
+  settingsOverlay: document.querySelector("#settingsOverlay"),
+  settingsTrigger: document.querySelector("#settingsTrigger"),
+  settingsCloseButtons: document.querySelectorAll("[data-settings-close]"),
+  settingsLanguageButtons: document.querySelectorAll("[data-settings-language]"),
+  settingsSignOut: document.querySelector("#settingsSignOut"),
+  dashboardCalendarAction: document.querySelector("#dashboardCalendarAction"),
+  dashboardNewStayAction: document.querySelector("#dashboardNewStayAction"),
 };
 
 
@@ -619,8 +666,6 @@ function applyStaticTranslations() {
 }
 
 function updateLanguageToggle() {
-  if (!selectors.languageToggles?.length) return;
-
   const nextLanguage = currentLanguage === "ka" ? "English" : "ქართული";
   selectors.languageToggles.forEach((toggle) => {
     toggle.setAttribute("aria-label", `${t("language.label")}: ${nextLanguage}`);
@@ -629,6 +674,12 @@ function updateLanguageToggle() {
 
   selectors.languageToggleFlags.forEach((flag) => {
     flag.src = languageFlagIcons[currentLanguage] || languageFlagIcons.en;
+  });
+
+  selectors.settingsLanguageButtons.forEach((button) => {
+    const isSelected = button.dataset.settingsLanguage === currentLanguage;
+    button.classList.toggle("is-selected", isSelected);
+    button.setAttribute("aria-pressed", String(isSelected));
   });
 }
 
@@ -780,7 +831,190 @@ function getCompanyOptions() {
 function applySelectedCompanyColor() {
   const company = getCompanyById(selectors.companySelect?.value);
   if (!company || !selectors.stayForm?.color) return;
-  selectors.stayForm.color.value = getCompanyColor(company);
+  const companyColor = getCompanyColor(company).toLowerCase();
+  selectors.stayForm.color.value = getAvailableBookingColors().includes(companyColor)
+    ? companyColor
+    : getNextAvailableBookingColor();
+  renderColorPalette();
+}
+
+function getActiveBookingColors(excludeStayId = editingStayId) {
+  return new Set(
+    stays
+      .filter((stay) => stay.id !== excludeStayId && getStayStatus(stay) === "checked-in")
+      .map((stay) => String(stay.color || defaultBookingColor).toLowerCase())
+  );
+}
+
+function normalizeBookingColor(color) {
+  return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? String(color).toLowerCase() : null;
+}
+
+function getCustomToneColor(value = customColorTone) {
+  const hue = Math.max(0, Math.min(360, Number(value) || 0));
+  const chroma = 0.84 * (1 - Math.abs(2 * 0.61 - 1));
+  const x = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
+  const match = 0.61 - chroma / 2;
+  const [red, green, blue] = hue < 60 ? [chroma, x, 0]
+    : hue < 120 ? [x, chroma, 0]
+      : hue < 180 ? [0, chroma, x]
+        : hue < 240 ? [0, x, chroma]
+          : hue < 300 ? [x, 0, chroma]
+            : [chroma, 0, x];
+  const toHex = (channel) => Math.round((channel + match) * 255).toString(16).padStart(2, "0");
+  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
+}
+
+function readLocalCustomBookingColors() {
+  try {
+    const storedColors = JSON.parse(localStorage.getItem(bookingCustomColorsStorageKey) || "[]");
+    return Array.isArray(storedColors)
+      ? storedColors.map(normalizeBookingColor).filter(Boolean)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function getCustomBookingColors() {
+  return usesSupabase ? customBookingColors : readLocalCustomBookingColors();
+}
+
+async function loadCustomBookingColors() {
+  const localColors = readLocalCustomBookingColors();
+
+  if (!usesSupabase) {
+    customBookingColors = localColors;
+    return customBookingColors;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("booking_colors")
+    .select("color")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load booking colors", error);
+    customBookingColors = [];
+    return customBookingColors;
+  }
+
+  let cloudColors = (data || []).map((item) => normalizeBookingColor(item.color)).filter(Boolean);
+  const colorsToMigrate = localColors.filter((color) => (
+    !bookingColorPalette.includes(color) && !cloudColors.includes(color)
+  ));
+
+  if (colorsToMigrate.length > 0) {
+    const { data: migratedColors, error: migrateError } = await supabaseClient
+      .from("booking_colors")
+      .upsert(colorsToMigrate.map((color) => ({ color })), { onConflict: "color" })
+      .select("color");
+
+    if (migrateError) {
+      console.error("Failed to migrate booking colors", migrateError);
+    } else {
+      cloudColors = [...cloudColors, ...(migratedColors || []).map((item) => normalizeBookingColor(item.color)).filter(Boolean)];
+    }
+  }
+
+  customBookingColors = [...new Set(cloudColors)];
+  return customBookingColors;
+}
+
+function getBookingColorPalette() {
+  return [...new Set([...bookingColorPalette, ...getCustomBookingColors()])];
+}
+
+async function saveCustomBookingColor(color) {
+  const normalizedColor = normalizeBookingColor(color);
+  if (!normalizedColor || bookingColorPalette.includes(normalizedColor)) return normalizedColor;
+
+  if (!usesSupabase) {
+    const colors = [...new Set([...readLocalCustomBookingColors(), normalizedColor])];
+    localStorage.setItem(bookingCustomColorsStorageKey, JSON.stringify(colors));
+    customBookingColors = colors;
+    return normalizedColor;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("booking_colors")
+    .upsert({ color: normalizedColor }, { onConflict: "color" })
+    .select("color")
+    .single();
+
+  if (error) {
+    console.error("Failed to save booking color", error);
+    return null;
+  }
+
+  customBookingColors = [...new Set([...customBookingColors, normalizeBookingColor(data?.color) || normalizedColor])];
+  return normalizedColor;
+}
+
+async function removeCustomBookingColor(color) {
+  const normalizedColor = normalizeBookingColor(color);
+  if (!normalizedColor || bookingColorPalette.includes(normalizedColor)) return false;
+
+  if (!usesSupabase) {
+    const colors = readLocalCustomBookingColors().filter((item) => item !== normalizedColor);
+    localStorage.setItem(bookingCustomColorsStorageKey, JSON.stringify(colors));
+    customBookingColors = colors;
+    return true;
+  }
+
+  const { error } = await supabaseClient
+    .from("booking_colors")
+    .delete()
+    .eq("color", normalizedColor);
+
+  if (error) {
+    console.error("Failed to remove booking color", error);
+    return false;
+  }
+
+  customBookingColors = customBookingColors.filter((item) => item !== normalizedColor);
+  return true;
+}
+
+function getAvailableBookingColors(excludeStayId = editingStayId) {
+  const activeColors = getActiveBookingColors(excludeStayId);
+  return getBookingColorPalette().filter((color) => !activeColors.has(color));
+}
+
+function getNextAvailableBookingColor(excludeStayId = editingStayId) {
+  return getAvailableBookingColors(excludeStayId)[0] || defaultBookingColor;
+}
+
+function renderColorPalette({ keepOpen = false, keepAdding = false } = {}) {
+  if (!selectors.colorPalette || !selectors.stayForm?.color) return;
+
+  const selectedColor = String(selectors.stayForm.color.value || defaultBookingColor).toLowerCase();
+  const draftColor = normalizeBookingColor(pendingBookingColor) || selectedColor;
+  const activeColors = getActiveBookingColors();
+  const customColors = [...new Set([...getCustomBookingColors(), ...(!bookingColorPalette.includes(selectedColor) ? [selectedColor] : []), ...(!bookingColorPalette.includes(draftColor) ? [draftColor] : [])])];
+  const renderSwatches = (colors) => colors
+    .map((color) => {
+      const selected = color === draftColor;
+      const unavailable = activeColors.has(color) && !selected;
+      return `<button type="button" class="color-swatch${selected ? " is-selected" : ""}" data-booking-color="${color}" role="radio" aria-checked="${selected}" aria-label="${color}" title="${unavailable ? "In use" : "Select color"}"${unavailable ? " disabled" : ""} style="--swatch-color: ${color}"></button>`;
+    })
+    .join("");
+
+  selectors.colorPalette.innerHTML = renderSwatches(bookingColorPalette);
+  if (selectors.customColorPalette) selectors.customColorPalette.innerHTML = renderSwatches(customColors);
+  selectors.colorPaletteDivider?.classList.toggle("hidden", customColors.length === 0);
+  selectors.customColorPalette?.classList.toggle("hidden", customColors.length === 0);
+
+  const canRemoveDraft = !bookingColorPalette.includes(draftColor) && getCustomBookingColors().includes(draftColor);
+  if (selectors.colorRemoveSwatch) selectors.colorRemoveSwatch.disabled = !canRemoveDraft;
+  selectors.colorPicker?.classList.toggle("is-open", keepOpen);
+  selectors.colorPicker?.classList.toggle("is-adding", keepOpen && keepAdding);
+  selectors.colorPickerTrigger?.setAttribute("aria-expanded", String(keepOpen));
+  selectors.colorPicker?.style.setProperty("--selected-color", selectedColor);
+  selectors.colorPicker?.style.setProperty("--draft-color", draftColor);
+  selectors.colorPicker?.style.setProperty("--custom-color", getCustomToneColor());
+  if (selectors.colorToneRange) selectors.colorToneRange.value = String(customColorTone);
+  if (!keepOpen) pendingBookingColor = null;
 }
 
 function mapRoomFromDatabase(row) {
@@ -864,6 +1098,7 @@ function mapStayFromDatabase(row) {
     debt: Number(row.debt_amount || 0),
     notes: row.notes || "",
     color: row.color || defaultBookingColor,
+    isPinned: Boolean(row.is_pinned),
     status: row.is_cancelled ? "cancelled" : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -887,6 +1122,7 @@ function mapStayToDatabase(stay) {
     invoice_amount: Number(stay.invoice || 0),
     debt_amount: Number(stay.debt || 0),
     notes: stay.notes || "",
+    is_pinned: Boolean(stay.isPinned),
     is_cancelled: stay.status === "cancelled",
   };
 }
@@ -1022,7 +1258,7 @@ async function loadStays() {
   return (data || []).map(mapStayFromDatabase);
 }
 
-async function saveStays() {
+async function saveStay(stayId) {
   if (!usesSupabase) {
     await ensureStayCompanies();
     populateCompanyOptions();
@@ -1033,50 +1269,42 @@ async function saveStays() {
   const companiesSaved = await ensureStayCompanies();
   if (!companiesSaved) return false;
 
-  const nextRows = stays.map(mapStayToDatabase);
-  const nextIds = nextRows.map((row) => row.id);
-
-  const { data: existingRows, error: selectError } = await supabaseClient
-    .from("stays")
-    .select("id");
-
-  if (selectError) {
-    console.error("Failed to read existing stays", selectError);
-    return false;
-  }
-
-  const idsToDelete = (existingRows || [])
-    .map((row) => row.id)
-    .filter((id) => !nextIds.includes(id));
-
-  if (idsToDelete.length > 0) {
-    const { error: deleteError } = await supabaseClient
-      .from("stays")
-      .delete()
-      .in("id", idsToDelete);
-
-    if (deleteError) {
-      console.error("Failed to delete removed stays", deleteError);
-      return false;
-    }
-  }
-
-  if (nextRows.length === 0) return true;
+  const stay = stays.find((item) => item.id === stayId);
+  if (!stay) return false;
 
   let { error: upsertError } = await supabaseClient
     .from("stays")
-    .upsert(nextRows, { onConflict: "id" });
+    .upsert(mapStayToDatabase(stay), { onConflict: "id" });
 
   if (upsertError && String(upsertError.message || "").includes("night_count")) {
-    const rowsWithoutNightCount = nextRows.map(({ night_count: _nightCount, ...row }) => row);
+    const { night_count: _nightCount, ...rowWithoutNightCount } = mapStayToDatabase(stay);
     const retryResult = await supabaseClient
       .from("stays")
-      .upsert(rowsWithoutNightCount, { onConflict: "id" });
+      .upsert(rowWithoutNightCount, { onConflict: "id" });
     upsertError = retryResult.error;
   }
 
   if (upsertError) {
     console.error("Failed to save stays", upsertError);
+    return false;
+  }
+
+  return true;
+}
+
+async function deleteStay(stayId) {
+  if (!usesSupabase) {
+    saveLocalStays();
+    return true;
+  }
+
+  const { error } = await supabaseClient
+    .from("stays")
+    .delete()
+    .eq("id", stayId);
+
+  if (error) {
+    console.error("Failed to delete stay", error);
     return false;
   }
 
@@ -1342,8 +1570,115 @@ function getRoomWord(count) {
   return count === 1 ? t("common.room") : t("common.rooms");
 }
 
+function getLegacyFavoriteGuestIds() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(favoriteGuestStorageKey) || "[]");
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function getFavoriteGuestIds() {
+  if (usesSupabase) {
+    return new Set(stays.filter((stay) => stay.isPinned).map((stay) => stay.id));
+  }
+
+  return getLegacyFavoriteGuestIds();
+}
+
+async function migrateLegacyFavoriteGuests() {
+  if (!usesSupabase || localStorage.getItem(favoriteGuestMigrationStorageKey)) return;
+
+  const legacyIds = [...getLegacyFavoriteGuestIds()].filter((id) => stays.some((stay) => stay.id === id));
+  if (!legacyIds.length) {
+    localStorage.setItem(favoriteGuestMigrationStorageKey, "true");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("stays")
+    .update({ is_pinned: true })
+    .in("id", legacyIds);
+
+  if (error) {
+    console.error("Failed to migrate favorite guests", error);
+    return;
+  }
+
+  const favoriteIds = new Set(legacyIds);
+  stays = stays.map((stay) => (favoriteIds.has(stay.id) ? { ...stay, isPinned: true } : stay));
+  localStorage.setItem(favoriteGuestMigrationStorageKey, "true");
+}
+
+async function toggleFavoriteGuest(stayId) {
+  const stay = stays.find((item) => item.id === stayId);
+  if (!stay) return false;
+
+  if (!usesSupabase) {
+    const favorites = getLegacyFavoriteGuestIds();
+    if (favorites.has(stayId)) favorites.delete(stayId);
+    else favorites.add(stayId);
+    localStorage.setItem(favoriteGuestStorageKey, JSON.stringify([...favorites]));
+    return true;
+  }
+
+  const isPinned = !stay.isPinned;
+  stays = stays.map((item) => (item.id === stayId ? { ...item, isPinned } : item));
+  const { error } = await supabaseClient
+    .from("stays")
+    .update({ is_pinned: isPinned })
+    .eq("id", stayId);
+
+  if (error) {
+    console.error("Failed to update favorite guest", error);
+    stays = stays.map((item) => (item.id === stayId ? { ...item, isPinned: !isPinned } : item));
+    return false;
+  }
+
+  return true;
+}
+
+function animateActiveGuestReorder(previousPositions) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  selectors.activeGuestList.querySelectorAll("[data-active-stay]").forEach((card) => {
+    const previous = previousPositions.get(card.dataset.activeStay);
+    if (!previous) return;
+
+    const next = card.getBoundingClientRect();
+    const translateY = previous.top - next.top;
+    if (Math.abs(translateY) < 1) return;
+
+    card.animate(
+      [{ transform: `translateY(${translateY}px)` }, { transform: "translateY(0)" }],
+      { duration: 280, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    );
+  });
+}
+
+function syncOverviewPanelHeights() {
+  const occupancyPanel = selectors.roomMap?.closest(".panel");
+  const activeGuestsPanel = document.querySelector(".active-guests-panel");
+
+  if (
+    !occupancyPanel ||
+    !activeGuestsPanel ||
+    window.innerWidth < 1025 ||
+    !occupancyPanel.offsetParent
+  ) {
+    activeGuestsPanel?.style.removeProperty("height");
+    return;
+  }
+
+  activeGuestsPanel.style.height = `${Math.ceil(occupancyPanel.getBoundingClientRect().height)}px`;
+}
+
 function renderActiveGuests() {
-  const active = stays.filter((stay) => getStayStatus(stay) === "checked-in");
+  const favorites = getFavoriteGuestIds();
+  const active = stays
+    .filter((stay) => getStayStatus(stay) === "checked-in")
+    .sort((first, second) => Number(favorites.has(second.id)) - Number(favorites.has(first.id)));
 
   if (!active.length) {
     selectors.activeGuestList.innerHTML = `<div class="empty-state">${t("activeGuests.empty")}</div>`;
@@ -1353,15 +1688,20 @@ function renderActiveGuests() {
   selectors.activeGuestList.innerHTML = active
     .map((stay) => {
       const room = getRoom(stay.roomId);
+      const isFavorite = favorites.has(stay.id);
       return `
-        <button type="button" class="guest-card active-guest-card" data-active-stay="${stay.id}" style="--guest-color: ${stay.color || defaultBookingColor}">
+        <article class="guest-card active-guest-card${isFavorite ? " is-favorite" : ""}" data-active-stay="${stay.id}" role="button" tabindex="0" style="--guest-color: ${stay.color || defaultBookingColor}">
+          <button type="button" class="guest-favorite" data-toggle-favorite="${stay.id}" aria-pressed="${isFavorite}" aria-label="${isFavorite ? "Remove from favorites" : "Add to favorites"}" title="${isFavorite ? "Remove from favorites" : "Add to favorites"}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2Z" /></svg>
+          </button>
           <div>
             <strong>${stay.guestName}</strong>
             <span>${room.id} · ${roomTypeLabel(room.type)}${stay.companyName ? " · " + stay.companyName : ""}</span>
           </div>
           <p>${t("activeGuests.checkout")}: ${formatDate(stay.checkOut)}</p>
+          ${stay.notes ? `<p class="guest-note">${stay.notes}</p>` : ""}
           <small>${t("activeGuests.review")}</small>
-        </button>
+        </article>
       `;
     })
     .join("");
@@ -1899,12 +2239,14 @@ function mountStayForm(sectionName) {
 
 function renderAll() {
   renderFormDateCalendar();
+  renderColorPalette();
   renderStats();
   renderRoomMap();
   renderRoomGroups();
   renderActiveGuests();
   renderStaysTable();
   renderCalendar();
+  requestAnimationFrame(syncOverviewPanelHeights);
 }
 
 function readFormStay() {
@@ -1946,6 +2288,11 @@ async function handleFormSubmit(event) {
   const wasEditing = Boolean(editingStayId);
   const stay = readFormStay();
 
+  if (getStayStatus(stay) === "checked-in" && getActiveBookingColors(stay.id).has(stay.color.toLowerCase())) {
+    setFormMessage("Choose an available color.", "error");
+    return;
+  }
+
   if (!stay.checkIn || !stay.checkOut) {
     setFormMessage(t("common.selectBothDates"), "error");
     return;
@@ -1974,7 +2321,7 @@ async function handleFormSubmit(event) {
     setFormMessage(t("common.staySaved"), "success");
   }
 
-  const saved = await saveStays();
+  const saved = await saveStay(stay.id);
   if (!saved) {
     setFormMessage(t("common.saveError"), "error");
     return;
@@ -2024,6 +2371,7 @@ function startEditStay(id) {
   selectors.stayForm.debt.value = stay.debt || 0;
   selectors.stayForm.notes.value = stay.notes || "";
   selectors.stayForm.color.value = stay.color || defaultBookingColor;
+  renderColorPalette();
   updateFormNumberStates();
 
   selectors.formTitle.textContent = t("form.editStay");
@@ -2038,6 +2386,8 @@ function resetFormMode() {
   editingStayId = null;
   checkoutOnlyEditStayId = null;
   selectors.stayForm.reset();
+  selectors.stayForm.color.value = getNextAvailableBookingColor();
+  renderColorPalette();
   updateFormNumberStates();
   lastAutoTotalAmount = "";
   totalAmountWasEdited = false;
@@ -2090,6 +2440,14 @@ function resetTransientState() {
   highlightedStayId = null;
   isDatePickerOpen = false;
   formDateHover = null;
+  pendingBookingColor = null;
+  calendarDragState = null;
+  calendarResizeState = null;
+  shouldSuppressCalendarClick = false;
+  selectors.colorPicker?.classList.remove("is-open", "is-adding");
+  selectors.colorPickerTrigger?.setAttribute("aria-expanded", "false");
+  selectors.activeGuestList?.scrollTo({ top: 0 });
+  selectors.calendarScroll?.scrollTo({ top: 0, left: 0 });
   resetFormMode();
 }
 
@@ -2150,6 +2508,7 @@ function resetFormDates() {
   isDatePickerOpen = false;
   formDateHover = null;
   formCalendarMonth = startOfMonth(todayDate());
+  updateDateRangeDisplay();
   updateEstimatedTotal();
 }
 
@@ -2177,6 +2536,10 @@ function showSection(sectionName) {
   if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
   selectors.topbarActions?.classList.toggle("hidden", sectionName !== "dashboard");
   updateLanguageToggle();
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    if (sectionName === "dashboard") syncOverviewPanelHeights();
+  });
 }
 
 function sectionToId(sectionName) {
@@ -2200,6 +2563,23 @@ function setStorageCardContent(title, text, showLogout) {
   selectors.logoutButtons.forEach((button) => {
     button.classList.toggle("hidden", !showLogout);
   });
+}
+
+function setSettingsOpen(isOpen) {
+  selectors.settingsOverlay?.classList.toggle("is-open", isOpen);
+  selectors.settingsOverlay?.setAttribute("aria-hidden", String(!isOpen));
+  selectors.settingsTrigger?.setAttribute("aria-expanded", String(isOpen));
+  document.body.classList.toggle("settings-open", isOpen);
+}
+
+async function signOut() {
+  setSettingsOpen(false);
+  selectors.appShell?.classList.add("app-loading");
+  if (usesSupabase) await supabaseClient.auth.signOut();
+  stays = [];
+  resetFormMode();
+  renderAll();
+  await requireSession();
 }
 
 async function requireSession() {
@@ -2253,6 +2633,18 @@ function bindEvents() {
 
   selectors.mobileMenuBackdrop?.addEventListener("click", () => setMobileMenuOpen(false));
 
+  selectors.settingsTrigger?.addEventListener("click", () => setSettingsOpen(true));
+  selectors.settingsCloseButtons.forEach((button) => button.addEventListener("click", () => setSettingsOpen(false)));
+  selectors.settingsLanguageButtons.forEach((button) => {
+    button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
+  });
+  selectors.settingsSignOut?.addEventListener("click", signOut);
+  selectors.dashboardCalendarAction?.addEventListener("click", () => navigateToSection("calendar"));
+  selectors.dashboardNewStayAction?.addEventListener("click", () => navigateToSection("new-stay"));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && selectors.settingsOverlay?.classList.contains("is-open")) setSettingsOpen(false);
+  });
+
   selectors.languageToggles?.forEach((toggle) => {
     toggle.addEventListener("click", () => {
       setLanguage(currentLanguage === "ka" ? "en" : "ka");
@@ -2269,6 +2661,61 @@ function bindEvents() {
   });
 
   selectors.companySelect?.addEventListener("change", applySelectedCompanyColor);
+
+  selectors.colorPicker?.addEventListener("click", (event) => {
+    const swatch = event.target.closest("[data-booking-color]");
+    if (!swatch || swatch.disabled || !selectors.stayForm?.color) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pendingBookingColor = swatch.dataset.bookingColor;
+    renderColorPalette({ keepOpen: true, keepAdding: selectors.colorPicker?.classList.contains("is-adding") });
+  });
+
+  selectors.colorPickerTrigger?.addEventListener("click", () => {
+    const isOpen = !selectors.colorPicker?.classList.contains("is-open");
+    pendingBookingColor = isOpen ? selectors.stayForm?.color.value : null;
+    renderColorPalette({ keepOpen: isOpen });
+  });
+
+  selectors.colorAddSwatch?.addEventListener("click", () => {
+    selectors.colorPicker?.classList.add("is-adding");
+    selectors.colorToneRange?.focus();
+  });
+
+  selectors.colorToneRange?.addEventListener("input", () => {
+    customColorTone = Number(selectors.colorToneRange.value);
+    selectors.colorPicker?.style.setProperty("--custom-color", getCustomToneColor());
+  });
+
+  selectors.colorConfirmSwatch?.addEventListener("click", async () => {
+    const color = normalizeBookingColor(getCustomToneColor());
+    if (!color || getActiveBookingColors().has(color)) return;
+    const saved = await saveCustomBookingColor(color);
+    if (!saved) return;
+    pendingBookingColor = color;
+    renderColorPalette({ keepOpen: true });
+  });
+
+  selectors.colorRemoveSwatch?.addEventListener("click", async () => {
+    const color = normalizeBookingColor(pendingBookingColor);
+    if (!color || getActiveBookingColors().has(color) || !(await removeCustomBookingColor(color))) return;
+    pendingBookingColor = selectors.stayForm?.color.value || defaultBookingColor;
+    renderColorPalette({ keepOpen: true, keepAdding: selectors.colorPicker?.classList.contains("is-adding") });
+  });
+
+  selectors.colorApplyButton?.addEventListener("click", () => {
+    const color = normalizeBookingColor(pendingBookingColor);
+    if (!color || getActiveBookingColors().has(color) || !selectors.stayForm?.color) return;
+    selectors.stayForm.color.value = color;
+    renderColorPalette();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (selectors.colorPicker && !selectors.colorPicker.contains(event.target)) {
+      selectors.colorPicker.classList.remove("is-open");
+      selectors.colorPickerTrigger?.setAttribute("aria-expanded", "false");
+    }
+  });
 
   selectors.stayForm.roomId.addEventListener("change", () => {
     if (!editingStayId) {
@@ -2668,7 +3115,7 @@ function bindEvents() {
       return;
     }
 
-    saveStays().then((saved) => {
+    saveStay(resizeState.stayId).then((saved) => {
       if (!saved) console.error("Calendar resize was not saved.");
       refreshStays();
       shouldSuppressCalendarClick = false;
@@ -2698,10 +3145,11 @@ function bindEvents() {
 
     if (!deleteButton) return;
     if (!confirm(t("table.confirmDelete"))) return;
-    stays = stays.filter((stay) => stay.id !== deleteButton.dataset.detailDelete);
+    const deletedStayId = deleteButton.dataset.detailDelete;
+    stays = stays.filter((stay) => stay.id !== deletedStayId);
     selectedCalendarStayId = null;
-    if (highlightedCalendarStayId === deleteButton.dataset.detailDelete) highlightedCalendarStayId = null;
-    saveStays().then((saved) => {
+    if (highlightedCalendarStayId === deletedStayId) highlightedCalendarStayId = null;
+    deleteStay(deletedStayId).then((saved) => {
       if (!saved) console.error("Delete was not saved.");
       refreshStays();
     });
@@ -2741,11 +3189,38 @@ function bindEvents() {
     renderRoomGroups();
   });
 
-  selectors.activeGuestList.addEventListener("click", (event) => {
+  selectors.activeGuestList.addEventListener("click", async (event) => {
+    const favoriteButton = event.target.closest("[data-toggle-favorite]");
+    if (favoriteButton) {
+      event.stopPropagation();
+      const previousPositions = new Map(
+        [...selectors.activeGuestList.querySelectorAll("[data-active-stay]")].map((card) => [
+          card.dataset.activeStay,
+          card.getBoundingClientRect(),
+        ]),
+      );
+      const updated = await toggleFavoriteGuest(favoriteButton.dataset.toggleFavorite);
+      if (!updated) return;
+      renderActiveGuests();
+      animateActiveGuestReorder(previousPositions);
+      selectors.activeGuestList.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
     const guestButton = event.target.closest("[data-active-stay]");
     if (!guestButton) return;
     startEditStay(guestButton.dataset.activeStay);
   });
+
+  selectors.activeGuestList.addEventListener("keydown", (event) => {
+    if (event.target.closest("[data-toggle-favorite]") || !["Enter", " "].includes(event.key)) return;
+    const guestCard = event.target.closest("[data-active-stay]");
+    if (!guestCard) return;
+    event.preventDefault();
+    startEditStay(guestCard.dataset.activeStay);
+  });
+
+  window.addEventListener("resize", syncOverviewPanelHeights);
 
   selectors.calendarPrevButton.addEventListener("click", () => {
     calendarStart = addDays(calendarStart, -14);
@@ -2784,13 +3259,7 @@ function bindEvents() {
   });
 
   selectors.logoutButtons.forEach((button) => {
-    button.addEventListener("click", async () => {
-      if (usesSupabase) await supabaseClient.auth.signOut();
-      stays = [];
-      resetFormMode();
-      renderAll();
-      await requireSession();
-    });
+    button.addEventListener("click", signOut);
   });
 }
 
@@ -2801,6 +3270,8 @@ async function startApp() {
   rooms = await loadRooms();
   companies = usesSupabase ? await loadCompanies() : [];
   stays = await loadStays();
+  await loadCustomBookingColors();
+  await migrateLegacyFavoriteGuests();
   if (!usesSupabase) companies = await loadCompanies();
   populateRoomSelect();
   populateCompanyOptions();
@@ -2810,6 +3281,7 @@ async function startApp() {
   didJustSignIn = false;
   showSection(targetSection);
   renderAll();
+  selectors.appShell?.classList.remove("app-loading");
 }
 
 async function init() {
