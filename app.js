@@ -511,6 +511,7 @@ let lastAutoTotalAmount = "";
 let nightlyRateWasEdited = false;
 let isUpdatingNightlyRate = false;
 let pendingCompanyColorUpdates = new Map();
+let openCustomDropdown = null;
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
@@ -523,6 +524,8 @@ const selectors = {
   pageDescription: document.querySelector("#pageDescription"),
   roomSelect: document.querySelector("#roomSelect"),
   companySelect: document.querySelector("#companySelect"),
+  roomDropdown: document.querySelector("#roomDropdown"),
+  companyDropdown: document.querySelector("#companyDropdown"),
   companyNewInput: document.querySelector("#companyNewInput"),
   companyModeInputs: document.querySelectorAll('input[name="companyMode"]'),
   stayForm: document.querySelector("#stayForm"),
@@ -703,6 +706,7 @@ function setLanguage(language) {
   if (selectors.pageTitle) selectors.pageTitle.textContent = header.title;
   if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
 
+  renderCustomDropdowns();
   renderAll();
 }
 
@@ -764,6 +768,15 @@ function normalizeCompanyName(name) {
   return String(name || "").trim().replace(/\s+/g, " ");
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getCompanyNameById(companyId) {
   return companies.find((company) => company.id === companyId)?.name || "";
 }
@@ -788,6 +801,7 @@ function populateCompanyOptions(selectedCompanyId = selectors.companySelect?.val
   ].join("");
 
   selectors.companySelect.value = companies.some((company) => company.id === selectedCompanyId) ? selectedCompanyId : "";
+  renderCustomDropdown("company");
 }
 
 function setCompanyMode(mode) {
@@ -797,6 +811,7 @@ function setCompanyMode(mode) {
     input.checked = input.value === nextMode;
   });
   selectors.companySelect?.classList.toggle("hidden", nextMode !== "existing");
+  selectors.companyDropdown?.classList.toggle("hidden", nextMode !== "existing");
   selectors.companyNewInput?.classList.toggle("hidden", nextMode !== "new");
 
   if (nextMode === "new") {
@@ -804,6 +819,7 @@ function setCompanyMode(mode) {
   } else if (selectors.companyNewInput) {
     selectors.companyNewInput.value = "";
   }
+  renderCustomDropdown("company");
 }
 
 function getCompanyOptions() {
@@ -1521,6 +1537,112 @@ function populateRoomSelect() {
   selectors.roomSelect.innerHTML = rooms
     .map((room) => `<option value="${room.id}">${room.id} · ${roomTypeLabel(room.type)}</option>`)
     .join("");
+  renderCustomDropdown("room");
+}
+
+function getCompanyDropdownItems() {
+  return [
+    { value: "", title: t("form.companyNone"), meta: "", color: "#cbd5e1" },
+    ...companies
+      .slice()
+      .sort((first, second) => normalizeCompanyName(first.name).localeCompare(normalizeCompanyName(second.name), getLocale()))
+      .map((company) => ({
+        value: company.id,
+        title: normalizeCompanyName(company.name),
+        meta: "",
+        color: getCompanyColor(company),
+      })),
+  ];
+}
+
+function getRoomDropdownItems() {
+  return rooms.map((room) => ({
+    value: room.id,
+    title: `${room.id} · ${roomTypeLabel(room.type)}`,
+    meta: "",
+    color: "",
+  }));
+}
+
+function getDropdownConfig(type) {
+  if (type === "company") {
+    return {
+      container: selectors.companyDropdown,
+      select: selectors.companySelect,
+      items: getCompanyDropdownItems(),
+      placeholder: t("form.companyNone"),
+    };
+  }
+
+  return {
+    container: selectors.roomDropdown,
+    select: selectors.roomSelect,
+    items: getRoomDropdownItems(),
+    placeholder: t("form.room"),
+  };
+}
+
+function renderCustomDropdown(type) {
+  const config = getDropdownConfig(type);
+  if (!config.container || !config.select) return;
+
+  const isOpen = openCustomDropdown === type && !config.container.classList.contains("hidden");
+  const selectedValue = config.select.value;
+  const selectedItem = config.items.find((item) => item.value === selectedValue) || config.items[0] || {
+    value: "",
+    title: config.placeholder,
+    meta: "",
+    color: "#cbd5e1",
+  };
+
+  const options = config.items
+    .map((item) => {
+      const isSelected = item.value === selectedValue;
+      return `
+        <button class="align-dropdown-option${isSelected ? " is-selected" : ""}" type="button" role="option" aria-selected="${isSelected}" data-dropdown-value="${escapeHtml(item.value)}">
+          <span class="align-dropdown-option-copy">
+            <strong>${escapeHtml(item.title)}</strong>
+            ${item.meta ? `<small>${escapeHtml(item.meta)}</small>` : ""}
+          </span>
+          <span class="align-dropdown-check" aria-hidden="true">✓</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  config.container.classList.toggle("is-open", isOpen);
+  config.container.innerHTML = `
+    <button class="align-dropdown-trigger" type="button" aria-haspopup="listbox" aria-expanded="${isOpen}" data-dropdown-trigger="${type}">
+      <span class="align-dropdown-trigger-copy">
+        <strong>${escapeHtml(selectedItem.title)}</strong>
+        ${selectedItem.meta ? `<small>${escapeHtml(selectedItem.meta)}</small>` : ""}
+      </span>
+      <span class="align-dropdown-chevron" aria-hidden="true"></span>
+    </button>
+    <div class="align-dropdown-menu" role="listbox" aria-label="${escapeHtml(config.placeholder)}">
+      ${options}
+    </div>
+  `;
+}
+
+function renderCustomDropdowns() {
+  renderCustomDropdown("company");
+  renderCustomDropdown("room");
+}
+
+function closeCustomDropdowns() {
+  if (!openCustomDropdown) return;
+  openCustomDropdown = null;
+  renderCustomDropdowns();
+}
+
+function setCustomDropdownValue(type, value) {
+  const config = getDropdownConfig(type);
+  if (!config.select) return;
+  config.select.value = value;
+  config.select.dispatchEvent(new Event("change", { bubbles: true }));
+  openCustomDropdown = null;
+  renderCustomDropdowns();
 }
 
 
@@ -2351,6 +2473,7 @@ function startEditStay(id) {
     selectors.companyNewInput.value = companyName;
   }
   selectors.stayForm.roomId.value = stay.roomId;
+  renderCustomDropdowns();
   selectors.stayForm.checkIn.value = stay.checkIn;
   selectors.stayForm.checkOut.value = stay.checkOut;
   formDateHover = null;
@@ -2400,6 +2523,7 @@ function resetFormMode() {
   setFormMessage("", "");
   setDefaultDates();
   updateEstimatedTotal({ force: true, forceNightly: true });
+  renderCustomDropdowns();
   renderFormDateCalendar();
 }
 
@@ -2407,6 +2531,7 @@ function startNewStayForRoom(roomId) {
   if (!rooms.some((room) => room.id === roomId)) return;
   resetFormMode();
   selectors.stayForm.roomId.value = roomId;
+  renderCustomDropdown("room");
   updateEstimatedTotal({ force: true, forceNightly: true });
   showSection("new-stay");
   renderFormDateCalendar();
@@ -2643,6 +2768,7 @@ function bindEvents() {
   selectors.dashboardNewStayAction?.addEventListener("click", () => navigateToSection("new-stay"));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && selectors.settingsOverlay?.classList.contains("is-open")) setSettingsOpen(false);
+    if (event.key === "Escape") closeCustomDropdowns();
   });
 
   selectors.languageToggles?.forEach((toggle) => {
@@ -2661,6 +2787,25 @@ function bindEvents() {
   });
 
   selectors.companySelect?.addEventListener("change", applySelectedCompanyColor);
+
+  document.addEventListener("click", (event) => {
+    const dropdown = event.target.closest(".align-dropdown");
+    const option = event.target.closest("[data-dropdown-value]");
+    const trigger = event.target.closest("[data-dropdown-trigger]");
+
+    if (option && dropdown?.dataset.dropdown) {
+      setCustomDropdownValue(dropdown.dataset.dropdown, option.dataset.dropdownValue || "");
+      return;
+    }
+
+    if (trigger && dropdown?.dataset.dropdown) {
+      openCustomDropdown = openCustomDropdown === dropdown.dataset.dropdown ? null : dropdown.dataset.dropdown;
+      renderCustomDropdowns();
+      return;
+    }
+
+    if (!dropdown) closeCustomDropdowns();
+  });
 
   selectors.colorPicker?.addEventListener("click", (event) => {
     const swatch = event.target.closest("[data-booking-color]");

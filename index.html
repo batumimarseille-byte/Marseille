@@ -167,7 +167,8 @@
                     </label>
                   </div>
                 </div>
-                <select name="companyId" id="companySelect"></select>
+                <select class="native-select-hidden" name="companyId" id="companySelect"></select>
+                <div class="align-dropdown" id="companyDropdown" data-dropdown="company"></div>
                 <input class="hidden" name="companyNewName" id="companyNewInput" type="text" placeholder="New company name" data-i18n-placeholder="form.companyNewPlaceholder" />
               </div>
 
@@ -193,8 +194,14 @@
                       <button class="color-confirm-swatch" id="colorConfirmSwatch" type="button">Add</button>
                     </div>
                     <div class="color-picker-actions">
-                      <button class="color-remove-swatch" id="colorRemoveSwatch" type="button" aria-label="Remove added color" title="Remove added color">−</button>
-                      <button class="color-add-swatch" id="colorAddSwatch" type="button" aria-label="Add color" title="Add color">+</button>
+                      <button class="color-remove-swatch" id="colorRemoveSwatch" type="button" aria-label="Remove added color" title="Remove added color">
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8" /></svg>
+                        <span class="visually-hidden">Remove added color</span>
+                      </button>
+                      <button class="color-add-swatch" id="colorAddSwatch" type="button" aria-label="Add color" title="Add color">
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4v8M4 8h8" /></svg>
+                        <span class="visually-hidden">Add color</span>
+                      </button>
                       <button class="color-apply-button" id="colorApplyButton" type="button">Apply</button>
                     </div>
                   </div>
@@ -203,7 +210,8 @@
 
               <label class="room-field">
                 <span data-i18n="form.room">Room</span>
-                <select name="roomId" id="roomSelect" required></select>
+                <select class="native-select-hidden" name="roomId" id="roomSelect" required></select>
+                <div class="align-dropdown" id="roomDropdown" data-dropdown="room"></div>
               </label>
               <div class="date-range-field full-width" id="dateRangeField">
                 <div class="date-field-label" data-i18n="form.stayDates">Stay dates</div>
