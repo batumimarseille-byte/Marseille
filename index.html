@@ -67,6 +67,11 @@
         </nav>
 
         <div class="sidebar-footer desktop-sidebar-footer">
+          <button class="staff-chat-trigger" id="staffChatTrigger" type="button" aria-expanded="false">
+            <span class="staff-chat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6.5h14v9H9l-4 3v-12Z" /></svg></span>
+            <span class="staff-chat-copy"><strong data-i18n="staffChat.title">Staff chat</strong><small data-i18n="staffChat.subtitle">Shift messages</small></span>
+          </button>
+          <div class="sidebar-footer-divider" aria-hidden="true"></div>
           <button class="sidebar-profile-trigger" id="settingsTrigger" type="button" aria-label="Administrator account" aria-haspopup="dialog" aria-expanded="false">
             <span class="sidebar-profile-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg></span>
             <span class="sidebar-profile-copy"><strong data-i18n="settings.administrator">Administrator</strong><small data-i18n="settings.role">Hotel staff</small></span>
@@ -185,8 +190,10 @@
                     <span class="color-picker-current" aria-hidden="true"></span>
                   </button>
                   <div class="color-picker-menu" id="colorPickerMenu" role="dialog" aria-label="Guest color palette">
+                    <div class="color-palette-label" data-i18n="form.guestPalette">Guest colors</div>
                     <div class="color-palette" id="colorPalette" role="radiogroup" aria-label="Guest color"></div>
                     <div class="color-palette-divider" id="colorPaletteDivider" aria-hidden="true"></div>
+                    <div class="color-palette-label color-palette-custom-label" data-i18n="form.customPalette">Added colors</div>
                     <div class="color-palette color-palette-custom" id="customColorPalette" role="radiogroup" aria-label="Added guest colors"></div>
                     <div class="color-custom-controls" id="colorCustomControls">
                       <span class="color-tone-preview" aria-hidden="true"></span>
@@ -214,7 +221,13 @@
                 <div class="align-dropdown" id="roomDropdown" data-dropdown="room"></div>
               </label>
               <div class="date-range-field full-width" id="dateRangeField">
-                <div class="date-field-label" data-i18n="form.stayDates">Stay dates</div>
+                <div class="date-field-head">
+                  <div class="date-field-label" data-i18n="form.stayDates">Stay dates</div>
+                  <label class="night-checkin-toggle">
+                    <span data-i18n="form.nightCheckIn">Night check-in</span>
+                    <input type="checkbox" name="nightCheckIn" id="nightCheckInToggle" />
+                  </label>
+                </div>
                 <div class="date-range-picks">
                   <button type="button" class="date-pick-button date-range-button" id="dateRangeButton">
                     <strong id="dateRangeDisplay" data-i18n="form.selectStayDates">Select stay dates</strong>
@@ -312,6 +325,21 @@
                 </thead>
                 <tbody id="staysTable"></tbody>
               </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="section-block hidden" id="staffChatSection">
+          <article class="staff-chat-panel">
+            <div class="staff-chat-page">
+              <div class="staff-chat-messages" id="staffChatMessages" aria-live="polite"></div>
+              <form class="staff-chat-form" id="staffChatForm">
+                <div class="staff-chat-input-row">
+                  <input type="text" name="staffMessage" id="staffChatInput" maxlength="300" autocomplete="off" data-i18n-placeholder="staffChat.placeholder" placeholder="Write a message..." />
+                  <button type="submit" data-i18n="staffChat.send">Send</button>
+                </div>
+                <div class="staff-chat-colors" id="staffChatColors" role="radiogroup" aria-label="Message color"></div>
+              </form>
             </div>
           </article>
         </section>

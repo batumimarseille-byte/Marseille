@@ -90,6 +90,28 @@ create table if not exists public.booking_colors (
   constraint booking_colors_valid_color check (color ~ '^#[0-9A-Fa-f]{6}$')
 );
 
+create table if not exists public.staff_messages (
+  id uuid primary key default gen_random_uuid(),
+  author text not null default 'reception',
+  color text not null default '#4f7cff',
+  message text not null,
+  created_at timestamptz not null default now(),
+  constraint staff_messages_author_valid check (author in ('admin', 'reception', 'housekeeping', 'manager')),
+  constraint staff_messages_valid_color check (color ~ '^#[0-9A-Fa-f]{6}$'),
+  constraint staff_messages_message_not_blank check (length(btrim(message)) > 0)
+);
+
+alter table public.staff_messages
+add column if not exists color text not null default '#4f7cff';
+
+do $$
+begin
+  alter table public.staff_messages
+  add constraint staff_messages_valid_color check (color ~ '^#[0-9A-Fa-f]{6}$');
+exception
+  when duplicate_object then null;
+end $$;
+
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin
@@ -112,6 +134,7 @@ alter table public.rooms enable row level security;
 alter table public.companies enable row level security;
 alter table public.stays enable row level security;
 alter table public.booking_colors enable row level security;
+alter table public.staff_messages enable row level security;
 
 -- First stage: one authenticated hotel user can manage everything.
 -- Later we can add roles if the hotel needs several staff accounts.
@@ -140,6 +163,13 @@ with check (true);
 drop policy if exists "Authenticated users can manage companies" on public.companies;
 create policy "Authenticated users can manage companies"
 on public.companies for all
+to authenticated
+using (true)
+with check (true);
+
+drop policy if exists "Authenticated users can manage staff messages" on public.staff_messages;
+create policy "Authenticated users can manage staff messages"
+on public.staff_messages for all
 to authenticated
 using (true)
 with check (true);

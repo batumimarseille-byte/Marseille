@@ -31,14 +31,17 @@ const activeSectionStorageKey = "hotel-desk-active-section-v1";
 const languageStorageKey = "hotel-desk-language-v1";
 const favoriteGuestStorageKey = "hotel-desk-favorite-guests-v1";
 const favoriteGuestMigrationStorageKey = "hotel-desk-favorite-guests-supabase-migrated-v1";
+const staffMessagesStorageKey = "hotel-desk-staff-messages-v1";
+const staffColorStorageKey = "hotel-desk-staff-color-v1";
 const defaultBookingColor = "#4f7cff";
 const bookingCustomColorsStorageKey = "hotel-desk-booking-custom-colors-v2";
 const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df3", "#e978e0", "#e978b7", "#ef6669", "#ee8061", "#e89b43", "#d6bf38", "#b9df42", "#75c95d", "#6bcd65", "#3fbc83", "#2fb8aa", "#1cb7b8", "#22b8cf", "#36a4e9", "#5d85f2"];
+const staffMessagePalette = ["#4f7cff", "#9a6bf2", "#e978b7", "#ef6669", "#e89b43", "#75c95d", "#2fb8aa", "#36a4e9"];
 let pendingBookingColor = null;
 let customColorTone = 220;
 let customBookingColors = [];
 const languageFlagIcons = { en: flagUsUrl, ka: flagGeUrl };
-const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "calendar", "rooms"]);
+const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "staff-chat", "calendar", "rooms"]);
 const calendarVisibleDays = 14;
 const calendarBufferDays = 14;
 const calendarTodayOffsetDays = Math.floor(calendarVisibleDays / 2);
@@ -132,6 +135,11 @@ const translations = {
         title: "Rooms",
         description: "13 Hotel Marseille rooms grouped by category and capacity.",
       },
+      "staff-chat": {
+        eyebrow: "Team",
+        title: "Staff chat",
+        description: "Short shift messages for the hotel team.",
+      },
     },
     roomTypes: {
       Suite: "Suite",
@@ -152,6 +160,16 @@ const translations = {
       cloudTitle: "Cloud version",
       cloudText: "Data is stored in Supabase for the hotel account.",
       signOut: "Sign out",
+    },
+    staffChat: {
+      eyebrow: "Team",
+      title: "Staff chat (beta)",
+      subtitle: "Shift messages",
+      empty: "No messages yet.",
+      placeholder: "Write a message...",
+      send: "Send",
+      message: "Message",
+      color: "Message color",
     },
     stats: {
       occupied: "Occupied",
@@ -214,11 +232,14 @@ const translations = {
       companyNone: "No company",
       companyNewPlaceholder: "New company name",
       color: "Color",
+      guestPalette: "Guest colors",
+      customPalette: "Added colors",
       room: "Room",
       stayDates: "Stay dates",
       selectStayDates: "Select stay dates",
       selectCheckout: "select check-out",
       clearDates: "Clear dates",
+      nightCheckIn: "Night check-in",
       nightlyRate: "Price per night",
       nights: "Nights",
       discount: "Discount",
@@ -338,6 +359,11 @@ const translations = {
         title: "ნომრები",
         description: "Hotel Marseille-ის 13 ნომერი კატეგორიებისა და ტევადობის მიხედვით.",
       },
+      "staff-chat": {
+        eyebrow: "გუნდი",
+        title: "ჩატი",
+        description: "მოკლე ცვლის შეტყობინებები სასტუმროს გუნდისთვის.",
+      },
     },
     roomTypes: {
       Suite: "ლუქსი",
@@ -358,6 +384,16 @@ const translations = {
       cloudTitle: "ღრუბლოვანი ვერსია",
       cloudText: "მონაცემები ინახება Supabase-ში სასტუმროს ანგარიშისთვის.",
       signOut: "გასვლა",
+    },
+    staffChat: {
+      eyebrow: "გუნდი",
+      title: "ჩატი (beta)",
+      subtitle: "ცვლის შეტყობინებები",
+      empty: "შეტყობინებები ჯერ არ არის.",
+      placeholder: "დაწერეთ შეტყობინება...",
+      send: "გაგზავნა",
+      message: "შეტყობინება",
+      color: "შეტყობინების ფერი",
     },
     stats: {
       occupied: "დაკავებულია",
@@ -420,11 +456,14 @@ const translations = {
       companyNone: "კომპანიის გარეშე",
       companyNewPlaceholder: "ახალი კომპანიის სახელი",
       color: "ფერი",
+      guestPalette: "სტუმრის ფერები",
+      customPalette: "დამატებული ფერები",
       room: "ნომერი",
       stayDates: "ცხოვრების თარიღები",
       selectStayDates: "აირჩიეთ ცხოვრების თარიღები",
       selectCheckout: "აირჩიეთ გასვლის თარიღი",
       clearDates: "თარიღების გასუფთავება",
+      nightCheckIn: "ღამის შესვლა",
       nightlyRate: "ღამის ფასი",
       nights: "ღამეები",
       discount: "ფასდაკლება",
@@ -485,6 +524,7 @@ const translations = {
 let rooms = defaultRooms.slice();
 let stays = [];
 let companies = [];
+let staffMessages = [];
 let activeFilter = "all";
 let highlightedStayId = null;
 let highlightedCalendarStayId = null;
@@ -512,6 +552,7 @@ let nightlyRateWasEdited = false;
 let isUpdatingNightlyRate = false;
 let pendingCompanyColorUpdates = new Map();
 let openCustomDropdown = null;
+let selectedStaffColor = getStoredStaffColor();
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
@@ -531,6 +572,7 @@ const selectors = {
   stayForm: document.querySelector("#stayForm"),
   colorPalette: document.querySelector("#colorPalette"),
   customColorPalette: document.querySelector("#customColorPalette"),
+  customColorPaletteLabel: document.querySelector(".color-palette-custom-label"),
   colorPaletteDivider: document.querySelector("#colorPaletteDivider"),
   colorPicker: document.querySelector("#colorPicker"),
   colorPickerTrigger: document.querySelector("#colorPickerTrigger"),
@@ -572,7 +614,9 @@ const selectors = {
   dateRangeButton: document.querySelector("#dateRangeButton"),
   dateRangeDisplay: document.querySelector("#dateRangeDisplay"),
   dateClearButton: document.querySelector("#dateClearButton"),
+  nightCheckInToggle: document.querySelector("#nightCheckInToggle"),
   formDateCalendar: document.querySelector("#formDateCalendar"),
+  topbar: document.querySelector(".topbar"),
   topbarActions: document.querySelector(".topbar-actions"),
   languageToggles: document.querySelectorAll("[data-language-toggle]"),
   languageToggleFlags: document.querySelectorAll("[data-language-flag]"),
@@ -586,6 +630,11 @@ const selectors = {
   settingsSignOut: document.querySelector("#settingsSignOut"),
   dashboardCalendarAction: document.querySelector("#dashboardCalendarAction"),
   dashboardNewStayAction: document.querySelector("#dashboardNewStayAction"),
+  staffChatTrigger: document.querySelector("#staffChatTrigger"),
+  staffChatMessages: document.querySelector("#staffChatMessages"),
+  staffChatForm: document.querySelector("#staffChatForm"),
+  staffChatInput: document.querySelector("#staffChatInput"),
+  staffChatColors: document.querySelector("#staffChatColors"),
 };
 
 
@@ -599,6 +648,15 @@ function getStoredLanguage() {
     return translations[stored] ? stored : "en";
   } catch {
     return "en";
+  }
+}
+
+function getStoredStaffColor() {
+  try {
+    const stored = normalizeBookingColor(localStorage.getItem(staffColorStorageKey));
+    return staffMessagePalette.includes(stored) ? stored : staffMessagePalette[0];
+  } catch {
+    return staffMessagePalette[0];
   }
 }
 
@@ -764,6 +822,26 @@ function saveLocalStays() {
   localStorage.setItem(storageKey, JSON.stringify(stays));
 }
 
+function loadLocalStaffMessages() {
+  try {
+    return (JSON.parse(localStorage.getItem(staffMessagesStorageKey)) || [])
+      .map((message) => ({
+        id: message.id || crypto.randomUUID(),
+        color: normalizeBookingColor(message.color) || staffMessagePalette[0],
+        message: String(message.message || "").trim(),
+        createdAt: message.createdAt || new Date().toISOString(),
+      }))
+      .filter((message) => message.message)
+      .sort((first, second) => new Date(first.createdAt) - new Date(second.createdAt));
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalStaffMessages() {
+  localStorage.setItem(staffMessagesStorageKey, JSON.stringify(staffMessages.slice(-80)));
+}
+
 function normalizeCompanyName(name) {
   return String(name || "").trim().replace(/\s+/g, " ");
 }
@@ -846,18 +924,21 @@ function getCompanyOptions() {
 
 function applySelectedCompanyColor() {
   const company = getCompanyById(selectors.companySelect?.value);
-  if (!company || !selectors.stayForm?.color) return;
-  const companyColor = getCompanyColor(company).toLowerCase();
-  selectors.stayForm.color.value = getAvailableBookingColors().includes(companyColor)
-    ? companyColor
-    : getNextAvailableBookingColor();
+  if (!selectors.stayForm?.color) return;
+  if (!company) {
+    setGuestDefaultColor();
+    return;
+  }
+  const companyColor = normalizeBookingColor(getCompanyColor(company)) || defaultBookingColor;
+  selectors.stayForm.color.value = companyColor;
+  pendingBookingColor = companyColor;
   renderColorPalette();
 }
 
 function getActiveBookingColors(excludeStayId = editingStayId) {
   return new Set(
     stays
-      .filter((stay) => stay.id !== excludeStayId && getStayStatus(stay) === "checked-in")
+      .filter((stay) => stay.id !== excludeStayId && !["checked-out", "cancelled"].includes(getStayStatus(stay)))
       .map((stay) => String(stay.color || defaultBookingColor).toLowerCase())
   );
 }
@@ -1001,13 +1082,52 @@ function getNextAvailableBookingColor(excludeStayId = editingStayId) {
   return getAvailableBookingColors(excludeStayId)[0] || defaultBookingColor;
 }
 
+function getNextGuestBookingColor(excludeStayId = editingStayId) {
+  const activeColors = getActiveBookingColors(excludeStayId);
+  return bookingColorPalette.find((color) => !activeColors.has(color)) || defaultBookingColor;
+}
+
+function setGuestDefaultColor() {
+  if (!selectors.stayForm?.color) return;
+  selectors.stayForm.color.value = getNextGuestBookingColor();
+  pendingBookingColor = null;
+  renderColorPalette();
+}
+
+function isCompanyColorEditMode() {
+  const isExistingCompanyMode = [...selectors.companyModeInputs || []].some((input) => (
+    input.value === "existing" && input.checked
+  ));
+  return Boolean(isExistingCompanyMode && selectors.companySelect?.value);
+}
+
+function getHueFromColor(color) {
+  const normalizedColor = normalizeBookingColor(color) || defaultBookingColor;
+  const red = parseInt(normalizedColor.slice(1, 3), 16) / 255;
+  const green = parseInt(normalizedColor.slice(3, 5), 16) / 255;
+  const blue = parseInt(normalizedColor.slice(5, 7), 16) / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+
+  if (delta === 0) return customColorTone;
+  if (max === red) return Math.round(60 * (((green - blue) / delta) % 6) + 360) % 360;
+  if (max === green) return Math.round(60 * ((blue - red) / delta + 2));
+  return Math.round(60 * ((red - green) / delta + 4));
+}
+
 function renderColorPalette({ keepOpen = false, keepAdding = false } = {}) {
   if (!selectors.colorPalette || !selectors.stayForm?.color) return;
 
   const selectedColor = String(selectors.stayForm.color.value || defaultBookingColor).toLowerCase();
   const draftColor = normalizeBookingColor(pendingBookingColor) || selectedColor;
   const activeColors = getActiveBookingColors();
-  const customColors = [...new Set([...getCustomBookingColors(), ...(!bookingColorPalette.includes(selectedColor) ? [selectedColor] : []), ...(!bookingColorPalette.includes(draftColor) ? [draftColor] : [])])];
+  const companyColorMode = isCompanyColorEditMode();
+  const customColors = [...new Set([
+    ...getCustomBookingColors(),
+    ...(!bookingColorPalette.includes(selectedColor) ? [selectedColor] : []),
+    ...(!bookingColorPalette.includes(draftColor) ? [draftColor] : []),
+  ])];
   const renderSwatches = (colors) => colors
     .map((color) => {
       const selected = color === draftColor;
@@ -1018,17 +1138,21 @@ function renderColorPalette({ keepOpen = false, keepAdding = false } = {}) {
 
   selectors.colorPalette.innerHTML = renderSwatches(bookingColorPalette);
   if (selectors.customColorPalette) selectors.customColorPalette.innerHTML = renderSwatches(customColors);
-  selectors.colorPaletteDivider?.classList.toggle("hidden", customColors.length === 0);
-  selectors.customColorPalette?.classList.toggle("hidden", customColors.length === 0);
+  selectors.colorPalette?.classList.toggle("hidden", companyColorMode);
+  selectors.colorPalette?.previousElementSibling?.classList.toggle("hidden", companyColorMode);
+  selectors.colorPaletteDivider?.classList.toggle("hidden", companyColorMode || customColors.length === 0);
+  selectors.customColorPalette?.classList.toggle("hidden", companyColorMode || customColors.length === 0);
+  selectors.customColorPaletteLabel?.classList.toggle("hidden", companyColorMode || customColors.length === 0);
 
   const canRemoveDraft = !bookingColorPalette.includes(draftColor) && getCustomBookingColors().includes(draftColor);
-  if (selectors.colorRemoveSwatch) selectors.colorRemoveSwatch.disabled = !canRemoveDraft;
+  if (selectors.colorRemoveSwatch) selectors.colorRemoveSwatch.disabled = companyColorMode || !canRemoveDraft;
   selectors.colorPicker?.classList.toggle("is-open", keepOpen);
-  selectors.colorPicker?.classList.toggle("is-adding", keepOpen && keepAdding);
+  selectors.colorPicker?.classList.toggle("is-adding", keepOpen && (keepAdding || companyColorMode));
+  selectors.colorPicker?.classList.toggle("company-color-mode", keepOpen && companyColorMode);
   selectors.colorPickerTrigger?.setAttribute("aria-expanded", String(keepOpen));
   selectors.colorPicker?.style.setProperty("--selected-color", selectedColor);
   selectors.colorPicker?.style.setProperty("--draft-color", draftColor);
-  selectors.colorPicker?.style.setProperty("--custom-color", getCustomToneColor());
+  selectors.colorPicker?.style.setProperty("--custom-color", companyColorMode ? draftColor : getCustomToneColor());
   if (selectors.colorToneRange) selectors.colorToneRange.value = String(customColorTone);
   if (!keepOpen) pendingBookingColor = null;
 }
@@ -1063,6 +1187,65 @@ async function loadRooms() {
   }
 
   return (data || []).map(mapRoomFromDatabase);
+}
+
+function mapStaffMessageFromDatabase(row) {
+  return {
+    id: row.id,
+    color: normalizeBookingColor(row.color) || staffMessagePalette[0],
+    message: row.message || "",
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
+async function loadStaffMessages() {
+  if (!usesSupabase) return loadLocalStaffMessages();
+
+  const { data, error } = await supabaseClient
+    .from("staff_messages")
+    .select("id, color, message, created_at")
+    .order("created_at", { ascending: false })
+    .limit(80);
+
+  if (error) {
+    console.error("Failed to load staff messages", error);
+    return loadLocalStaffMessages();
+  }
+
+  return (data || []).map(mapStaffMessageFromDatabase).reverse();
+}
+
+async function saveStaffMessage(color, messageText) {
+  const message = {
+    id: crypto.randomUUID(),
+    color: normalizeBookingColor(color) || staffMessagePalette[0],
+    message: String(messageText || "").trim(),
+    createdAt: new Date().toISOString(),
+  };
+
+  if (!message.message) return false;
+
+  if (!usesSupabase) {
+    staffMessages = [...staffMessages, message].slice(-80);
+    saveLocalStaffMessages();
+    return true;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("staff_messages")
+    .insert({ author: "reception", color: message.color, message: message.message })
+    .select("id, color, message, created_at")
+    .single();
+
+  if (error) {
+    console.error("Failed to save staff message", error);
+    staffMessages = [...staffMessages, message].slice(-80);
+    saveLocalStaffMessages();
+    return true;
+  }
+
+  staffMessages = [...staffMessages, mapStaffMessageFromDatabase(data)].slice(-80);
+  return true;
 }
 
 async function saveRoomTypePrice(type, nightlyPrice) {
@@ -1842,6 +2025,60 @@ function renderStats() {
   selectors.debtStat.textContent = `${formatNumber(debt)} ₾`;
 }
 
+function formatStaffMessageTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleTimeString(getLocale(), {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function renderStaffChatColors() {
+  if (!selectors.staffChatColors) return;
+  selectors.staffChatColors.innerHTML = staffMessagePalette
+    .map((color) => `
+      <button
+        type="button"
+        class="staff-chat-color${color === selectedStaffColor ? " is-selected" : ""}"
+        data-staff-color="${color}"
+        role="radio"
+        aria-checked="${color === selectedStaffColor}"
+        aria-label="${t("staffChat.color")}"
+        style="--staff-color: ${color}"
+      ></button>
+    `)
+    .join("");
+}
+
+function renderStaffChat({ scrollToBottom = false } = {}) {
+  renderStaffChatColors();
+  if (!selectors.staffChatMessages) return;
+
+  if (!staffMessages.length) {
+    selectors.staffChatMessages.innerHTML = `<p class="staff-chat-empty">${t("staffChat.empty")}</p>`;
+  } else {
+    selectors.staffChatMessages.innerHTML = staffMessages
+      .map((item) => `
+        <article class="staff-message" style="--staff-color: ${normalizeBookingColor(item.color) || staffMessagePalette[0]}">
+          <div class="staff-message-meta">
+            <strong><span></span>${escapeHtml(t("staffChat.message"))}</strong>
+            <span>${escapeHtml(formatStaffMessageTime(item.createdAt))}</span>
+          </div>
+          <p>${escapeHtml(item.message)}</p>
+        </article>
+      `)
+      .join("");
+  }
+
+  if (scrollToBottom) {
+    requestAnimationFrame(() => {
+      selectors.staffChatMessages.scrollTop = selectors.staffChatMessages.scrollHeight;
+    });
+  }
+}
+
 function renderStaysTable() {
   const filtered = stays.filter((stay) => {
     const status = getStayStatus(stay);
@@ -2175,6 +2412,11 @@ function hasBusyDateBetween(start, end, bookings) {
   });
 }
 
+function canUseNightCheckInDate(day) {
+  if (!selectors.nightCheckInToggle?.checked || editingStayId) return false;
+  return isSameDate(day, addDays(todayDate(), -1));
+}
+
 function syncPendingDatesFromForm() {
   if (!selectors.stayForm) return;
   const existing = stays.find((stay) => stay.id === editingStayId);
@@ -2262,7 +2504,8 @@ function renderFormDateCalendar() {
       .map((day) => {
         const dayValue = toInputDate(day);
         const booking = getDateBooking(day, roomBookings);
-        const isPastDay = day < today;
+        const isNightCheckInDay = canUseNightCheckInDate(day);
+        const isPastDay = day < today && !isNightCheckInDay;
         const hasConfirmedRange = Boolean(checkIn && checkOut);
         const hasHoverRange = Boolean(activeDateField === "checkOut" && checkIn && hoverDate && hoverDate > checkIn);
         const selectedStart = checkIn && isSameDate(day, checkIn);
@@ -2291,6 +2534,7 @@ function renderFormDateCalendar() {
         const className = [
           "form-date-day",
           isSameDate(day, today) ? "today-day" : "",
+          isNightCheckInDay ? "night-checkin-day" : "",
           isBusy ? "busy-day" : "",
           isPastDay ? "past-day" : "",
           rangeWouldConflict ? "blocked-range-day" : "",
@@ -2363,6 +2607,7 @@ function renderAll() {
   renderFormDateCalendar();
   renderColorPalette();
   renderStats();
+  renderStaffChat();
   renderRoomMap();
   renderRoomGroups();
   renderActiveGuests();
@@ -2410,13 +2655,18 @@ async function handleFormSubmit(event) {
   const wasEditing = Boolean(editingStayId);
   const stay = readFormStay();
 
-  if (getStayStatus(stay) === "checked-in" && getActiveBookingColors(stay.id).has(stay.color.toLowerCase())) {
+  if (!["checked-out", "cancelled"].includes(getStayStatus(stay)) && getActiveBookingColors(stay.id).has(stay.color.toLowerCase())) {
     setFormMessage("Choose an available color.", "error");
     return;
   }
 
   if (!stay.checkIn || !stay.checkOut) {
     setFormMessage(t("common.selectBothDates"), "error");
+    return;
+  }
+
+  if (toDate(stay.checkIn) < todayDate() && !canUseNightCheckInDate(toDate(stay.checkIn))) {
+    setFormMessage(t("common.pastDate"), "error");
     return;
   }
 
@@ -2473,6 +2723,7 @@ function startEditStay(id) {
     selectors.companyNewInput.value = companyName;
   }
   selectors.stayForm.roomId.value = stay.roomId;
+  if (selectors.nightCheckInToggle) selectors.nightCheckInToggle.checked = false;
   renderCustomDropdowns();
   selectors.stayForm.checkIn.value = stay.checkIn;
   selectors.stayForm.checkOut.value = stay.checkOut;
@@ -2509,6 +2760,7 @@ function resetFormMode() {
   editingStayId = null;
   checkoutOnlyEditStayId = null;
   selectors.stayForm.reset();
+  if (selectors.nightCheckInToggle) selectors.nightCheckInToggle.checked = false;
   selectors.stayForm.color.value = getNextAvailableBookingColor();
   renderColorPalette();
   updateFormNumberStates();
@@ -2651,6 +2903,8 @@ function showSection(sectionName) {
   selectors.navItems.forEach((item) => {
     item.classList.toggle("active", item.dataset.section === sectionName);
   });
+  selectors.staffChatTrigger?.classList.toggle("active", sectionName === "staff-chat");
+  selectors.staffChatTrigger?.setAttribute("aria-expanded", String(sectionName === "staff-chat"));
   selectors.sections.forEach((section) => {
     section.classList.toggle("hidden", section.id !== sectionToId(sectionName));
   });
@@ -2660,6 +2914,9 @@ function showSection(sectionName) {
   if (selectors.pageTitle) selectors.pageTitle.textContent = header.title;
   if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
   selectors.topbarActions?.classList.toggle("hidden", sectionName !== "dashboard");
+  selectors.topbar?.classList.toggle("hidden", sectionName === "staff-chat");
+  document.documentElement.classList.toggle("staff-chat-active", sectionName === "staff-chat");
+  document.body.classList.toggle("staff-chat-active", sectionName === "staff-chat");
   updateLanguageToggle();
   requestAnimationFrame(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -2673,6 +2930,7 @@ function sectionToId(sectionName) {
     "new-stay": "newStaySection",
     "edit-stay": "editStaySection",
     stays: "staysSection",
+    "staff-chat": "staffChatSection",
     calendar: "calendarSection",
     rooms: "roomsSection",
   }[sectionName];
@@ -2702,6 +2960,7 @@ async function signOut() {
   selectors.appShell?.classList.add("app-loading");
   if (usesSupabase) await supabaseClient.auth.signOut();
   stays = [];
+  staffMessages = [];
   resetFormMode();
   renderAll();
   await requireSession();
@@ -2764,6 +3023,33 @@ function bindEvents() {
     button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
   });
   selectors.settingsSignOut?.addEventListener("click", signOut);
+  selectors.staffChatTrigger?.addEventListener("click", () => {
+    navigateToSection("staff-chat");
+    setMobileMenuOpen(false);
+    renderStaffChat({ scrollToBottom: true });
+    requestAnimationFrame(() => selectors.staffChatInput?.focus());
+  });
+  selectors.staffChatColors?.addEventListener("click", (event) => {
+    const colorButton = event.target.closest("[data-staff-color]");
+    const color = normalizeBookingColor(colorButton?.dataset.staffColor);
+    if (!color) return;
+    selectedStaffColor = color;
+    try {
+      localStorage.setItem(staffColorStorageKey, selectedStaffColor);
+    } catch {
+      // Ignore blocked storage.
+    }
+    renderStaffChatColors();
+  });
+  selectors.staffChatForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = String(selectors.staffChatInput?.value || "").trim();
+    if (!message) return;
+    const saved = await saveStaffMessage(selectedStaffColor, message);
+    if (!saved) return;
+    selectors.staffChatInput.value = "";
+    renderStaffChat({ scrollToBottom: true });
+  });
   selectors.dashboardCalendarAction?.addEventListener("click", () => navigateToSection("calendar"));
   selectors.dashboardNewStayAction?.addEventListener("click", () => navigateToSection("new-stay"));
   document.addEventListener("keydown", (event) => {
@@ -2810,14 +3096,20 @@ function bindEvents() {
   selectors.colorPicker?.addEventListener("click", (event) => {
     const swatch = event.target.closest("[data-booking-color]");
     if (!swatch || swatch.disabled || !selectors.stayForm?.color) return;
+    const color = normalizeBookingColor(swatch.dataset.bookingColor);
+    const isCurrentDraft = color && color === (normalizeBookingColor(pendingBookingColor) || normalizeBookingColor(selectors.stayForm.color.value));
+    if (!isCompanyColorEditMode() && color && getActiveBookingColors().has(color) && !isCurrentDraft) return;
     event.preventDefault();
     event.stopPropagation();
-    pendingBookingColor = swatch.dataset.bookingColor;
+    pendingBookingColor = color;
     renderColorPalette({ keepOpen: true, keepAdding: selectors.colorPicker?.classList.contains("is-adding") });
   });
 
   selectors.colorPickerTrigger?.addEventListener("click", () => {
     const isOpen = !selectors.colorPicker?.classList.contains("is-open");
+    if (isOpen && isCompanyColorEditMode()) {
+      customColorTone = getHueFromColor(selectors.stayForm?.color.value);
+    }
     pendingBookingColor = isOpen ? selectors.stayForm?.color.value : null;
     renderColorPalette({ keepOpen: isOpen });
   });
@@ -2829,11 +3121,19 @@ function bindEvents() {
 
   selectors.colorToneRange?.addEventListener("input", () => {
     customColorTone = Number(selectors.colorToneRange.value);
+    if (isCompanyColorEditMode()) {
+      pendingBookingColor = getCustomToneColor();
+    }
     selectors.colorPicker?.style.setProperty("--custom-color", getCustomToneColor());
   });
 
   selectors.colorConfirmSwatch?.addEventListener("click", async () => {
     const color = normalizeBookingColor(getCustomToneColor());
+    if (isCompanyColorEditMode()) {
+      pendingBookingColor = color;
+      renderColorPalette({ keepOpen: true });
+      return;
+    }
     if (!color || getActiveBookingColors().has(color)) return;
     const saved = await saveCustomBookingColor(color);
     if (!saved) return;
@@ -2874,6 +3174,18 @@ function bindEvents() {
       formCalendarMonth = startOfMonth(anchorDate);
     }
     updateEstimatedTotal({ forceNightly: !editingStayId });
+    renderFormDateCalendar();
+  });
+
+  selectors.nightCheckInToggle?.addEventListener("change", () => {
+    if (!selectors.nightCheckInToggle.checked && pendingCheckIn && toDate(pendingCheckIn) < todayDate()) {
+      pendingCheckIn = "";
+      pendingCheckOut = "";
+      selectors.stayForm.checkIn.value = "";
+      selectors.stayForm.checkOut.value = "";
+      activeDateField = "checkIn";
+      updateEstimatedTotal({ force: true });
+    }
     renderFormDateCalendar();
   });
 
@@ -3415,6 +3727,7 @@ async function startApp() {
   rooms = await loadRooms();
   companies = usesSupabase ? await loadCompanies() : [];
   stays = await loadStays();
+  staffMessages = await loadStaffMessages();
   await loadCustomBookingColors();
   await migrateLegacyFavoriteGuests();
   if (!usesSupabase) companies = await loadCompanies();
