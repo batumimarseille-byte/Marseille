@@ -42,13 +42,13 @@
     <div class="app-shell app-loading" id="appShell">
       <aside class="sidebar">
         <div class="mobile-nav-header">
-          <div class="brand">
+          <button class="brand brand-home" type="button" data-home-trigger aria-label="Open overview">
             <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
             <div>
               <p class="eyebrow" data-i18n="brand.eyebrow">Hotel</p>
               <h1>Marseille</h1>
             </div>
-          </div>
+          </button>
           <div class="mobile-nav-actions">
             <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-label="Open menu" aria-expanded="false">
               <span></span>
@@ -64,6 +64,11 @@
           <button class="nav-item" data-section="stays" data-i18n="nav.stays">Records</button>
           <button class="nav-item" data-section="calendar" data-i18n="nav.calendar">Calendar</button>
           <button class="nav-item" data-section="rooms" data-i18n="nav.rooms">Rooms</button>
+          <button class="nav-item mobile-only-nav-item" data-section="staff-chat" data-i18n="staffChat.title">Staff chat</button>
+          <button class="mobile-account-nav-item mobile-only-nav-item" type="button" aria-label="Administrator account" aria-haspopup="dialog" aria-expanded="false" data-settings-trigger>
+            <span class="mobile-account-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg></span>
+            <span data-i18n="settings.administrator">Administrator</span>
+          </button>
         </nav>
 
         <div class="sidebar-footer desktop-sidebar-footer">
@@ -72,7 +77,7 @@
             <span class="staff-chat-copy"><strong data-i18n="staffChat.title">Staff chat</strong><small data-i18n="staffChat.subtitle">Shift messages</small></span>
           </button>
           <div class="sidebar-footer-divider" aria-hidden="true"></div>
-          <button class="sidebar-profile-trigger" id="settingsTrigger" type="button" aria-label="Administrator account" aria-haspopup="dialog" aria-expanded="false">
+          <button class="sidebar-profile-trigger" id="settingsTrigger" type="button" aria-label="Administrator account" aria-haspopup="dialog" aria-expanded="false" data-settings-trigger>
             <span class="sidebar-profile-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg></span>
             <span class="sidebar-profile-copy"><strong data-i18n="settings.administrator">Administrator</strong><small data-i18n="settings.role">Hotel staff</small></span>
             <svg class="sidebar-profile-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
@@ -312,7 +317,15 @@
               </div>
             </div>
             <div class="table-scroll">
-              <table>
+              <table class="records-table">
+                <colgroup>
+                  <col class="records-col-guest" />
+                  <col class="records-col-room" />
+                  <col class="records-col-dates" />
+                  <col class="records-col-total" />
+                  <col class="records-col-payment" />
+                  <col class="records-col-status" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th data-i18n="table.guest">Guest</th>
@@ -382,12 +395,6 @@
           </article>
         </section>
       </main>
-
-      <div class="sidebar-card mobile-sidebar-card">
-        <p data-storage-title>Local demo version</p>
-        <span data-storage-text>Data is currently saved only in this browser.</span>
-        <button class="ghost-button sidebar-logout hidden" type="button" data-i18n="storage.signOut" data-logout-button>Sign out</button>
-      </div>
     </div>
 
     <div class="settings-overlay" id="settingsOverlay" aria-hidden="true">

@@ -530,7 +530,7 @@ let highlightedStayId = null;
 let highlightedCalendarStayId = null;
 let editingStayId = null;
 let checkoutOnlyEditStayId = null;
-let calendarStart = getCenteredCalendarStart();
+let calendarStart = getDefaultCalendarStart();
 let selectedCalendarStayId = null;
 let formCalendarMonth = new Date(todayDate().getFullYear(), todayDate().getMonth(), 1);
 let activeDateField = "checkIn";
@@ -556,6 +556,7 @@ let selectedStaffColor = getStoredStaffColor();
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
+  homeTriggers: document.querySelectorAll("[data-home-trigger]"),
   sections: document.querySelectorAll(".section-block"),
   newStaySection: document.querySelector("#newStaySection"),
   editStaySection: document.querySelector("#editStaySection"),
@@ -625,6 +626,7 @@ const selectors = {
   sidebar: document.querySelector(".sidebar"),
   settingsOverlay: document.querySelector("#settingsOverlay"),
   settingsTrigger: document.querySelector("#settingsTrigger"),
+  settingsTriggers: document.querySelectorAll("[data-settings-trigger]"),
   settingsCloseButtons: document.querySelectorAll("[data-settings-close]"),
   settingsLanguageButtons: document.querySelectorAll("[data-settings-language]"),
   settingsSignOut: document.querySelector("#settingsSignOut"),
@@ -796,6 +798,14 @@ function addDays(date, days) {
 
 function getCenteredCalendarStart() {
   return addDays(todayDate(), -calendarTodayOffsetDays);
+}
+
+function getDefaultCalendarStart() {
+  return window.matchMedia("(max-width: 1024px)").matches ? todayDate() : getCenteredCalendarStart();
+}
+
+function isPhoneCalendarReadOnly() {
+  return window.matchMedia("(max-width: 640px)").matches;
 }
 
 function startOfMonth(date) {
@@ -2188,7 +2198,7 @@ function renderBookingDetails() {
 }
 
 function shouldUseCalendarBuffer() {
-  return window.matchMedia("(min-width: 1025px)").matches;
+  return true;
 }
 
 function getCalendarDayWidth() {
@@ -2214,6 +2224,7 @@ function applyPendingCalendarScroll() {
   if (pendingCalendarScrollLeft === null || !selectors.calendarScroll) return;
   selectors.calendarScroll.scrollLeft = Math.max(0, pendingCalendarScrollLeft);
   pendingCalendarScrollLeft = null;
+  updateCalendarRangeFromScroll();
 }
 
 function openCalendarStay(stayId) {
@@ -2223,7 +2234,29 @@ function openCalendarStay(stayId) {
   renderCalendar();
 }
 
+function updateCalendarRangeFromScroll() {
+  if (!selectors.calendarScroll || !selectors.calendarRange) return;
+
+  const scrollRect = selectors.calendarScroll.getBoundingClientRect();
+  const roomLabel = selectors.occupancyCalendar.querySelector(".calendar-room-label");
+  const roomLabelWidth = roomLabel?.getBoundingClientRect().width || 0;
+  const visibleLeft = scrollRect.left + roomLabelWidth;
+  const visibleRight = scrollRect.right;
+  const visibleDays = Array.from(selectors.occupancyCalendar.querySelectorAll("[data-calendar-head-day]"))
+    .filter((cell) => {
+      const rect = cell.getBoundingClientRect();
+      return rect.left >= visibleLeft - 1 && rect.right <= visibleRight + 1;
+    })
+    .map((cell) => cell.dataset.calendarHeadDay)
+    .filter(Boolean);
+
+  if (visibleDays.length === 0) return;
+
+  selectors.calendarRange.textContent = `${formatDate(visibleDays[0])} - ${formatDate(visibleDays[visibleDays.length - 1])}`;
+}
+
 function renderCalendar() {
+  const isReadOnlyCalendar = isPhoneCalendarReadOnly();
   const hasBuffer = shouldUseCalendarBuffer();
   const leadingDays = hasBuffer ? calendarBufferDays : 0;
   const dayCount = hasBuffer ? calendarVisibleDays + calendarBufferDays * 2 : calendarVisibleDays;
@@ -2241,7 +2274,7 @@ function renderCalendar() {
       ${days
         .map(
           (day) => `
-            <div class="calendar-cell calendar-head ${day.getTime() === today.getTime() ? "calendar-today" : ""}">
+            <div class="calendar-cell calendar-head ${day.getTime() === today.getTime() ? "calendar-today" : ""}" data-calendar-head-day="${toInputDate(day)}">
               <span>${formatWeekdayShort(day)}</span>
               <strong>${day.getDate()}</strong>
             </div>
@@ -2281,11 +2314,11 @@ function renderCalendar() {
             calendarResizeState?.stayId === stay.id && day >= toDate(stay.checkOut) && day < previewEnd;
           const isLastStayDay = isSameDate(day, addDays(previewEnd, -1));
           const resizeHandle =
-            selectedCalendarStayId === stay.id && canExtendCheckoutOnly(stay) && isLastStayDay
+            !isReadOnlyCalendar && selectedCalendarStayId === stay.id && canExtendCheckoutOnly(stay) && isLastStayDay
               ? '<span class="calendar-resize-handle" data-calendar-resize="' + stay.id + '" aria-hidden="true"></span>'
               : "";
           return `
-            <button class="calendar-cell calendar-booked calendar-${status} ${debtClass} ${inResizePreview ? "calendar-resize-preview" : ""} ${selectedCalendarStayId === stay.id ? "calendar-selected" : ""} ${highlightedCalendarStayId === stay.id ? "calendar-highlighted" : ""}" data-calendar-stay="${stay.id}" data-calendar-day="${toInputDate(day)}" data-calendar-room="${room.id}" style="--booking-color: ${stay.color || defaultBookingColor}" title="${stay.guestName}">
+            <button class="calendar-cell calendar-booked calendar-${status} ${debtClass} ${!isReadOnlyCalendar && inResizePreview ? "calendar-resize-preview" : ""} ${!isReadOnlyCalendar && selectedCalendarStayId === stay.id ? "calendar-selected" : ""} ${!isReadOnlyCalendar && highlightedCalendarStayId === stay.id ? "calendar-highlighted" : ""}" data-calendar-stay="${stay.id}" data-calendar-day="${toInputDate(day)}" data-calendar-room="${room.id}" style="--booking-color: ${stay.color || defaultBookingColor}" title="${stay.guestName}">
               <span>${stay.guestName.slice(0, 1)}</span>
               ${resizeHandle}
             </button>
@@ -2315,6 +2348,12 @@ function renderCalendar() {
     requestAnimationFrame(() => {
       const dayWidth = getCalendarDayWidth();
       selectors.calendarScroll.scrollLeft = dayWidth * calendarBufferDays;
+      updateCalendarRangeFromScroll();
+    });
+  } else if (pendingCalendarScrollLeft === null) {
+    requestAnimationFrame(() => {
+      selectors.calendarScroll.scrollLeft = 0;
+      updateCalendarRangeFromScroll();
     });
   } else {
     requestAnimationFrame(applyPendingCalendarScroll);
@@ -2926,6 +2965,8 @@ function showSection(sectionName) {
   selectors.topbar?.classList.toggle("hidden", sectionName === "staff-chat");
   document.documentElement.classList.toggle("staff-chat-active", sectionName === "staff-chat");
   document.body.classList.toggle("staff-chat-active", sectionName === "staff-chat");
+  document.documentElement.classList.toggle("calendar-active", sectionName === "calendar");
+  document.body.classList.toggle("calendar-active", sectionName === "calendar");
   updateLanguageToggle();
   requestAnimationFrame(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -2962,6 +3003,9 @@ function setSettingsOpen(isOpen) {
   selectors.settingsOverlay?.classList.toggle("is-open", isOpen);
   selectors.settingsOverlay?.setAttribute("aria-hidden", String(!isOpen));
   selectors.settingsTrigger?.setAttribute("aria-expanded", String(isOpen));
+  selectors.settingsTriggers.forEach((button) => {
+    button.setAttribute("aria-expanded", String(isOpen));
+  });
   document.body.classList.toggle("settings-open", isOpen);
 }
 
@@ -3021,13 +3065,25 @@ function bindEvents() {
     });
   });
 
+  selectors.homeTriggers.forEach((trigger) => {
+    trigger.addEventListener("click", () => {
+      navigateToSection("dashboard");
+      setMobileMenuOpen(false);
+    });
+  });
+
   selectors.mobileMenuToggle?.addEventListener("click", () => {
     setMobileMenuOpen(!selectors.sidebar?.classList.contains("mobile-menu-open"));
   });
 
   selectors.mobileMenuBackdrop?.addEventListener("click", () => setMobileMenuOpen(false));
 
-  selectors.settingsTrigger?.addEventListener("click", () => setSettingsOpen(true));
+  selectors.settingsTriggers.forEach((button) => {
+    button.addEventListener("click", () => {
+      setMobileMenuOpen(false);
+      setSettingsOpen(true);
+    });
+  });
   selectors.settingsCloseButtons.forEach((button) => button.addEventListener("click", () => setSettingsOpen(false)));
   selectors.settingsLanguageButtons.forEach((button) => {
     button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
@@ -3434,11 +3490,13 @@ function bindEvents() {
     }
 
     if (!button) return;
+    if (isPhoneCalendarReadOnly()) return;
     openCalendarStay(button.dataset.calendarStay);
   });
 
   selectors.occupancyCalendar.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    if (isPhoneCalendarReadOnly()) return;
     const handle = event.target.closest("[data-calendar-resize]");
     if (!handle) return;
     const stay = stays.find((item) => item.id === handle.dataset.calendarResize);
@@ -3511,9 +3569,12 @@ function bindEvents() {
     const deltaX = event.clientX - calendarDragState.startX;
     if (Math.abs(deltaX) > 8) calendarDragState.didDrag = true;
     selectors.calendarScroll.scrollLeft = calendarDragState.startScrollLeft - deltaX;
+    updateCalendarRangeFromScroll();
     extendCalendarDragRange();
     if (calendarDragState.didDrag) event.preventDefault();
   });
+
+  selectors.calendarScroll.addEventListener("scroll", updateCalendarRangeFromScroll);
 
   selectors.occupancyCalendar.addEventListener("pointermove", (event) => {
     if (!calendarResizeState || calendarResizeState.pointerId !== event.pointerId) return;
@@ -3549,7 +3610,7 @@ function bindEvents() {
     selectors.calendarScroll.classList.remove("dragging");
     selectors.calendarScroll.releasePointerCapture?.(event.pointerId);
     calendarDragState = null;
-    if (!didDrag && releasedStayButton) {
+    if (!didDrag && releasedStayButton && !isPhoneCalendarReadOnly()) {
       shouldSuppressCalendarClick = true;
       openCalendarStay(releasedStayButton.dataset.calendarStay);
     }
@@ -3686,7 +3747,10 @@ function bindEvents() {
     startEditStay(guestCard.dataset.activeStay);
   });
 
-  window.addEventListener("resize", syncOverviewPanelHeights);
+  window.addEventListener("resize", () => {
+    syncOverviewPanelHeights();
+    updateCalendarRangeFromScroll();
+  });
 
   selectors.calendarPrevButton.addEventListener("click", () => {
     calendarStart = addDays(calendarStart, -14);
@@ -3699,7 +3763,7 @@ function bindEvents() {
   });
 
   selectors.calendarTodayButton.addEventListener("click", () => {
-    calendarStart = getCenteredCalendarStart();
+    calendarStart = getDefaultCalendarStart();
     renderCalendar();
   });
 
