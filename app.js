@@ -2052,6 +2052,17 @@ function renderStaffChatColors() {
     .join("");
 }
 
+function scrollStaffChatToBottom() {
+  if (!selectors.staffChatMessages) return;
+  const scroll = () => {
+    selectors.staffChatMessages.scrollTop = selectors.staffChatMessages.scrollHeight;
+  };
+  requestAnimationFrame(() => {
+    scroll();
+    window.setTimeout(scroll, 40);
+  });
+}
+
 function renderStaffChat({ scrollToBottom = false } = {}) {
   renderStaffChatColors();
   if (!selectors.staffChatMessages) return;
@@ -2073,9 +2084,7 @@ function renderStaffChat({ scrollToBottom = false } = {}) {
   }
 
   if (scrollToBottom) {
-    requestAnimationFrame(() => {
-      selectors.staffChatMessages.scrollTop = selectors.staffChatMessages.scrollHeight;
-    });
+    scrollStaffChatToBottom();
   }
 }
 
@@ -2607,7 +2616,7 @@ function renderAll() {
   renderFormDateCalendar();
   renderColorPalette();
   renderStats();
-  renderStaffChat();
+  renderStaffChat({ scrollToBottom: currentSectionName === "staff-chat" });
   renderRoomMap();
   renderRoomGroups();
   renderActiveGuests();
@@ -2921,6 +2930,7 @@ function showSection(sectionName) {
   requestAnimationFrame(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     if (sectionName === "dashboard") syncOverviewPanelHeights();
+    if (sectionName === "staff-chat") scrollStaffChatToBottom();
   });
 }
 
@@ -3026,7 +3036,6 @@ function bindEvents() {
   selectors.staffChatTrigger?.addEventListener("click", () => {
     navigateToSection("staff-chat");
     setMobileMenuOpen(false);
-    renderStaffChat({ scrollToBottom: true });
     requestAnimationFrame(() => selectors.staffChatInput?.focus());
   });
   selectors.staffChatColors?.addEventListener("click", (event) => {
