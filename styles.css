@@ -326,3 +326,52 @@
     padding:14px!important;
   }
 }
+
+@media (width<=640px){
+  .main-content{
+    padding:10px!important;
+  }
+
+  body .panel{
+    padding:14px!important;
+  }
+
+  .topbar{
+    margin-bottom:16px!important;
+  }
+
+  .stats-grid,
+  .content-grid,
+  .room-map,
+  .guest-list{
+    gap:10px!important;
+  }
+
+  .active-guests-panel .guest-list{
+    padding-right:0!important;
+  }
+
+  #dashboardSection .active-guest-card{
+    min-width:0!important;
+    padding:14px!important;
+    padding-right:34px!important;
+  }
+
+  #dashboardSection .active-guest-card > div,
+  #dashboardSection .active-guest-card span,
+  #dashboardSection .active-guest-card p{
+    min-width:0!important;
+    max-width:100%!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    word-break:break-word!important;
+  }
+
+  .calendar-active .main-content{
+    padding:12px 10px 10px!important;
+  }
+
+  .staff-chat-active .main-content{
+    padding:0 10px 10px!important;
+  }
+}
