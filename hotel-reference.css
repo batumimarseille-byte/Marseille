@@ -592,6 +592,12 @@ body.staff-chat-active #staffChatSection {
   padding: 0 4px 16px;
 }
 
+@media (min-width: 1025px) {
+  .sidebar .brand {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
 .settings-close svg,
 .settings-sign-out svg {
   width: 18px;
@@ -1915,4 +1921,69 @@ body:has(.date-range-field.open)::before {
 /* Show the app only after the saved page has been restored. */
 .app-shell.app-loading {
   visibility: hidden;
+}
+
+@media (max-width: 1024px) {
+  body.staff-chat-active .app-shell {
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    align-items: start !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  body.staff-chat-active .sidebar {
+    box-sizing: border-box !important;
+    align-self: start !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 14px !important;
+    overflow: visible !important;
+  }
+
+  body.staff-chat-active .mobile-nav-header {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  body.staff-chat-active .mobile-nav-header .brand {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-bottom: 0 !important;
+  }
+
+  body.staff-chat-active .main-content {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 0 18px 18px !important;
+    overflow: hidden !important;
+    background: #f6f8fa !important;
+  }
+
+  body.staff-chat-active #staffChatSection,
+  body.staff-chat-active .staff-chat-panel {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  body.staff-chat-active .sidebar {
+    padding: 10px 20px !important;
+  }
+
+  body.staff-chat-active .main-content {
+    padding: 0 20px 20px !important;
+  }
 }

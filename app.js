@@ -664,18 +664,19 @@ function getStoredStaffColor() {
 
 function getStoredSection() {
   try {
-    const stored = localStorage.getItem(activeSectionStorageKey);
-    return sectionStorageValues.has(stored) ? stored : "dashboard";
+    localStorage.removeItem(activeSectionStorageKey);
   } catch {
-    return "dashboard";
+    // Browsers can block localStorage in private mode.
   }
+
+  return "dashboard";
 }
 
 function storeActiveSection(sectionName) {
   if (!sectionStorageValues.has(sectionName)) return;
 
   try {
-    localStorage.setItem(activeSectionStorageKey, sectionName);
+    localStorage.removeItem(activeSectionStorageKey);
   } catch {
     // Browsers can block localStorage in private mode.
   }

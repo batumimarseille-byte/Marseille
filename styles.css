@@ -375,3 +375,95 @@
     padding:0 10px 10px!important;
   }
 }
+
+@media (width<=640px){
+  #staysSection .panel-header.split-header{
+    align-items:flex-start!important;
+    gap:12px!important;
+  }
+
+  #staysSection .filter-group{
+    width:100%!important;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+    overflow:visible!important;
+    padding:0!important;
+  }
+
+  #staysSection .filter-chip{
+    flex:0 0 auto!important;
+    height:38px!important;
+    min-height:38px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:8px 12px!important;
+    line-height:1.1!important;
+    white-space:nowrap!important;
+    transform:none!important;
+  }
+
+  #staysSection .filter-chip:hover,
+  #staysSection .filter-chip:focus-visible{
+    transform:none!important;
+  }
+}
+
+@media (width<=1024px){
+  body:not(.staff-chat-active) .app-shell{
+    grid-template-rows:auto minmax(0,1fr)!important;
+    align-items:start!important;
+  }
+
+  body:not(.staff-chat-active) .sidebar{
+    align-self:start!important;
+    height:auto!important;
+    min-height:0!important;
+    padding-bottom:10px!important;
+  }
+
+  body:not(.staff-chat-active) .mobile-nav-header{
+    min-height:0!important;
+  }
+}
+
+@media (width<=640px){
+  body:not(.staff-chat-active) .sidebar{
+    padding:10px 20px!important;
+  }
+
+  body:not(.staff-chat-active) .mobile-nav-header{
+    min-height:0!important;
+  }
+}
+
+@media (width<=1024px){
+  body:not(.staff-chat-active) .main-content{
+    padding-top:24px!important;
+  }
+
+  body:not(.staff-chat-active) .topbar{
+    margin-bottom:24px!important;
+  }
+}
+
+@media (width<=640px){
+  body:not(.staff-chat-active) .main-content{
+    padding-top:20px!important;
+  }
+
+  body:not(.staff-chat-active) .topbar{
+    margin-bottom:22px!important;
+  }
+
+  body:not(.staff-chat-active) .topbar h2{
+    margin-top:2px!important;
+  }
+}
+
+@media (width<=1024px){
+  .sidebar .nav-list{
+    top:calc(100% + 8px)!important;
+  }
+}
