@@ -793,7 +793,13 @@ body.staff-chat-active #staffChatSection {
 }
 
 .guest-list .active-guest-card strong,
-.guest-list .active-guest-card span,
+.guest-list .active-guest-card span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .guest-list .active-guest-card > p:not(.guest-note) {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1915,6 +1921,126 @@ body:has(.date-range-field.open)::before {
 
   .align-dropdown-menu {
     max-height: 240px;
+  }
+}
+
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  overflow: hidden;
+  color: #f8f1df;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(226, 176, 59, 0.24), transparent 34%),
+    radial-gradient(circle at 18% 82%, rgba(194, 132, 36, 0.14), transparent 30%),
+    linear-gradient(145deg, #030303 0%, #121212 48%, #050505 100%);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 420ms ease,
+    visibility 420ms ease;
+}
+
+.app-splash::before {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(242, 197, 72, 0.16), transparent 62%);
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+.app-splash-inner {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  animation: splash-rise 760ms ease both;
+}
+
+.app-splash-eyebrow {
+  margin: 0;
+  color: rgba(229, 183, 65, 0.86);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.app-splash h1 {
+  margin: 0 0 10px;
+  color: #fff8df;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(38px, 10vw, 58px);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  text-shadow: 0 10px 36px rgba(226, 176, 59, 0.34);
+}
+
+.app-splash-logo {
+  width: 116px;
+  height: 116px;
+  overflow: hidden;
+  border: 1px solid rgba(232, 187, 62, 0.54);
+  border-radius: 30px;
+  background: #0a0a0a;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.48),
+    0 0 0 8px rgba(255, 255, 255, 0.035),
+    0 0 42px rgba(224, 171, 46, 0.2);
+  animation: splash-logo 900ms ease both 120ms;
+}
+
+.app-splash-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body.app-ready .app-splash {
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+@keyframes splash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-logo {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-splash,
+  .app-splash-inner,
+  .app-splash-logo {
+    animation: none;
+    transition: none;
   }
 }
 
