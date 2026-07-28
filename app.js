@@ -3798,7 +3798,6 @@ async function startApp() {
   const canStart = await requireSession();
   if (!canStart) {
     selectors.appShell?.classList.remove("app-loading");
-    document.body.classList.add("app-ready");
     return;
   }
 
@@ -3818,9 +3817,6 @@ async function startApp() {
   showSection(targetSection);
   renderAll();
   selectors.appShell?.classList.remove("app-loading");
-  window.requestAnimationFrame(() => {
-    document.body.classList.add("app-ready");
-  });
 }
 
 async function init() {
