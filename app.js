@@ -47,6 +47,7 @@ function getCurrentHotelId() {
 }
 
 const currentHotelId = getCurrentHotelId();
+const tenantLanguageStorageKey = `${languageStorageKey}:${currentHotelId}`;
 const defaultHotelName = currentHotelId === defaultHotelId ? "Marseille" : "Demo Hotel";
 const defaultHotelSettings = {
   id: "",
@@ -765,7 +766,9 @@ function getTranslationValue(path, dictionary) {
 
 function getStoredLanguage() {
   try {
-    const stored = localStorage.getItem(languageStorageKey);
+    const stored =
+      localStorage.getItem(tenantLanguageStorageKey) ||
+      (currentHotelId === defaultHotelId ? localStorage.getItem(languageStorageKey) : "");
     return translations[stored] ? stored : "en";
   } catch {
     return "en";
@@ -774,7 +777,10 @@ function getStoredLanguage() {
 
 function hasStoredLanguage() {
   try {
-    return Boolean(localStorage.getItem(languageStorageKey));
+    return Boolean(
+      localStorage.getItem(tenantLanguageStorageKey) ||
+        (currentHotelId === defaultHotelId && localStorage.getItem(languageStorageKey))
+    );
   } catch {
     return false;
   }
@@ -1035,7 +1041,10 @@ function setLanguage(language) {
 
   currentLanguage = language;
   try {
-    localStorage.setItem(languageStorageKey, language);
+    localStorage.setItem(tenantLanguageStorageKey, language);
+    if (currentHotelId === defaultHotelId) {
+      localStorage.setItem(languageStorageKey, language);
+    }
   } catch {
     // Ignore blocked storage.
   }
