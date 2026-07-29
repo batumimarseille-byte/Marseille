@@ -1,0 +1,34 @@
+{
+  "hotel": {
+    "id": "demo-hotel",
+    "slug": "demo-hotel",
+    "name": "Demo Hotel",
+    "label": "Hotel",
+    "logoUrl": "/logo.png",
+    "defaultLanguage": "en",
+    "currencyCode": "GEL",
+    "timezone": "Asia/Tbilisi"
+  },
+  "admin": {
+    "email": "demo-admin@example.com",
+    "password": "ChangeMe12345",
+    "displayName": "Demo Administrator",
+    "position": "Administrator",
+    "chatColor": "#4f7cff"
+  },
+  "rooms": [
+    { "id": "101", "type": "Suite", "nightlyPrice": 350 },
+    { "id": "102", "type": "Standard", "nightlyPrice": 170 },
+    { "id": "103", "type": "Twin", "nightlyPrice": 160 }
+  ],
+  "bookingColors": [
+    "#4f7cff",
+    "#9a6bf2",
+    "#e978b7",
+    "#ef6669",
+    "#e89b43",
+    "#75c95d",
+    "#2fb8aa",
+    "#36a4e9"
+  ]
+}
