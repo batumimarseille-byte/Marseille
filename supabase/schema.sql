@@ -7,7 +7,7 @@ create table if not exists public.hotel_settings (
   id uuid primary key default gen_random_uuid(),
   hotel_name text not null default 'Marseille',
   hotel_label text not null default 'Hotel',
-  logo_url text not null default 'assets/hotel-marseille-logo.png',
+  logo_url text not null default '/logo.png',
   default_language text not null default 'en',
   currency_code text not null default 'GEL',
   currency_symbol text not null default '₾',
@@ -229,7 +229,7 @@ insert into public.hotel_settings (
 select
   'Marseille',
   'Hotel',
-  'assets/hotel-marseille-logo.png',
+  '/logo.png',
   'en',
   'GEL',
   '₾',

@@ -42,7 +42,7 @@ const defaultHotelSettings = {
   id: "",
   hotelName: "Marseille",
   hotelLabel: "Hotel",
-  logoUrl: "assets/hotel-marseille-logo.png",
+  logoUrl: "/logo.png",
   defaultLanguage: "en",
   currencyCode: "GEL",
   currencySymbol: "₾",
