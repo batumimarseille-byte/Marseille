@@ -67,7 +67,7 @@
           <button class="nav-item mobile-only-nav-item" data-section="staff-chat" data-i18n="staffChat.title">Staff chat</button>
           <button class="mobile-account-nav-item mobile-only-nav-item" type="button" aria-label="Administrator account" aria-haspopup="dialog" aria-expanded="false" data-settings-trigger>
             <span class="mobile-account-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg></span>
-            <span data-i18n="settings.administrator">Administrator</span>
+            <span data-profile-name data-i18n="settings.administrator">Administrator</span>
           </button>
         </nav>
 
@@ -79,7 +79,7 @@
           <div class="sidebar-footer-divider" aria-hidden="true"></div>
           <button class="sidebar-profile-trigger" id="settingsTrigger" type="button" aria-label="Administrator account" aria-haspopup="dialog" aria-expanded="false" data-settings-trigger>
             <span class="sidebar-profile-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg></span>
-            <span class="sidebar-profile-copy"><strong data-i18n="settings.administrator">Administrator</strong><small data-i18n="settings.role">Hotel staff</small></span>
+            <span class="sidebar-profile-copy"><strong data-profile-name data-i18n="settings.administrator">Administrator</strong><small data-profile-position data-i18n="settings.role">Hotel staff</small></span>
             <svg class="sidebar-profile-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
           </button>
         </div>
@@ -439,6 +439,35 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
           </button>
         </header>
+        <div class="settings-section">
+          <p class="settings-section-label" data-i18n="settings.profile">Profile</p>
+          <p class="settings-section-hint" data-i18n="settings.profileHint">Name, role label, avatar, and chat color.</p>
+          <form class="hotel-settings-form" id="profileSettingsForm">
+            <div class="settings-field-grid">
+              <label class="settings-field">
+                <span data-i18n="settings.displayName">Display name</span>
+                <input id="settingsProfileName" name="displayName" type="text" autocomplete="name" required />
+              </label>
+              <label class="settings-field">
+                <span data-i18n="settings.position">Position</span>
+                <input id="settingsProfilePosition" name="position" type="text" autocomplete="organization-title" />
+              </label>
+              <label class="settings-field settings-field-wide">
+                <span data-i18n="settings.avatarUrl">Avatar URL</span>
+                <input id="settingsProfileAvatarUrl" name="avatarUrl" type="text" autocomplete="off" />
+              </label>
+              <div class="settings-field settings-field-wide">
+                <span data-i18n="settings.chatColor">Chat color</span>
+                <input id="settingsProfileChatColor" name="chatColor" type="hidden" />
+                <div class="settings-profile-colors" id="settingsProfileColors" role="radiogroup" aria-label="Chat color"></div>
+              </div>
+            </div>
+            <div class="settings-actions">
+              <p class="settings-message" id="profileSettingsMessage" role="status"></p>
+              <button class="settings-save" type="submit" data-i18n="settings.save">Save changes</button>
+            </div>
+          </form>
+        </div>
         <div class="settings-section">
           <p class="settings-section-label" data-i18n="settings.hotel">Hotel settings</p>
           <p class="settings-section-hint" data-i18n="settings.hotelHint">Name, logo, currency, and default app settings.</p>

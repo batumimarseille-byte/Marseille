@@ -120,6 +120,14 @@ const translations = {
       title: "Account",
       administrator: "Administrator",
       role: "Hotel staff",
+      profile: "Profile",
+      profileHint: "Name, role label, avatar, and chat color.",
+      displayName: "Display name",
+      position: "Position",
+      avatarUrl: "Avatar URL",
+      chatColor: "Chat color",
+      profileSaved: "Profile saved.",
+      profileSaveError: "Could not save profile. Check Supabase and try again.",
       hotel: "Hotel settings",
       hotelHint: "Name, logo, currency, and default app settings.",
       hotelName: "Hotel name",
@@ -376,6 +384,14 @@ const translations = {
       title: "ანგარიში",
       administrator: "ადმინისტრატორი",
       role: "სასტუმროს პერსონალი",
+      profile: "პროფილი",
+      profileHint: "სახელი, როლი, ავატარი და ჩატის ფერი.",
+      displayName: "სახელი",
+      position: "პოზიცია",
+      avatarUrl: "ავატარის მისამართი",
+      chatColor: "ჩატის ფერი",
+      profileSaved: "პროფილი შენახულია.",
+      profileSaveError: "პროფილი ვერ შეინახა. გადაამოწმეთ Supabase.",
       hotel: "სასტუმროს პარამეტრები",
       hotelHint: "სახელი, ლოგო, ვალუტა და საწყისი პარამეტრები.",
       hotelName: "სასტუმროს სახელი",
@@ -745,6 +761,13 @@ const selectors = {
   settingsCloseButtons: document.querySelectorAll("[data-settings-close]"),
   settingsLanguageButtons: document.querySelectorAll("[data-settings-language]"),
   settingsSignOut: document.querySelector("#settingsSignOut"),
+  profileSettingsForm: document.querySelector("#profileSettingsForm"),
+  profileSettingsMessage: document.querySelector("#profileSettingsMessage"),
+  settingsProfileName: document.querySelector("#settingsProfileName"),
+  settingsProfilePosition: document.querySelector("#settingsProfilePosition"),
+  settingsProfileAvatarUrl: document.querySelector("#settingsProfileAvatarUrl"),
+  settingsProfileChatColor: document.querySelector("#settingsProfileChatColor"),
+  settingsProfileColors: document.querySelector("#settingsProfileColors"),
   hotelSettingsForm: document.querySelector("#hotelSettingsForm"),
   hotelSettingsMessage: document.querySelector("#hotelSettingsMessage"),
   settingsHotelName: document.querySelector("#settingsHotelName"),
@@ -764,6 +787,8 @@ const selectors = {
   hotelNames: document.querySelectorAll("[data-hotel-name]"),
   hotelLabels: document.querySelectorAll("[data-hotel-label]"),
   hotelLogos: document.querySelectorAll("[data-hotel-logo]"),
+  profileNames: document.querySelectorAll("[data-profile-name]"),
+  profilePositions: document.querySelectorAll("[data-profile-position]"),
 };
 
 
@@ -810,6 +835,7 @@ function setCurrentHotelId(nextHotelId) {
 
 function normalizeHotelUserProfile(row) {
   if (!row) return null;
+  const fallbackColor = staffMessagePalette[0];
   return {
     id: row.id || "",
     userId: row.user_id || row.userId || "",
@@ -817,6 +843,8 @@ function normalizeHotelUserProfile(row) {
     displayName: row.display_name || row.displayName || "",
     role: row.role || "staff",
     position: row.position || "",
+    avatarUrl: row.avatar_url || row.avatarUrl || "",
+    chatColor: normalizeBookingColor(row.chat_color || row.chatColor) || fallbackColor,
     isActive: row.is_active ?? row.isActive ?? true,
   };
 }
@@ -826,7 +854,7 @@ async function loadCurrentUserProfile(userId) {
 
   const { data, error } = await supabaseClient
     .from("hotel_users")
-    .select("id, user_id, hotel_id, display_name, role, position, is_active")
+    .select("id, user_id, hotel_id, display_name, role, position, avatar_url, chat_color, is_active")
     .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
@@ -945,6 +973,29 @@ function applyHotelSettings() {
   });
 }
 
+function getProfileDisplayName() {
+  return currentUserProfile?.displayName || t("settings.administrator");
+}
+
+function getProfilePosition() {
+  return currentUserProfile?.position || t("settings.role");
+}
+
+function applyUserProfile() {
+  selectors.profileNames?.forEach((node) => {
+    node.textContent = getProfileDisplayName();
+  });
+
+  selectors.profilePositions?.forEach((node) => {
+    node.textContent = getProfilePosition();
+  });
+
+  const profileColor = normalizeBookingColor(currentUserProfile?.chatColor);
+  if (profileColor) {
+    selectedStaffColor = profileColor;
+  }
+}
+
 async function loadHotelSettings() {
   if (!usesSupabase) return { ...defaultHotelSettings };
 
@@ -971,6 +1022,93 @@ function populateHotelSettingsForm() {
   selectors.settingsCurrency.value = getSupportedCurrency(hotelSettings.currencyCode).code;
   setHotelSettingsMessage("", "");
   renderCustomDropdowns();
+}
+
+function setProfileSettingsMessage(message, type) {
+  if (!selectors.profileSettingsMessage) return;
+  selectors.profileSettingsMessage.textContent = message;
+  selectors.profileSettingsMessage.className = `settings-message ${type || ""}`;
+}
+
+function renderProfileColorOptions() {
+  if (!selectors.settingsProfileColors) return;
+  const selectedColor = normalizeBookingColor(selectors.settingsProfileChatColor?.value) || currentUserProfile?.chatColor || staffMessagePalette[0];
+  selectors.settingsProfileColors.innerHTML = staffMessagePalette
+    .map((color) => `
+      <button
+        type="button"
+        class="settings-profile-color${color === selectedColor ? " is-selected" : ""}"
+        data-profile-color="${color}"
+        role="radio"
+        aria-checked="${color === selectedColor}"
+        aria-label="${t("settings.chatColor")}"
+        style="--profile-color: ${color}"
+      ></button>
+    `)
+    .join("");
+}
+
+function populateProfileSettingsForm() {
+  if (!selectors.profileSettingsForm) return;
+  selectors.settingsProfileName.value = getProfileDisplayName();
+  selectors.settingsProfilePosition.value = currentUserProfile?.position || "";
+  selectors.settingsProfileAvatarUrl.value = currentUserProfile?.avatarUrl || "";
+  selectors.settingsProfileChatColor.value = currentUserProfile?.chatColor || selectedStaffColor || staffMessagePalette[0];
+  setProfileSettingsMessage("", "");
+  renderProfileColorOptions();
+}
+
+function readProfileSettingsForm() {
+  const formData = new FormData(selectors.profileSettingsForm);
+  return {
+    displayName: String(formData.get("displayName") || "").trim(),
+    position: String(formData.get("position") || "").trim(),
+    avatarUrl: String(formData.get("avatarUrl") || "").trim(),
+    chatColor: normalizeBookingColor(String(formData.get("chatColor") || "")) || staffMessagePalette[0],
+  };
+}
+
+async function saveOwnProfile(nextProfile) {
+  if (!usesSupabase) {
+    currentUserProfile = {
+      ...(currentUserProfile || {}),
+      displayName: nextProfile.displayName || getProfileDisplayName(),
+      position: nextProfile.position,
+      avatarUrl: nextProfile.avatarUrl,
+      chatColor: nextProfile.chatColor,
+    };
+    applyUserProfile();
+    try {
+      localStorage.setItem(staffColorStorageKey, selectedStaffColor);
+    } catch {
+      // Ignore blocked storage.
+    }
+    renderStaffChatColors();
+    return true;
+  }
+
+  const { data, error } = await supabaseClient.rpc("update_own_hotel_profile", {
+    next_display_name: nextProfile.displayName,
+    next_position: nextProfile.position,
+    next_avatar_url: nextProfile.avatarUrl,
+    next_chat_color: nextProfile.chatColor,
+  });
+
+  if (error) {
+    console.error("Failed to save profile", error);
+    return false;
+  }
+
+  currentUserProfile = normalizeHotelUserProfile(data);
+  applyUserProfile();
+  try {
+    localStorage.setItem(staffColorStorageKey, selectedStaffColor);
+  } catch {
+    // Ignore blocked storage.
+  }
+  renderStaffChatColors();
+  renderStaffChat();
+  return true;
 }
 
 function setHotelSettingsMessage(message, type) {
@@ -1069,6 +1207,7 @@ function applyStaticTranslations() {
 
   renderRoomEditorTypeOptions();
   applyHotelSettings();
+  applyUserProfile();
 }
 
 function updateLanguageToggle() {
@@ -1681,6 +1820,10 @@ async function hideRoomInventoryItem(roomId) {
 function mapStaffMessageFromDatabase(row) {
   return {
     id: row.id,
+    authorUserId: row.author_user_id || row.authorUserId || "",
+    authorName: row.author_name || row.authorName || t("staffChat.message"),
+    authorPosition: row.author_position || row.authorPosition || "",
+    authorAvatarUrl: row.author_avatar_url || row.authorAvatarUrl || "",
     color: normalizeBookingColor(row.color) || staffMessagePalette[0],
     message: row.message || "",
     createdAt: row.created_at || new Date().toISOString(),
@@ -1692,7 +1835,7 @@ async function loadStaffMessages() {
 
   const { data, error } = await supabaseClient
     .from("staff_messages")
-    .select("id, color, message, created_at")
+    .select("id, author_user_id, author_name, author_position, author_avatar_url, color, message, created_at")
     .eq("hotel_id", currentHotelId)
     .order("created_at", { ascending: false })
     .limit(80);
@@ -1708,6 +1851,10 @@ async function loadStaffMessages() {
 async function saveStaffMessage(color, messageText) {
   const message = {
     id: crypto.randomUUID(),
+    authorUserId: currentUserProfile?.userId || "",
+    authorName: currentUserProfile?.displayName || t("staffChat.message"),
+    authorPosition: currentUserProfile?.position || "",
+    authorAvatarUrl: currentUserProfile?.avatarUrl || "",
     color: normalizeBookingColor(color) || staffMessagePalette[0],
     message: String(messageText || "").trim(),
     createdAt: new Date().toISOString(),
@@ -1723,8 +1870,17 @@ async function saveStaffMessage(color, messageText) {
 
   const { data, error } = await supabaseClient
     .from("staff_messages")
-    .insert({ hotel_id: currentHotelId, author: "reception", color: message.color, message: message.message })
-    .select("id, color, message, created_at")
+    .insert({
+      hotel_id: currentHotelId,
+      author_user_id: message.authorUserId || null,
+      author: currentUserProfile?.role === "admin" ? "admin" : "reception",
+      author_name: message.authorName,
+      author_position: message.authorPosition,
+      author_avatar_url: message.authorAvatarUrl,
+      color: message.color,
+      message: message.message,
+    })
+    .select("id, author_user_id, author_name, author_position, author_avatar_url, color, message, created_at")
     .single();
 
   if (error) {
@@ -2673,7 +2829,8 @@ function renderStaffChat({ scrollToBottom = false } = {}) {
       .map((item) => `
         <article class="staff-message" style="--staff-color: ${normalizeBookingColor(item.color) || staffMessagePalette[0]}">
           <div class="staff-message-meta">
-            <strong><span></span>${escapeHtml(t("staffChat.message"))}</strong>
+            <strong><span></span>${escapeHtml(item.authorName || t("staffChat.message"))}</strong>
+            ${item.authorPosition ? `<small>${escapeHtml(item.authorPosition)}</small>` : ""}
             <span>${escapeHtml(formatStaffMessageTime(item.createdAt))}</span>
           </div>
           <p>${escapeHtml(item.message)}</p>
@@ -3595,7 +3752,10 @@ function setSettingsOpen(isOpen) {
   selectors.settingsTriggers.forEach((button) => {
     button.setAttribute("aria-expanded", String(isOpen));
   });
-  if (isOpen) populateHotelSettingsForm();
+  if (isOpen) {
+    populateProfileSettingsForm();
+    populateHotelSettingsForm();
+  }
   document.body.classList.toggle("settings-open", isOpen);
 }
 
@@ -3627,6 +3787,7 @@ async function requireSession() {
     selectors.authScreen?.classList.add("hidden");
     selectors.appShell?.classList.remove("hidden");
     setStorageCardContent(t("storage.cloudTitle"), t("storage.cloudText"), true);
+    applyUserProfile();
     return true;
   }
 
@@ -3681,6 +3842,26 @@ function bindEvents() {
   selectors.settingsCloseButtons.forEach((button) => button.addEventListener("click", () => setSettingsOpen(false)));
   selectors.settingsLanguageButtons.forEach((button) => {
     button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
+  });
+  selectors.settingsProfileColors?.addEventListener("click", (event) => {
+    const colorButton = event.target.closest("[data-profile-color]");
+    const color = normalizeBookingColor(colorButton?.dataset.profileColor);
+    if (!color || !selectors.settingsProfileChatColor) return;
+    selectors.settingsProfileChatColor.value = color;
+    renderProfileColorOptions();
+  });
+  selectors.profileSettingsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = selectors.profileSettingsForm.querySelector("button[type='submit']");
+    const nextProfile = readProfileSettingsForm();
+    submitButton.disabled = true;
+    submitButton.textContent = t("settings.saving");
+    setProfileSettingsMessage(t("settings.saving"), "");
+    const saved = await saveOwnProfile(nextProfile);
+    submitButton.disabled = false;
+    submitButton.textContent = t("settings.save");
+    if (saved) populateProfileSettingsForm();
+    setProfileSettingsMessage(saved ? t("settings.profileSaved") : t("settings.profileSaveError"), saved ? "success" : "error");
   });
   selectors.hotelSettingsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();

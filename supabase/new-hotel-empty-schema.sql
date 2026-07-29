@@ -41,10 +41,13 @@ create table if not exists public.hotel_users (
   display_name text not null default 'Administrator',
   role text not null default 'staff',
   position text not null default '',
+  avatar_url text not null default '',
+  chat_color text not null default '#4f7cff',
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint hotel_users_display_name_not_blank check (length(btrim(display_name)) > 0),
+  constraint hotel_users_valid_chat_color check (chat_color ~ '^#[0-9A-Fa-f]{6}$'),
   constraint hotel_users_role_valid check (role in ('admin', 'manager', 'reception', 'housekeeping', 'staff', 'viewer')),
   constraint hotel_users_user_id_key unique (user_id)
 );
@@ -112,7 +115,11 @@ create table if not exists public.booking_colors (
 create table if not exists public.staff_messages (
   id uuid primary key default gen_random_uuid(),
   hotel_id text not null references public.hotels(id) on update cascade on delete restrict,
+  author_user_id uuid references auth.users(id) on update cascade on delete set null,
   author text not null default 'reception',
+  author_name text not null default 'Message',
+  author_position text not null default '',
+  author_avatar_url text not null default '',
   color text not null default '#4f7cff',
   message text not null,
   created_at timestamptz not null default now(),
@@ -196,6 +203,42 @@ as $$
 $$;
 
 grant execute on function public.is_hotel_admin(text) to authenticated;
+
+create or replace function public.update_own_hotel_profile(
+  next_display_name text,
+  next_position text,
+  next_avatar_url text,
+  next_chat_color text
+)
+returns public.hotel_users
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_profile public.hotel_users;
+begin
+  update public.hotel_users
+  set
+    display_name = coalesce(nullif(btrim(next_display_name), ''), display_name),
+    position = btrim(coalesce(next_position, '')),
+    avatar_url = btrim(coalesce(next_avatar_url, '')),
+    chat_color = coalesce(nullif(btrim(next_chat_color), ''), chat_color),
+    updated_at = now()
+  where user_id = auth.uid()
+    and is_active = true
+    and coalesce(nullif(btrim(next_chat_color), ''), chat_color) ~ '^#[0-9A-Fa-f]{6}$'
+  returning * into updated_profile;
+
+  if updated_profile.id is null then
+    raise exception 'Profile was not updated';
+  end if;
+
+  return updated_profile;
+end;
+$$;
+
+grant execute on function public.update_own_hotel_profile(text, text, text, text) to authenticated;
 
 drop policy if exists "Authenticated users can manage hotels" on public.hotels;
 create policy "Authenticated users can manage hotels"
