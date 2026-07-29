@@ -3692,7 +3692,10 @@ function bindEvents() {
     const saved = await saveHotelSettings(nextSettings);
     submitButton.disabled = false;
     submitButton.textContent = t("settings.save");
-    if (saved) populateHotelSettingsForm();
+    if (saved) {
+      setLanguage(nextSettings.defaultLanguage);
+      populateHotelSettingsForm();
+    }
     setHotelSettingsMessage(saved ? t("settings.saved") : t("settings.saveError"), saved ? "success" : "error");
   });
   selectors.settingsSignOut?.addEventListener("click", signOut);
