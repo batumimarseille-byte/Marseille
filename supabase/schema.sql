@@ -33,6 +33,21 @@ create table if not exists public.hotel_settings (
   constraint hotel_settings_currency_symbol_not_blank check (length(btrim(currency_symbol)) > 0)
 );
 
+create table if not exists public.hotel_users (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on update cascade on delete cascade,
+  hotel_id text not null references public.hotels(id) on update cascade on delete restrict,
+  display_name text not null default 'Administrator',
+  role text not null default 'staff',
+  position text not null default '',
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint hotel_users_display_name_not_blank check (length(btrim(display_name)) > 0),
+  constraint hotel_users_role_valid check (role in ('admin', 'manager', 'reception', 'housekeeping', 'staff', 'viewer')),
+  constraint hotel_users_user_id_key unique (user_id)
+);
+
 create table if not exists public.rooms (
   hotel_id text not null references public.hotels(id) on update cascade on delete restrict,
   id text not null,
@@ -136,6 +151,7 @@ create index if not exists stays_hotel_debt_idx on public.stays (hotel_id, debt_
 create index if not exists stays_hotel_pinned_idx on public.stays (hotel_id, is_pinned) where is_pinned = true;
 create index if not exists rooms_hotel_active_sort_idx on public.rooms (hotel_id, is_active, sort_order);
 create unique index if not exists hotel_settings_hotel_id_key on public.hotel_settings (hotel_id);
+create index if not exists hotel_users_hotel_role_idx on public.hotel_users (hotel_id, role, is_active);
 
 create table if not exists public.booking_colors (
   id uuid primary key default gen_random_uuid(),
@@ -205,13 +221,37 @@ create trigger hotels_set_updated_at
 before update on public.hotels
 for each row execute function public.set_updated_at();
 
+drop trigger if exists hotel_users_set_updated_at on public.hotel_users;
+create trigger hotel_users_set_updated_at
+before update on public.hotel_users
+for each row execute function public.set_updated_at();
+
 alter table public.hotels enable row level security;
 alter table public.hotel_settings enable row level security;
+alter table public.hotel_users enable row level security;
 alter table public.rooms enable row level security;
 alter table public.companies enable row level security;
 alter table public.stays enable row level security;
 alter table public.booking_colors enable row level security;
 alter table public.staff_messages enable row level security;
+
+create or replace function public.is_hotel_admin(target_hotel_id text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.hotel_users
+    where user_id = auth.uid()
+      and hotel_id = target_hotel_id
+      and role = 'admin'
+      and is_active = true
+  );
+$$;
+
+grant execute on function public.is_hotel_admin(text) to authenticated;
 
 -- First stage: one authenticated hotel user can manage everything.
 -- Later we can add roles if the hotel needs several staff accounts.
@@ -236,6 +276,19 @@ on public.hotel_settings for all
 to authenticated
 using (true)
 with check (true);
+
+drop policy if exists "Users can read own hotel profile" on public.hotel_users;
+create policy "Users can read own hotel profile"
+on public.hotel_users for select
+to authenticated
+using (user_id = auth.uid());
+
+drop policy if exists "Hotel admins can manage hotel users" on public.hotel_users;
+create policy "Hotel admins can manage hotel users"
+on public.hotel_users for all
+to authenticated
+using (public.is_hotel_admin(hotel_id))
+with check (public.is_hotel_admin(hotel_id));
 
 drop policy if exists "Authenticated users can manage stays" on public.stays;
 create policy "Authenticated users can manage stays"

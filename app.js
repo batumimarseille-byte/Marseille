@@ -40,26 +40,32 @@ const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df
 const staffMessagePalette = ["#4f7cff", "#9a6bf2", "#e978b7", "#ef6669", "#e89b43", "#75c95d", "#2fb8aa", "#36a4e9"];
 const defaultHotelId = "marseille";
 
-function getCurrentHotelId() {
+function getRouteHotelId() {
   const urlHotelId = new URLSearchParams(window.location.search).get("hotel");
   const normalized = String(urlHotelId || defaultHotelId).trim().toLowerCase();
   return /^[a-z0-9-]{2,48}$/.test(normalized) ? normalized : defaultHotelId;
 }
 
-const currentHotelId = getCurrentHotelId();
-const tenantLanguageStorageKey = `${languageStorageKey}:${currentHotelId}`;
-const defaultHotelName = currentHotelId === defaultHotelId ? "Marseille" : "Demo Hotel";
-const defaultHotelSettings = {
-  id: "",
-  hotelId: currentHotelId,
-  hotelName: defaultHotelName,
-  hotelLabel: "Hotel",
-  logoUrl: "/logo.png",
-  defaultLanguage: "en",
-  currencyCode: "GEL",
-  currencySymbol: "₾",
-  timezone: "Asia/Tbilisi",
-};
+function getDefaultHotelName(hotelId) {
+  return hotelId === defaultHotelId ? "Marseille" : "Demo Hotel";
+}
+
+function createDefaultHotelSettings(hotelId) {
+  return {
+    id: "",
+    hotelId,
+    hotelName: getDefaultHotelName(hotelId),
+    hotelLabel: "Hotel",
+    logoUrl: "/logo.png",
+    defaultLanguage: "en",
+    currencyCode: "GEL",
+    currencySymbol: "₾",
+    timezone: "Asia/Tbilisi",
+  };
+}
+
+let currentHotelId = getRouteHotelId();
+let defaultHotelSettings = createDefaultHotelSettings(currentHotelId);
 const hotelCurrencyOptions = [
   { code: "GEL", symbol: "₾", title: "Georgian lari", meta: "GEL · ₾" },
   { code: "USD", symbol: "$", title: "US dollar", meta: "USD · $" },
@@ -639,6 +645,7 @@ let pendingCheckIn = "";
 let pendingCheckOut = "";
 let currentLanguage = getStoredLanguage();
 let hotelSettings = { ...defaultHotelSettings };
+let currentUserProfile = null;
 let currentSectionName = "dashboard";
 let didJustSignIn = false;
 let calendarDragState = null;
@@ -764,10 +771,14 @@ function getTranslationValue(path, dictionary) {
   return path.split(".").reduce((value, key) => value?.[key], dictionary);
 }
 
+function getTenantLanguageStorageKey() {
+  return `${languageStorageKey}:${currentHotelId}`;
+}
+
 function getStoredLanguage() {
   try {
     const stored =
-      localStorage.getItem(tenantLanguageStorageKey) ||
+      localStorage.getItem(getTenantLanguageStorageKey()) ||
       (currentHotelId === defaultHotelId ? localStorage.getItem(languageStorageKey) : "");
     return translations[stored] ? stored : "en";
   } catch {
@@ -778,12 +789,54 @@ function getStoredLanguage() {
 function hasStoredLanguage() {
   try {
     return Boolean(
-      localStorage.getItem(tenantLanguageStorageKey) ||
+      localStorage.getItem(getTenantLanguageStorageKey()) ||
         (currentHotelId === defaultHotelId && localStorage.getItem(languageStorageKey))
     );
   } catch {
     return false;
   }
+}
+
+function setCurrentHotelId(nextHotelId) {
+  const normalized = String(nextHotelId || defaultHotelId).trim().toLowerCase();
+  const safeHotelId = /^[a-z0-9-]{2,48}$/.test(normalized) ? normalized : defaultHotelId;
+  if (safeHotelId === currentHotelId) return;
+
+  currentHotelId = safeHotelId;
+  defaultHotelSettings = createDefaultHotelSettings(currentHotelId);
+  hotelSettings = { ...defaultHotelSettings };
+  currentLanguage = getStoredLanguage();
+}
+
+function normalizeHotelUserProfile(row) {
+  if (!row) return null;
+  return {
+    id: row.id || "",
+    userId: row.user_id || row.userId || "",
+    hotelId: row.hotel_id || row.hotelId || defaultHotelId,
+    displayName: row.display_name || row.displayName || "",
+    role: row.role || "staff",
+    position: row.position || "",
+    isActive: row.is_active ?? row.isActive ?? true,
+  };
+}
+
+async function loadCurrentUserProfile(userId) {
+  if (!usesSupabase || !userId) return null;
+
+  const { data, error } = await supabaseClient
+    .from("hotel_users")
+    .select("id, user_id, hotel_id, display_name, role, position, is_active")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Hotel user profile is not available yet. Using route hotel fallback.", error.message);
+    return null;
+  }
+
+  return normalizeHotelUserProfile(data);
 }
 
 function getStoredStaffColor() {
@@ -1041,7 +1094,7 @@ function setLanguage(language) {
 
   currentLanguage = language;
   try {
-    localStorage.setItem(tenantLanguageStorageKey, language);
+    localStorage.setItem(getTenantLanguageStorageKey(), language);
     if (currentHotelId === defaultHotelId) {
       localStorage.setItem(languageStorageKey, language);
     }
@@ -3569,12 +3622,16 @@ async function requireSession() {
   const session = data?.session;
 
   if (session) {
+    currentUserProfile = await loadCurrentUserProfile(session.user?.id);
+    setCurrentHotelId(currentUserProfile?.hotelId || getRouteHotelId());
     selectors.authScreen?.classList.add("hidden");
     selectors.appShell?.classList.remove("hidden");
     setStorageCardContent(t("storage.cloudTitle"), t("storage.cloudText"), true);
     return true;
   }
 
+  currentUserProfile = null;
+  setCurrentHotelId(getRouteHotelId());
   selectors.appShell?.classList.add("hidden");
   selectors.authScreen?.classList.remove("hidden");
   selectors.loginForm.email.value = configuredLoginEmail;
