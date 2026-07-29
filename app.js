@@ -38,11 +38,20 @@ const defaultBookingColor = "#4f7cff";
 const bookingCustomColorsStorageKey = "hotel-desk-booking-custom-colors-v2";
 const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df3", "#e978e0", "#e978b7", "#ef6669", "#ee8061", "#e89b43", "#d6bf38", "#b9df42", "#75c95d", "#6bcd65", "#3fbc83", "#2fb8aa", "#1cb7b8", "#22b8cf", "#36a4e9", "#5d85f2"];
 const staffMessagePalette = ["#4f7cff", "#9a6bf2", "#e978b7", "#ef6669", "#e89b43", "#75c95d", "#2fb8aa", "#36a4e9"];
-const currentHotelId = "marseille";
+const defaultHotelId = "marseille";
+
+function getCurrentHotelId() {
+  const urlHotelId = new URLSearchParams(window.location.search).get("hotel");
+  const normalized = String(urlHotelId || defaultHotelId).trim().toLowerCase();
+  return /^[a-z0-9-]{2,48}$/.test(normalized) ? normalized : defaultHotelId;
+}
+
+const currentHotelId = getCurrentHotelId();
+const defaultHotelName = currentHotelId === defaultHotelId ? "Marseille" : "Demo Hotel";
 const defaultHotelSettings = {
   id: "",
   hotelId: currentHotelId,
-  hotelName: "Marseille",
+  hotelName: defaultHotelName,
   hotelLabel: "Hotel",
   logoUrl: "/logo.png",
   defaultLanguage: "en",
