@@ -131,12 +131,13 @@ const translations = {
       staff: "Staff",
       staffHint: "Add reception staff and manage access for this hotel.",
       staffEmail: "Email",
+      staffPassword: "Password",
       staffRole: "Role",
       roleAdmin: "Admin",
       roleStaff: "Staff",
       addStaff: "Add staff",
       staffSaved: "Staff member saved.",
-      staffSaveError: "Could not save staff member. Create the Auth user first and try again.",
+      staffSaveError: "Could not save staff member. Check email, password, and admin access.",
       staffEmpty: "No staff members yet.",
       staffCurrent: "You",
       staffActive: "Active",
@@ -408,12 +409,13 @@ const translations = {
       staff: "პერსონალი",
       staffHint: "დაამატეთ რესეფშენის თანამშრომლები და მართეთ წვდომა.",
       staffEmail: "ელფოსტა",
+      staffPassword: "პაროლი",
       staffRole: "როლი",
       roleAdmin: "ადმინისტრატორი",
       roleStaff: "თანამშრომელი",
       addStaff: "თანამშრომლის დამატება",
       staffSaved: "თანამშრომელი შენახულია.",
-      staffSaveError: "თანამშრომლის შენახვა ვერ მოხერხდა. ჯერ შექმენით Auth მომხმარებელი.",
+      staffSaveError: "თანამშრომლის შენახვა ვერ მოხერხდა. შეამოწმეთ ელფოსტა, პაროლი და ადმინისტრატორის წვდომა.",
       staffEmpty: "თანამშრომლები ჯერ არ არის.",
       staffCurrent: "თქვენ",
       staffActive: "აქტიური",
@@ -800,6 +802,7 @@ const selectors = {
   staffSettingsForm: document.querySelector("#staffSettingsForm"),
   staffSettingsMessage: document.querySelector("#staffSettingsMessage"),
   settingsStaffEmail: document.querySelector("#settingsStaffEmail"),
+  settingsStaffPassword: document.querySelector("#settingsStaffPassword"),
   settingsStaffName: document.querySelector("#settingsStaffName"),
   settingsStaffPosition: document.querySelector("#settingsStaffPosition"),
   settingsStaffRole: document.querySelector("#settingsStaffRole"),
@@ -1220,6 +1223,7 @@ function readStaffSettingsForm() {
   const formData = new FormData(selectors.staffSettingsForm);
   return {
     email: String(formData.get("email") || "").trim().toLowerCase(),
+    password: String(formData.get("password") || ""),
     displayName: String(formData.get("displayName") || "").trim(),
     position: String(formData.get("position") || "").trim(),
     role: String(formData.get("role") || "staff") === "admin" ? "admin" : "staff",
@@ -1229,19 +1233,34 @@ function readStaffSettingsForm() {
 async function addHotelStaffUser(nextStaff) {
   if (!usesSupabase || !isCurrentUserAdmin()) return false;
 
-  const { data, error } = await supabaseClient.rpc("add_hotel_staff_by_email", {
-    next_email: nextStaff.email,
-    next_display_name: nextStaff.displayName,
-    next_position: nextStaff.position,
-    next_role: nextStaff.role,
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (!accessToken) return false;
+
+  const response = await fetch("/api/create-staff-user", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      hotelId: currentHotelId,
+      email: nextStaff.email,
+      password: nextStaff.password,
+      displayName: nextStaff.displayName,
+      position: nextStaff.position,
+      role: nextStaff.role,
+      chatColor: staffMessagePalette[0],
+    }),
   });
 
-  if (error) {
-    console.error("Failed to add hotel staff", error);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    console.error("Failed to add hotel staff", data?.error || response.statusText);
     return false;
   }
 
-  const normalized = normalizeHotelUserProfile(data);
+  const normalized = normalizeHotelUserProfile(data?.user);
   if (normalized) {
     hotelStaffUsers = [
       normalized,
