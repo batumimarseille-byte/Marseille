@@ -128,6 +128,19 @@ const translations = {
       chatColor: "Chat color",
       profileSaved: "Profile saved.",
       profileSaveError: "Could not save profile. Check Supabase and try again.",
+      staff: "Staff",
+      staffHint: "Add reception staff and manage access for this hotel.",
+      staffEmail: "Email",
+      staffRole: "Role",
+      roleAdmin: "Admin",
+      roleStaff: "Staff",
+      addStaff: "Add staff",
+      staffSaved: "Staff member saved.",
+      staffSaveError: "Could not save staff member. Create the Auth user first and try again.",
+      staffEmpty: "No staff members yet.",
+      staffCurrent: "You",
+      staffActive: "Active",
+      staffInactive: "Disabled",
       hotel: "Hotel settings",
       hotelHint: "Name, logo, currency, and default app settings.",
       hotelName: "Hotel name",
@@ -392,6 +405,19 @@ const translations = {
       chatColor: "ჩატის ფერი",
       profileSaved: "პროფილი შენახულია.",
       profileSaveError: "პროფილი ვერ შეინახა. გადაამოწმეთ Supabase.",
+      staff: "პერსონალი",
+      staffHint: "დაამატეთ რესეფშენის თანამშრომლები და მართეთ წვდომა.",
+      staffEmail: "ელფოსტა",
+      staffRole: "როლი",
+      roleAdmin: "ადმინისტრატორი",
+      roleStaff: "თანამშრომელი",
+      addStaff: "თანამშრომლის დამატება",
+      staffSaved: "თანამშრომელი შენახულია.",
+      staffSaveError: "თანამშრომლის შენახვა ვერ მოხერხდა. ჯერ შექმენით Auth მომხმარებელი.",
+      staffEmpty: "თანამშრომლები ჯერ არ არის.",
+      staffCurrent: "თქვენ",
+      staffActive: "აქტიური",
+      staffInactive: "გამორთული",
       hotel: "სასტუმროს პარამეტრები",
       hotelHint: "სახელი, ლოგო, ვალუტა და საწყისი პარამეტრები.",
       hotelName: "სასტუმროს სახელი",
@@ -662,6 +688,7 @@ let pendingCheckOut = "";
 let currentLanguage = getStoredLanguage();
 let hotelSettings = { ...defaultHotelSettings };
 let currentUserProfile = null;
+let hotelStaffUsers = [];
 let currentSectionName = "dashboard";
 let didJustSignIn = false;
 let calendarDragState = null;
@@ -768,6 +795,14 @@ const selectors = {
   settingsProfileAvatarUrl: document.querySelector("#settingsProfileAvatarUrl"),
   settingsProfileChatColor: document.querySelector("#settingsProfileChatColor"),
   settingsProfileColors: document.querySelector("#settingsProfileColors"),
+  staffSettingsSection: document.querySelector("#staffSettingsSection"),
+  staffSettingsList: document.querySelector("#staffSettingsList"),
+  staffSettingsForm: document.querySelector("#staffSettingsForm"),
+  staffSettingsMessage: document.querySelector("#staffSettingsMessage"),
+  settingsStaffEmail: document.querySelector("#settingsStaffEmail"),
+  settingsStaffName: document.querySelector("#settingsStaffName"),
+  settingsStaffPosition: document.querySelector("#settingsStaffPosition"),
+  settingsStaffRole: document.querySelector("#settingsStaffRole"),
   hotelSettingsForm: document.querySelector("#hotelSettingsForm"),
   hotelSettingsMessage: document.querySelector("#hotelSettingsMessage"),
   settingsHotelName: document.querySelector("#settingsHotelName"),
@@ -847,6 +882,10 @@ function normalizeHotelUserProfile(row) {
     chatColor: normalizeBookingColor(row.chat_color || row.chatColor) || fallbackColor,
     isActive: row.is_active ?? row.isActive ?? true,
   };
+}
+
+function isCurrentUserAdmin() {
+  return currentUserProfile?.role === "admin";
 }
 
 async function loadCurrentUserProfile(userId) {
@@ -1111,6 +1150,140 @@ async function saveOwnProfile(nextProfile) {
   return true;
 }
 
+function setStaffSettingsMessage(message, type) {
+  if (!selectors.staffSettingsMessage) return;
+  selectors.staffSettingsMessage.textContent = message;
+  selectors.staffSettingsMessage.className = `settings-message ${type || ""}`;
+}
+
+function renderStaffSettings() {
+  selectors.staffSettingsSection?.classList.toggle("hidden", !isCurrentUserAdmin());
+  if (!selectors.staffSettingsList) return;
+
+  if (!isCurrentUserAdmin()) {
+    selectors.staffSettingsList.innerHTML = "";
+    return;
+  }
+
+  if (!hotelStaffUsers.length) {
+    selectors.staffSettingsList.innerHTML = `<p class="staff-settings-empty">${t("settings.staffEmpty")}</p>`;
+    return;
+  }
+
+  selectors.staffSettingsList.innerHTML = hotelStaffUsers
+    .map((user) => {
+      const isCurrentUser = user.userId === currentUserProfile?.userId;
+      return `
+        <article class="staff-settings-card" data-staff-user="${escapeHtml(user.id)}">
+          <div>
+            <strong>${escapeHtml(user.displayName || t("settings.role"))}</strong>
+            <span>${escapeHtml(user.position || user.role || t("settings.roleStaff"))}${isCurrentUser ? ` · ${t("settings.staffCurrent")}` : ""}</span>
+          </div>
+          <select class="staff-settings-role" data-staff-role${isCurrentUser ? " disabled" : ""}>
+            <option value="staff"${user.role !== "admin" ? " selected" : ""}>${t("settings.roleStaff")}</option>
+            <option value="admin"${user.role === "admin" ? " selected" : ""}>${t("settings.roleAdmin")}</option>
+          </select>
+          <button class="staff-settings-toggle${user.isActive ? "" : " is-disabled"}" type="button" data-staff-toggle${isCurrentUser ? " disabled" : ""}>
+            ${user.isActive ? t("settings.staffActive") : t("settings.staffInactive")}
+          </button>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+async function loadHotelStaffUsers() {
+  if (!usesSupabase || !isCurrentUserAdmin()) {
+    hotelStaffUsers = currentUserProfile ? [currentUserProfile] : [];
+    renderStaffSettings();
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("hotel_users")
+    .select("id, user_id, hotel_id, display_name, role, position, avatar_url, chat_color, is_active")
+    .eq("hotel_id", currentHotelId)
+    .order("role", { ascending: true })
+    .order("display_name", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load hotel staff", error);
+    hotelStaffUsers = currentUserProfile ? [currentUserProfile] : [];
+  } else {
+    hotelStaffUsers = (data || []).map(normalizeHotelUserProfile).filter(Boolean);
+  }
+
+  renderStaffSettings();
+}
+
+function readStaffSettingsForm() {
+  const formData = new FormData(selectors.staffSettingsForm);
+  return {
+    email: String(formData.get("email") || "").trim().toLowerCase(),
+    displayName: String(formData.get("displayName") || "").trim(),
+    position: String(formData.get("position") || "").trim(),
+    role: String(formData.get("role") || "staff") === "admin" ? "admin" : "staff",
+  };
+}
+
+async function addHotelStaffUser(nextStaff) {
+  if (!usesSupabase || !isCurrentUserAdmin()) return false;
+
+  const { data, error } = await supabaseClient.rpc("add_hotel_staff_by_email", {
+    next_email: nextStaff.email,
+    next_display_name: nextStaff.displayName,
+    next_position: nextStaff.position,
+    next_role: nextStaff.role,
+  });
+
+  if (error) {
+    console.error("Failed to add hotel staff", error);
+    return false;
+  }
+
+  const normalized = normalizeHotelUserProfile(data);
+  if (normalized) {
+    hotelStaffUsers = [
+      normalized,
+      ...hotelStaffUsers.filter((user) => user.id !== normalized.id && user.userId !== normalized.userId),
+    ].sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
+  }
+  renderStaffSettings();
+  return true;
+}
+
+async function updateHotelStaffUser(staffId, patch) {
+  if (!usesSupabase || !isCurrentUserAdmin() || !staffId) return false;
+
+  const payload = {};
+  if (patch.role) payload.role = patch.role === "admin" ? "admin" : "staff";
+  if (typeof patch.isActive === "boolean") payload.is_active = patch.isActive;
+
+  const { data, error } = await supabaseClient
+    .from("hotel_users")
+    .update(payload)
+    .eq("id", staffId)
+    .eq("hotel_id", currentHotelId)
+    .select("id, user_id, hotel_id, display_name, role, position, avatar_url, chat_color, is_active")
+    .single();
+
+  if (error) {
+    console.error("Failed to update hotel staff", error);
+    return false;
+  }
+
+  const normalized = normalizeHotelUserProfile(data);
+  if (normalized) {
+    hotelStaffUsers = hotelStaffUsers.map((user) => (user.id === staffId ? normalized : user));
+    if (normalized.userId === currentUserProfile?.userId) {
+      currentUserProfile = normalized;
+      applyUserProfile();
+    }
+  }
+  renderStaffSettings();
+  return true;
+}
+
 function setHotelSettingsMessage(message, type) {
   if (!selectors.hotelSettingsMessage) return;
   selectors.hotelSettingsMessage.textContent = message;
@@ -1208,6 +1381,7 @@ function applyStaticTranslations() {
   renderRoomEditorTypeOptions();
   applyHotelSettings();
   applyUserProfile();
+  renderStaffSettings();
 }
 
 function updateLanguageToggle() {
@@ -3755,6 +3929,9 @@ function setSettingsOpen(isOpen) {
   if (isOpen) {
     populateProfileSettingsForm();
     populateHotelSettingsForm();
+    loadHotelStaffUsers();
+  } else {
+    setStaffSettingsMessage("", "");
   }
   document.body.classList.toggle("settings-open", isOpen);
 }
@@ -3784,6 +3961,7 @@ async function requireSession() {
   if (session) {
     currentUserProfile = await loadCurrentUserProfile(session.user?.id);
     setCurrentHotelId(currentUserProfile?.hotelId || getRouteHotelId());
+    hotelStaffUsers = currentUserProfile ? [currentUserProfile] : [];
     selectors.authScreen?.classList.add("hidden");
     selectors.appShell?.classList.remove("hidden");
     setStorageCardContent(t("storage.cloudTitle"), t("storage.cloudText"), true);
@@ -3792,6 +3970,7 @@ async function requireSession() {
   }
 
   currentUserProfile = null;
+  hotelStaffUsers = [];
   setCurrentHotelId(getRouteHotelId());
   selectors.appShell?.classList.add("hidden");
   selectors.authScreen?.classList.remove("hidden");
@@ -3862,6 +4041,35 @@ function bindEvents() {
     submitButton.textContent = t("settings.save");
     if (saved) populateProfileSettingsForm();
     setProfileSettingsMessage(saved ? t("settings.profileSaved") : t("settings.profileSaveError"), saved ? "success" : "error");
+  });
+  selectors.staffSettingsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = selectors.staffSettingsForm.querySelector("button[type='submit']");
+    const nextStaff = readStaffSettingsForm();
+    submitButton.disabled = true;
+    submitButton.textContent = t("settings.saving");
+    setStaffSettingsMessage(t("settings.saving"), "");
+    const saved = await addHotelStaffUser(nextStaff);
+    submitButton.disabled = false;
+    submitButton.textContent = t("settings.addStaff");
+    if (saved) selectors.staffSettingsForm.reset();
+    setStaffSettingsMessage(saved ? t("settings.staffSaved") : t("settings.staffSaveError"), saved ? "success" : "error");
+  });
+  selectors.staffSettingsList?.addEventListener("change", async (event) => {
+    const roleSelect = event.target.closest("[data-staff-role]");
+    if (!roleSelect) return;
+    const card = roleSelect.closest("[data-staff-user]");
+    const saved = await updateHotelStaffUser(card?.dataset.staffUser, { role: roleSelect.value });
+    setStaffSettingsMessage(saved ? t("settings.staffSaved") : t("settings.staffSaveError"), saved ? "success" : "error");
+  });
+  selectors.staffSettingsList?.addEventListener("click", async (event) => {
+    const toggleButton = event.target.closest("[data-staff-toggle]");
+    if (!toggleButton) return;
+    const card = toggleButton.closest("[data-staff-user]");
+    const staffUser = hotelStaffUsers.find((user) => user.id === card?.dataset.staffUser);
+    if (!staffUser) return;
+    const saved = await updateHotelStaffUser(staffUser.id, { isActive: !staffUser.isActive });
+    setStaffSettingsMessage(saved ? t("settings.staffSaved") : t("settings.staffSaveError"), saved ? "success" : "error");
   });
   selectors.hotelSettingsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();

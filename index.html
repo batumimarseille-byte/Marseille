@@ -468,6 +468,38 @@
             </div>
           </form>
         </div>
+        <div class="settings-section hidden" id="staffSettingsSection">
+          <p class="settings-section-label" data-i18n="settings.staff">Staff</p>
+          <p class="settings-section-hint" data-i18n="settings.staffHint">Add reception staff and manage access for this hotel.</p>
+          <div class="staff-settings-list" id="staffSettingsList"></div>
+          <form class="hotel-settings-form staff-settings-form" id="staffSettingsForm">
+            <div class="settings-field-grid">
+              <label class="settings-field">
+                <span data-i18n="settings.staffEmail">Email</span>
+                <input id="settingsStaffEmail" name="email" type="email" autocomplete="email" required />
+              </label>
+              <label class="settings-field">
+                <span data-i18n="settings.displayName">Display name</span>
+                <input id="settingsStaffName" name="displayName" type="text" autocomplete="name" required />
+              </label>
+              <label class="settings-field">
+                <span data-i18n="settings.position">Position</span>
+                <input id="settingsStaffPosition" name="position" type="text" autocomplete="organization-title" />
+              </label>
+              <label class="settings-field">
+                <span data-i18n="settings.staffRole">Role</span>
+                <select id="settingsStaffRole" name="role">
+                  <option value="staff" data-i18n="settings.roleStaff">Staff</option>
+                  <option value="admin" data-i18n="settings.roleAdmin">Admin</option>
+                </select>
+              </label>
+            </div>
+            <div class="settings-actions">
+              <p class="settings-message" id="staffSettingsMessage" role="status"></p>
+              <button class="settings-save" type="submit" data-i18n="settings.addStaff">Add staff</button>
+            </div>
+          </form>
+        </div>
         <div class="settings-section">
           <p class="settings-section-label" data-i18n="settings.hotel">Hotel settings</p>
           <p class="settings-section-hint" data-i18n="settings.hotelHint">Name, logo, currency, and default app settings.</p>
