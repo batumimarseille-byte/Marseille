@@ -27,6 +27,7 @@ const defaultRooms = [
 ].map((room) => ({ ...room, nightlyPrice: roomNightPrices[room.type] || 0 }));
 const storageKey = "hotel-desk-stays-v1";
 const roomPricesStorageKey = "hotel-desk-room-prices-v1";
+const roomInventoryStorageKey = "hotel-desk-room-inventory-v1";
 const activeSectionStorageKey = "hotel-desk-active-section-v1";
 const languageStorageKey = "hotel-desk-language-v1";
 const favoriteGuestStorageKey = "hotel-desk-favorite-guests-v1";
@@ -37,6 +38,28 @@ const defaultBookingColor = "#4f7cff";
 const bookingCustomColorsStorageKey = "hotel-desk-booking-custom-colors-v2";
 const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df3", "#e978e0", "#e978b7", "#ef6669", "#ee8061", "#e89b43", "#d6bf38", "#b9df42", "#75c95d", "#6bcd65", "#3fbc83", "#2fb8aa", "#1cb7b8", "#22b8cf", "#36a4e9", "#5d85f2"];
 const staffMessagePalette = ["#4f7cff", "#9a6bf2", "#e978b7", "#ef6669", "#e89b43", "#75c95d", "#2fb8aa", "#36a4e9"];
+const defaultHotelSettings = {
+  id: "",
+  hotelName: "Marseille",
+  hotelLabel: "Hotel",
+  logoUrl: "assets/hotel-marseille-logo.png",
+  defaultLanguage: "en",
+  currencyCode: "GEL",
+  currencySymbol: "₾",
+  timezone: "Asia/Tbilisi",
+};
+const hotelCurrencyOptions = [
+  { code: "GEL", symbol: "₾", title: "Georgian lari", meta: "GEL · ₾" },
+  { code: "USD", symbol: "$", title: "US dollar", meta: "USD · $" },
+  { code: "EUR", symbol: "€", title: "Euro", meta: "EUR · €" },
+];
+const roomGroupByType = {
+  Suite: "lux",
+  Standard: "standard",
+  Twin: "two-beds",
+  Triple: "three-beds",
+  "Junior Suite": "semi-lux",
+};
 let pendingBookingColor = null;
 let customColorTone = 220;
 let customBookingColors = [];
@@ -79,6 +102,17 @@ const translations = {
       title: "Account",
       administrator: "Administrator",
       role: "Hotel staff",
+      hotel: "Hotel settings",
+      hotelHint: "Name, logo, currency, and default app settings.",
+      hotelName: "Hotel name",
+      hotelLabel: "Brand label",
+      logoUrl: "Logo path or URL",
+      defaultLanguage: "Default language",
+      currency: "Currency",
+      save: "Save changes",
+      saving: "Saving...",
+      saved: "Settings saved.",
+      saveError: "Could not save settings. Check Supabase and try again.",
       preferences: "Preferences",
       language: "Language",
       languageHint: "Choose the interface language",
@@ -133,7 +167,7 @@ const translations = {
       rooms: {
         eyebrow: "Room inventory",
         title: "Rooms",
-        description: "13 Hotel Marseille rooms grouped by category and capacity.",
+        description: "Rooms grouped by category and capacity.",
       },
       "staff-chat": {
         eyebrow: "Team",
@@ -192,8 +226,29 @@ const translations = {
       calendar: "Calendar",
       roomOccupancy: "Room occupancy",
       inventory: "Inventory",
-      roomsByCategory: "13 rooms by category",
+      roomsByCategory: "rooms by category",
       perNight: "per night",
+    },
+    roomInventory: {
+      addRoom: "Add room",
+      editRoom: "Edit room",
+      newRoom: "New room",
+      roomNumber: "Room number",
+      roomType: "Room type",
+      nightlyPrice: "Default nightly price",
+      sortOrder: "Display order",
+      save: "Save room",
+      cancel: "Cancel",
+      hide: "Hide room",
+      editPrice: "Edit price",
+      saved: "Room saved.",
+      hidden: "Room hidden.",
+      duplicate: "This room already exists.",
+      required: "Fill in room number and price.",
+      hideBlocked: "This room has an active or future stay.",
+      saveError: "Could not save room. Check Supabase and try again.",
+      hideError: "Could not hide room. Check Supabase and try again.",
+      confirmHide: "Hide this room from active inventory?",
     },
     filters: {
       all: "All",
@@ -303,6 +358,17 @@ const translations = {
       title: "ანგარიში",
       administrator: "ადმინისტრატორი",
       role: "სასტუმროს პერსონალი",
+      hotel: "სასტუმროს პარამეტრები",
+      hotelHint: "სახელი, ლოგო, ვალუტა და საწყისი პარამეტრები.",
+      hotelName: "სასტუმროს სახელი",
+      hotelLabel: "ბრენდის წარწერა",
+      logoUrl: "ლოგოს მისამართი",
+      defaultLanguage: "საწყისი ენა",
+      currency: "ვალუტა",
+      save: "ცვლილებების შენახვა",
+      saving: "ინახება...",
+      saved: "პარამეტრები შენახულია.",
+      saveError: "პარამეტრები ვერ შეინახა. გადაამოწმეთ Supabase.",
       preferences: "პარამეტრები",
       language: "ენა",
       languageHint: "აირჩიეთ ინტერფეისის ენა",
@@ -357,7 +423,7 @@ const translations = {
       rooms: {
         eyebrow: "ნომრების სია",
         title: "ნომრები",
-        description: "Hotel Marseille-ის 13 ნომერი კატეგორიებისა და ტევადობის მიხედვით.",
+        description: "ნომრები კატეგორიებისა და ტევადობის მიხედვით.",
       },
       "staff-chat": {
         eyebrow: "გუნდი",
@@ -416,8 +482,29 @@ const translations = {
       calendar: "კალენდარი",
       roomOccupancy: "ნომრების დაკავება",
       inventory: "ნომრების სია",
-      roomsByCategory: "13 ნომერი კატეგორიების მიხედვით",
+      roomsByCategory: "ნომერი კატეგორიების მიხედვით",
       perNight: "ღამეში",
+    },
+    roomInventory: {
+      addRoom: "ნომრის დამატება",
+      editRoom: "ნომრის რედაქტირება",
+      newRoom: "ახალი ნომერი",
+      roomNumber: "ნომრის ნომერი",
+      roomType: "ნომრის ტიპი",
+      nightlyPrice: "საწყისი ღამის ფასი",
+      sortOrder: "ჩვენების რიგი",
+      save: "ნომრის შენახვა",
+      cancel: "გაუქმება",
+      hide: "ნომრის დამალვა",
+      editPrice: "ფასის შეცვლა",
+      saved: "ნომერი შენახულია.",
+      hidden: "ნომერი დამალულია.",
+      duplicate: "ეს ნომერი უკვე არსებობს.",
+      required: "შეავსეთ ნომერი და ფასი.",
+      hideBlocked: "ამ ნომერს აქვს აქტიური ან მომავალი ჩანაწერი.",
+      saveError: "ნომრის შენახვა ვერ მოხერხდა. გადაამოწმეთ Supabase.",
+      hideError: "ნომრის დამალვა ვერ მოხერხდა. გადაამოწმეთ Supabase.",
+      confirmHide: "დავმალოთ ეს ნომერი აქტიური სიიდან?",
     },
     filters: {
       all: "ყველა",
@@ -539,6 +626,7 @@ let formDateHover = null;
 let pendingCheckIn = "";
 let pendingCheckOut = "";
 let currentLanguage = getStoredLanguage();
+let hotelSettings = { ...defaultHotelSettings };
 let currentSectionName = "dashboard";
 let didJustSignIn = false;
 let calendarDragState = null;
@@ -553,6 +641,7 @@ let isUpdatingNightlyRate = false;
 let pendingCompanyColorUpdates = new Map();
 let openCustomDropdown = null;
 let selectedStaffColor = getStoredStaffColor();
+let editingRoomId = null;
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
@@ -589,6 +678,13 @@ const selectors = {
   cancelEditButton: document.querySelector("#cancelEditButton"),
   roomMap: document.querySelector("#roomMap"),
   roomGroups: document.querySelector("#roomGroups"),
+  addRoomButton: document.querySelector("#addRoomButton"),
+  roomEditorForm: document.querySelector("#roomEditorForm"),
+  roomEditorTitle: document.querySelector("#roomEditorTitle"),
+  roomEditorMessage: document.querySelector("#roomEditorMessage"),
+  roomEditorCancel: document.querySelector("#roomEditorCancel"),
+  roomEditorHide: document.querySelector("#roomEditorHide"),
+  roomsInventoryTitle: document.querySelector("#roomsInventoryTitle"),
   activeGuestList: document.querySelector("#activeGuestList"),
   staysTable: document.querySelector("#staysTable"),
   filterChips: document.querySelectorAll(".filter-chip"),
@@ -630,6 +726,15 @@ const selectors = {
   settingsCloseButtons: document.querySelectorAll("[data-settings-close]"),
   settingsLanguageButtons: document.querySelectorAll("[data-settings-language]"),
   settingsSignOut: document.querySelector("#settingsSignOut"),
+  hotelSettingsForm: document.querySelector("#hotelSettingsForm"),
+  hotelSettingsMessage: document.querySelector("#hotelSettingsMessage"),
+  settingsHotelName: document.querySelector("#settingsHotelName"),
+  settingsHotelLabel: document.querySelector("#settingsHotelLabel"),
+  settingsLogoUrl: document.querySelector("#settingsLogoUrl"),
+  settingsDefaultLanguage: document.querySelector("#settingsDefaultLanguage"),
+  settingsDefaultLanguageDropdown: document.querySelector("#settingsDefaultLanguageDropdown"),
+  settingsCurrency: document.querySelector("#settingsCurrency"),
+  settingsCurrencyDropdown: document.querySelector("#settingsCurrencyDropdown"),
   dashboardCalendarAction: document.querySelector("#dashboardCalendarAction"),
   dashboardNewStayAction: document.querySelector("#dashboardNewStayAction"),
   staffChatTrigger: document.querySelector("#staffChatTrigger"),
@@ -637,6 +742,9 @@ const selectors = {
   staffChatForm: document.querySelector("#staffChatForm"),
   staffChatInput: document.querySelector("#staffChatInput"),
   staffChatColors: document.querySelector("#staffChatColors"),
+  hotelNames: document.querySelectorAll("[data-hotel-name]"),
+  hotelLabels: document.querySelectorAll("[data-hotel-label]"),
+  hotelLogos: document.querySelectorAll("[data-hotel-logo]"),
 };
 
 
@@ -650,6 +758,14 @@ function getStoredLanguage() {
     return translations[stored] ? stored : "en";
   } catch {
     return "en";
+  }
+}
+
+function hasStoredLanguage() {
+  try {
+    return Boolean(localStorage.getItem(languageStorageKey));
+  } catch {
+    return false;
   }
 }
 
@@ -702,6 +818,157 @@ function formatNumber(value) {
   return Number(value || 0).toLocaleString(getNumberLocale());
 }
 
+function getCurrencySymbol() {
+  return hotelSettings.currencySymbol || defaultHotelSettings.currencySymbol;
+}
+
+function formatMoney(value) {
+  return `${formatNumber(value)} ${getCurrencySymbol()}`;
+}
+
+function normalizeHotelSettings(row = {}) {
+  const currency = getSupportedCurrency(row.currency_code || row.currencyCode || defaultHotelSettings.currencyCode);
+  const settings = {
+    id: row.id || row.settingsId || defaultHotelSettings.id,
+    hotelName: row.hotel_name || row.hotelName || defaultHotelSettings.hotelName,
+    hotelLabel: row.hotel_label || row.hotelLabel || defaultHotelSettings.hotelLabel,
+    logoUrl: row.logo_url || row.logoUrl || defaultHotelSettings.logoUrl,
+    defaultLanguage: row.default_language || row.defaultLanguage || defaultHotelSettings.defaultLanguage,
+    currencyCode: currency.code,
+    currencySymbol: currency.symbol,
+    timezone: row.timezone || defaultHotelSettings.timezone,
+  };
+
+  settings.defaultLanguage = translations[settings.defaultLanguage] ? settings.defaultLanguage : defaultHotelSettings.defaultLanguage;
+  return settings;
+}
+
+function getSupportedCurrency(code) {
+  const normalizedCode = String(code || "").trim().toUpperCase();
+  return hotelCurrencyOptions.find((currency) => currency.code === normalizedCode) || hotelCurrencyOptions[0];
+}
+
+function getSystemTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || hotelSettings.timezone || defaultHotelSettings.timezone;
+  } catch {
+    return hotelSettings.timezone || defaultHotelSettings.timezone;
+  }
+}
+
+function applyHotelSettings() {
+  const fullName = `${hotelSettings.hotelLabel} ${hotelSettings.hotelName}`.trim();
+  document.title = `${fullName} | Check-in Desk`;
+
+  selectors.hotelNames.forEach((node) => {
+    node.textContent = hotelSettings.hotelName;
+  });
+
+  selectors.hotelLabels.forEach((node) => {
+    node.textContent = hotelSettings.hotelLabel;
+  });
+
+  selectors.hotelLogos.forEach((image) => {
+    image.src = hotelSettings.logoUrl || defaultHotelSettings.logoUrl;
+    image.alt = `${fullName} logo`;
+  });
+}
+
+async function loadHotelSettings() {
+  if (!usesSupabase) return { ...defaultHotelSettings };
+
+  const { data, error } = await supabaseClient
+    .from("hotel_settings")
+    .select("id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Hotel settings are not available yet. Using Marseille defaults.", error.message);
+    return { ...defaultHotelSettings };
+  }
+
+  return normalizeHotelSettings(data || {});
+}
+
+function populateHotelSettingsForm() {
+  if (!selectors.hotelSettingsForm) return;
+  selectors.settingsHotelName.value = hotelSettings.hotelName || defaultHotelSettings.hotelName;
+  selectors.settingsHotelLabel.value = hotelSettings.hotelLabel || defaultHotelSettings.hotelLabel;
+  selectors.settingsLogoUrl.value = hotelSettings.logoUrl || defaultHotelSettings.logoUrl;
+  selectors.settingsDefaultLanguage.value = translations[hotelSettings.defaultLanguage] ? hotelSettings.defaultLanguage : defaultHotelSettings.defaultLanguage;
+  selectors.settingsCurrency.value = getSupportedCurrency(hotelSettings.currencyCode).code;
+  setHotelSettingsMessage("", "");
+  renderCustomDropdowns();
+}
+
+function setHotelSettingsMessage(message, type) {
+  if (!selectors.hotelSettingsMessage) return;
+  selectors.hotelSettingsMessage.textContent = message;
+  selectors.hotelSettingsMessage.className = `settings-message ${type || ""}`;
+}
+
+function readHotelSettingsForm() {
+  const formData = new FormData(selectors.hotelSettingsForm);
+  const currency = getSupportedCurrency(String(formData.get("currency") || defaultHotelSettings.currencyCode));
+  return normalizeHotelSettings({
+    id: hotelSettings.id,
+    hotelName: String(formData.get("hotelName") || "").trim(),
+    hotelLabel: String(formData.get("hotelLabel") || "").trim(),
+    logoUrl: String(formData.get("logoUrl") || "").trim(),
+    defaultLanguage: String(formData.get("defaultLanguage") || defaultHotelSettings.defaultLanguage),
+    currencyCode: currency.code,
+    currencySymbol: currency.symbol,
+    timezone: getSystemTimezone(),
+  });
+}
+
+function mapHotelSettingsToDatabase(settings) {
+  return {
+    hotel_name: settings.hotelName,
+    hotel_label: settings.hotelLabel,
+    logo_url: settings.logoUrl,
+    default_language: settings.defaultLanguage,
+    currency_code: settings.currencyCode,
+    currency_symbol: settings.currencySymbol,
+    timezone: settings.timezone,
+  };
+}
+
+function refreshHotelSettingsView() {
+  applyHotelSettings();
+  applyStaticTranslations();
+  populateRoomSelect();
+  populateCompanyOptions();
+  updateDateRangeDisplay();
+  renderCustomDropdowns();
+  renderAll();
+}
+
+async function saveHotelSettings(nextSettings) {
+  if (!usesSupabase) {
+    hotelSettings = nextSettings;
+    refreshHotelSettingsView();
+    return true;
+  }
+
+  const payload = mapHotelSettingsToDatabase(nextSettings);
+  const query = hotelSettings.id
+    ? supabaseClient.from("hotel_settings").update(payload).eq("id", hotelSettings.id).select("id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone").single()
+    : supabaseClient.from("hotel_settings").insert(payload).select("id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone").single();
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("Could not save hotel settings", error);
+    return false;
+  }
+
+  hotelSettings = normalizeHotelSettings(data || nextSettings);
+  refreshHotelSettingsView();
+  return true;
+}
+
 function roomTypeLabel(type) {
   return t(`roomTypes.${type}`) || type;
 }
@@ -727,6 +994,9 @@ function applyStaticTranslations() {
   if (selectors.dateClearButton) {
     selectors.dateClearButton.setAttribute("aria-label", t("form.clearDates"));
   }
+
+  renderRoomEditorTypeOptions();
+  applyHotelSettings();
 }
 
 function updateLanguageToggle() {
@@ -857,6 +1127,10 @@ function normalizeCompanyName(name) {
   return String(name || "").trim().replace(/\s+/g, " ");
 }
 
+function normalizeRoomId(value) {
+  return String(value || "").trim().replace(/\s+/g, "");
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -864,6 +1138,50 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function normalizeRoom(room) {
+  const type = roomTypeOrder.includes(room?.type) ? room.type : roomTypeOrder[0];
+  const id = normalizeRoomId(room?.id);
+  const fallbackOrder = Number(id);
+  return {
+    id,
+    type,
+    group: room?.group || roomGroupByType[type] || type.toLowerCase(),
+    sortOrder: Number.isFinite(Number(room?.sortOrder)) ? Number(room.sortOrder) : (Number.isFinite(fallbackOrder) ? fallbackOrder : 999),
+    nightlyPrice: Math.max(Number(room?.nightlyPrice ?? roomNightPrices[type] ?? 0), 0),
+    isActive: room?.isActive !== false,
+  };
+}
+
+function sortRoomsForInventory(nextRooms) {
+  return nextRooms
+    .map(normalizeRoom)
+    .filter((room) => room.id && room.isActive)
+    .sort((first, second) => {
+      if (first.sortOrder !== second.sortOrder) return first.sortOrder - second.sortOrder;
+      return first.id.localeCompare(second.id, undefined, { numeric: true });
+    });
+}
+
+function loadLocalRoomInventory() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(roomInventoryStorageKey) || "[]");
+    if (Array.isArray(stored) && stored.length) return sortRoomsForInventory(stored);
+  } catch {
+    // Fall back to bundled rooms.
+  }
+
+  const storedPrices = JSON.parse(localStorage.getItem(roomPricesStorageKey) || "{}");
+  return sortRoomsForInventory(defaultRooms.map((room, index) => ({
+    ...room,
+    sortOrder: Number(room.id) || index + 1,
+    nightlyPrice: Number(storedPrices[room.type] ?? room.nightlyPrice ?? 0),
+  })));
+}
+
+function saveLocalRoomInventory() {
+  localStorage.setItem(roomInventoryStorageKey, JSON.stringify(rooms.map(normalizeRoom)));
 }
 
 function getCompanyNameById(companyId) {
@@ -1169,22 +1487,18 @@ function renderColorPalette({ keepOpen = false, keepAdding = false } = {}) {
 }
 
 function mapRoomFromDatabase(row) {
-  return {
+  return normalizeRoom({
     id: row.id,
     type: row.type,
     group: row.group_name,
+    sortOrder: row.sort_order,
     nightlyPrice: Number(row.nightly_price ?? roomNightPrices[row.type] ?? 0),
-  };
+    isActive: row.is_active !== false,
+  });
 }
 
 async function loadRooms() {
-  if (!usesSupabase) {
-    const storedPrices = JSON.parse(localStorage.getItem(roomPricesStorageKey) || "{}");
-    return defaultRooms.map((room) => ({
-      ...room,
-      nightlyPrice: Number(storedPrices[room.type] ?? room.nightlyPrice ?? 0),
-    }));
-  }
+  if (!usesSupabase) return loadLocalRoomInventory();
 
   const { data, error } = await supabaseClient
     .from("rooms")
@@ -1197,7 +1511,90 @@ async function loadRooms() {
     return defaultRooms.slice();
   }
 
-  return (data || []).map(mapRoomFromDatabase);
+  return sortRoomsForInventory((data || []).map(mapRoomFromDatabase));
+}
+
+function getNextRoomSortOrder() {
+  const maxOrder = rooms.reduce((max, room) => Math.max(max, Number(room.sortOrder || 0)), 0);
+  return maxOrder + 1;
+}
+
+function hasOpenRoomStay(roomId) {
+  return stays.some((stay) => stay.roomId === roomId && !["checked-out", "cancelled"].includes(getStayStatus(stay)));
+}
+
+function buildRoomPayload(room) {
+  const normalized = normalizeRoom(room);
+  return {
+    id: normalized.id,
+    type: normalized.type,
+    group_name: normalized.group,
+    sort_order: normalized.sortOrder,
+    nightly_price: normalized.nightlyPrice,
+    is_active: true,
+  };
+}
+
+async function saveRoomInventoryItem(room, originalRoomId = "") {
+  const normalized = normalizeRoom(room);
+  const previousRoomId = normalizeRoomId(originalRoomId);
+  if (!normalized.id || !Number.isFinite(normalized.nightlyPrice)) return { ok: false, message: t("roomInventory.required") };
+
+  if (!previousRoomId && rooms.some((item) => item.id === normalized.id)) {
+    return { ok: false, message: t("roomInventory.duplicate") };
+  }
+
+  const nextRoom = {
+    ...normalized,
+    group: roomGroupByType[normalized.type] || normalized.group,
+    isActive: true,
+  };
+
+  if (!usesSupabase) {
+    rooms = sortRoomsForInventory(previousRoomId
+      ? rooms.map((item) => (item.id === previousRoomId ? nextRoom : item))
+      : [...rooms, nextRoom]);
+    saveLocalRoomInventory();
+    return { ok: true };
+  }
+
+  const query = previousRoomId
+    ? supabaseClient.from("rooms").update(buildRoomPayload(nextRoom)).eq("id", previousRoomId)
+    : supabaseClient.from("rooms").upsert(buildRoomPayload(nextRoom), { onConflict: "id" });
+
+  const { error } = await query;
+  if (error) {
+    console.error("Failed to save room", error);
+    return { ok: false, message: t("roomInventory.saveError") };
+  }
+
+  rooms = await loadRooms();
+  return { ok: true };
+}
+
+async function hideRoomInventoryItem(roomId) {
+  const normalizedRoomId = normalizeRoomId(roomId);
+  if (!normalizedRoomId) return { ok: false, message: t("roomInventory.hideError") };
+  if (hasOpenRoomStay(normalizedRoomId)) return { ok: false, message: t("roomInventory.hideBlocked") };
+
+  if (!usesSupabase) {
+    rooms = rooms.filter((room) => room.id !== normalizedRoomId);
+    saveLocalRoomInventory();
+    return { ok: true };
+  }
+
+  const { error } = await supabaseClient
+    .from("rooms")
+    .update({ is_active: false })
+    .eq("id", normalizedRoomId);
+
+  if (error) {
+    console.error("Failed to hide room", error);
+    return { ok: false, message: t("roomInventory.hideError") };
+  }
+
+  rooms = await loadRooms();
+  return { ok: true };
 }
 
 function mapStaffMessageFromDatabase(row) {
@@ -1267,18 +1664,15 @@ async function saveRoomTypePrice(type, nightlyPrice) {
   ));
 
   if (!usesSupabase) {
-    const nextPrices = roomTypeOrder.reduce((prices, roomType) => {
-      prices[roomType] = getRoomNightPrice(roomType);
-      return prices;
-    }, {});
-    localStorage.setItem(roomPricesStorageKey, JSON.stringify(nextPrices));
+    saveLocalRoomInventory();
     return true;
   }
 
   const { error } = await supabaseClient
     .from("rooms")
     .update({ nightly_price: nextPrice })
-    .eq("type", type);
+    .eq("type", type)
+    .eq("is_active", true);
 
   if (error) {
     console.error("Failed to save room price", error);
@@ -1758,6 +2152,22 @@ function getRoomDropdownItems() {
   }));
 }
 
+function getSettingsLanguageDropdownItems() {
+  return [
+    { value: "en", title: "English", meta: "", color: "" },
+    { value: "ka", title: "ქართული", meta: "", color: "" },
+  ];
+}
+
+function getSettingsCurrencyDropdownItems() {
+  return hotelCurrencyOptions.map((currency) => ({
+    value: currency.code,
+    title: currency.title,
+    meta: currency.meta,
+    color: "",
+  }));
+}
+
 function getDropdownConfig(type) {
   if (type === "company") {
     return {
@@ -1765,6 +2175,24 @@ function getDropdownConfig(type) {
       select: selectors.companySelect,
       items: getCompanyDropdownItems(),
       placeholder: t("form.companyNone"),
+    };
+  }
+
+  if (type === "settings-language") {
+    return {
+      container: selectors.settingsDefaultLanguageDropdown,
+      select: selectors.settingsDefaultLanguage,
+      items: getSettingsLanguageDropdownItems(),
+      placeholder: t("settings.defaultLanguage"),
+    };
+  }
+
+  if (type === "settings-currency") {
+    return {
+      container: selectors.settingsCurrencyDropdown,
+      select: selectors.settingsCurrency,
+      items: getSettingsCurrencyDropdownItems(),
+      placeholder: t("settings.currency"),
     };
   }
 
@@ -1822,6 +2250,8 @@ function renderCustomDropdown(type) {
 function renderCustomDropdowns() {
   renderCustomDropdown("company");
   renderCustomDropdown("room");
+  renderCustomDropdown("settings-language");
+  renderCustomDropdown("settings-currency");
 }
 
 function closeCustomDropdowns() {
@@ -1866,20 +2296,86 @@ function renderRoomMap() {
 }
 
 function renderRoomGroups() {
+  if (!selectors.roomGroups) return;
+  if (selectors.roomsInventoryTitle) {
+    selectors.roomsInventoryTitle.textContent = `${rooms.length} ${t("panels.roomsByCategory")}`;
+  }
+
   selectors.roomGroups.innerHTML = roomTypeOrder
     .map((type) => {
       const groupRooms = rooms.filter((room) => room.type === type);
       return `
         <div class="room-group-card" data-room-type="${type}">
-          <button type="button" class="room-price-edit" data-edit-room-price="${type}" aria-label="Edit ${roomTypeLabel(type)} price">Edit</button>
-          <span>${groupRooms.length} ${getRoomWord(groupRooms.length)}</span>
+          <div class="room-group-topline">
+            <span>${groupRooms.length} ${getRoomWord(groupRooms.length)}</span>
+            <button type="button" class="room-price-edit" data-edit-room-price="${type}" aria-label="${escapeHtml(t("roomInventory.editPrice"))}">${t("roomInventory.editPrice")}</button>
+          </div>
           <h4>${roomTypeLabel(type)}</h4>
-          <strong class="room-group-price">${formatNumber(getRoomNightPrice(type))} ₾ / ${t("panels.perNight")}</strong>
-          <p>${groupRooms.map((room) => room.id).join(", ")}</p>
+          <strong class="room-group-price">${formatMoney(getRoomNightPrice(type))} / ${t("panels.perNight")}</strong>
+          <div class="room-chip-list">
+            ${groupRooms.map((room) => `
+              <button type="button" class="room-inventory-chip" data-edit-room="${escapeHtml(room.id)}" aria-label="${escapeHtml(t("roomInventory.editRoom"))} ${escapeHtml(room.id)}">
+                ${escapeHtml(room.id)}
+              </button>
+            `).join("")}
+          </div>
         </div>
       `;
     })
     .join("");
+}
+
+function renderRoomEditorTypeOptions() {
+  if (!selectors.roomEditorForm?.roomType) return;
+  const currentValue = selectors.roomEditorForm.roomType.value || roomTypeOrder[0];
+  selectors.roomEditorForm.roomType.innerHTML = roomTypeOrder
+    .map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(roomTypeLabel(type))}</option>`)
+    .join("");
+  selectors.roomEditorForm.roomType.value = roomTypeOrder.includes(currentValue) ? currentValue : roomTypeOrder[0];
+}
+
+function setRoomEditorMessage(message = "", type = "") {
+  if (!selectors.roomEditorMessage) return;
+  selectors.roomEditorMessage.textContent = message;
+  selectors.roomEditorMessage.className = type || "";
+}
+
+function closeRoomEditor() {
+  editingRoomId = null;
+  selectors.roomEditorForm?.classList.add("hidden");
+  selectors.roomEditorForm?.reset();
+  setRoomEditorMessage();
+}
+
+function openRoomEditor(room = null) {
+  if (!selectors.roomEditorForm) return;
+
+  renderRoomEditorTypeOptions();
+  const isEdit = Boolean(room);
+  const type = room?.type || "Standard";
+  editingRoomId = isEdit ? room.id : null;
+  selectors.roomEditorTitle.textContent = isEdit ? t("roomInventory.editRoom") : t("roomInventory.newRoom");
+  selectors.roomEditorForm.roomId.value = room?.id || "";
+  selectors.roomEditorForm.roomId.readOnly = isEdit;
+  selectors.roomEditorForm.roomType.value = type;
+  selectors.roomEditorForm.nightlyPrice.value = String(room?.nightlyPrice ?? getRoomNightPrice(type));
+  selectors.roomEditorForm.sortOrder.value = String(room?.sortOrder ?? getNextRoomSortOrder());
+  selectors.roomEditorHide?.classList.toggle("hidden", !isEdit);
+  setRoomEditorMessage();
+  selectors.roomEditorForm.classList.remove("hidden");
+  requestAnimationFrame(() => selectors.roomEditorForm.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+}
+
+function readRoomEditorForm() {
+  const type = selectors.roomEditorForm.roomType.value;
+  return {
+    id: normalizeRoomId(selectors.roomEditorForm.roomId.value),
+    type,
+    group: roomGroupByType[type] || type.toLowerCase(),
+    nightlyPrice: Number(selectors.roomEditorForm.nightlyPrice.value || 0),
+    sortOrder: Number(selectors.roomEditorForm.sortOrder.value || getNextRoomSortOrder()),
+    isActive: true,
+  };
 }
 
 function getRoomWord(count) {
@@ -2033,7 +2529,7 @@ function renderStats() {
   selectors.occupiedStat.textContent = String(active.length);
   selectors.arrivalsStat.textContent = String(arrivals.length);
   selectors.departuresStat.textContent = String(departures.length);
-  selectors.debtStat.textContent = `${formatNumber(debt)} ₾`;
+  selectors.debtStat.textContent = formatMoney(debt);
 }
 
 function formatStaffMessageTime(value) {
@@ -2133,10 +2629,10 @@ function renderStaysTable() {
           </td>
           <td>${room.id}<span>${roomTypeLabel(room.type)}</span></td>
           <td>${formatDate(stay.checkIn)} - ${formatDate(stay.checkOut)}</td>
-          <td>${formatNumber(stay.total)} ₾${Number(stay.discount || 0) > 0 ? `<span>${t("form.discount")}: ${formatNumber(stay.discount)} ₾</span>` : ""}</td>
+          <td>${formatMoney(stay.total)}${Number(stay.discount || 0) > 0 ? `<span>${t("form.discount")}: ${formatMoney(stay.discount)}</span>` : ""}</td>
           <td>
-            <span>${t("table.paid")}: ${formatNumber(getPaidAmount(stay))} ₾</span>
-            <span class="${debt > 0 ? "debt-text" : "paid-text"}">${t("table.debt")}: ${formatNumber(debt)} ₾</span>
+            <span>${t("table.paid")}: ${formatMoney(getPaidAmount(stay))}</span>
+            <span class="${debt > 0 ? "debt-text" : "paid-text"}">${t("table.debt")}: ${formatMoney(debt)}</span>
           </td>
           <td><span class="status-pill ${getStatusClass(status)}">${getStatusLabel(status)}</span></td>
         </tr>
@@ -2146,7 +2642,7 @@ function renderStaysTable() {
 }
 
 function paymentLabel(key) {
-  return t(`form.${key}`).replace(", ₾", "");
+  return t(`form.${key}`).replace(/,\s*₾/g, "");
 }
 
 function getPaymentBreakdown(stay) {
@@ -2174,7 +2670,7 @@ function renderBookingDetails() {
   const debt = getDebt(stay);
   const discount = Number(stay.discount || 0);
   const payments = getPaymentBreakdown(stay)
-    .map(([label, amount]) => '<div class="detail-payment-row"><span>' + label + '</span><strong>' + formatNumber(amount) + ' ₾</strong></div>')
+    .map(([label, amount]) => '<div class="detail-payment-row"><span>' + label + '</span><strong>' + formatMoney(amount) + '</strong></div>')
     .join("");
 
   selectors.bookingDetailsPanel.innerHTML = [
@@ -2185,10 +2681,10 @@ function renderBookingDetails() {
     stay.companyName ? '  <p class="detail-company">' + stay.companyName + '</p>' : '',
     '  <div class="detail-meta"><span>' + t("calendar.room") + ' ' + room.id + '</span><span>' + roomTypeLabel(room.type) + '</span><span>' + getStatusLabel(status) + '</span></div>',
     '  <div class="detail-dates"><strong>' + formatDate(stay.checkIn) + '</strong><span>' + t("calendar.to") + '</span><strong>' + formatDate(stay.checkOut) + '</strong></div>',
-    '  <div class="detail-total"><span>' + t("calendar.total") + '</span><strong>' + formatNumber(stay.total) + ' ₾</strong></div>',
-    discount > 0 ? '  <div class="detail-discount"><span>' + t("form.discount") + '</span><strong>-' + formatNumber(discount) + ' ₾</strong></div>' : '',
+    '  <div class="detail-total"><span>' + t("calendar.total") + '</span><strong>' + formatMoney(stay.total) + '</strong></div>',
+    discount > 0 ? '  <div class="detail-discount"><span>' + t("form.discount") + '</span><strong>-' + formatMoney(discount) + '</strong></div>' : '',
     '  <div class="detail-payments">' + payments + '</div>',
-    debt > 0 ? '  <div class="detail-alert">' + t("calendar.outstandingDebt") + ': ' + formatNumber(debt) + ' ₾</div>' : '  <div class="detail-ok">' + t("calendar.paymentBalanced") + '</div>',
+    debt > 0 ? '  <div class="detail-alert">' + t("calendar.outstandingDebt") + ': ' + formatMoney(debt) + '</div>' : '  <div class="detail-ok">' + t("calendar.paymentBalanced") + '</div>',
     stay.notes ? '  <p class="detail-notes">' + stay.notes + '</p>' : '',
     '  <div class="detail-actions">',
     '    <button type="button" class="primary-button" data-detail-edit="' + stay.id + '">' + t("table.edit") + '</button>',
@@ -3007,6 +3503,7 @@ function setSettingsOpen(isOpen) {
   selectors.settingsTriggers.forEach((button) => {
     button.setAttribute("aria-expanded", String(isOpen));
   });
+  if (isOpen) populateHotelSettingsForm();
   document.body.classList.toggle("settings-open", isOpen);
 }
 
@@ -3088,6 +3585,19 @@ function bindEvents() {
   selectors.settingsCloseButtons.forEach((button) => button.addEventListener("click", () => setSettingsOpen(false)));
   selectors.settingsLanguageButtons.forEach((button) => {
     button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
+  });
+  selectors.hotelSettingsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = selectors.hotelSettingsForm.querySelector("button[type='submit']");
+    const nextSettings = readHotelSettingsForm();
+    submitButton.disabled = true;
+    submitButton.textContent = t("settings.saving");
+    setHotelSettingsMessage(t("settings.saving"), "");
+    const saved = await saveHotelSettings(nextSettings);
+    submitButton.disabled = false;
+    submitButton.textContent = t("settings.save");
+    if (saved) populateHotelSettingsForm();
+    setHotelSettingsMessage(saved ? t("settings.saved") : t("settings.saveError"), saved ? "success" : "error");
   });
   selectors.settingsSignOut?.addEventListener("click", signOut);
   selectors.staffChatTrigger?.addEventListener("click", () => {
@@ -3697,13 +4207,59 @@ function bindEvents() {
     startNewStayForRoom(freeRoomButton.dataset.roomId);
   });
 
-  selectors.roomGroups.addEventListener("click", async (event) => {
+  selectors.addRoomButton?.addEventListener("click", () => openRoomEditor());
+
+  selectors.roomEditorCancel?.addEventListener("click", closeRoomEditor);
+
+  selectors.roomEditorForm?.roomType?.addEventListener("change", () => {
+    if (editingRoomId) return;
+    selectors.roomEditorForm.nightlyPrice.value = String(getRoomNightPrice(selectors.roomEditorForm.roomType.value));
+  });
+
+  selectors.roomEditorForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const result = await saveRoomInventoryItem(readRoomEditorForm(), editingRoomId);
+    if (!result.ok) {
+      setRoomEditorMessage(result.message || t("roomInventory.saveError"), "error");
+      return;
+    }
+
+    populateRoomSelect();
+    updateEstimatedTotal({ forceNightly: !nightlyRateWasEdited });
+    renderAll();
+    setRoomEditorMessage(t("roomInventory.saved"), "success");
+    closeRoomEditor();
+  });
+
+  selectors.roomEditorHide?.addEventListener("click", async () => {
+    if (!editingRoomId) return;
+    if (!window.confirm(t("roomInventory.confirmHide"))) return;
+
+    const result = await hideRoomInventoryItem(editingRoomId);
+    if (!result.ok) {
+      setRoomEditorMessage(result.message || t("roomInventory.hideError"), "error");
+      return;
+    }
+
+    populateRoomSelect();
+    renderAll();
+    closeRoomEditor();
+  });
+
+  selectors.roomGroups?.addEventListener("click", async (event) => {
+    const roomButton = event.target.closest("[data-edit-room]");
+    if (roomButton) {
+      const room = rooms.find((item) => item.id === roomButton.dataset.editRoom);
+      if (room) openRoomEditor(room);
+      return;
+    }
+
     const editButton = event.target.closest("[data-edit-room-price]");
     if (!editButton) return;
 
     const type = editButton.dataset.editRoomPrice;
     const currentPrice = getRoomNightPrice(type);
-    const value = prompt(`${roomTypeLabel(type)} price per night, ₾`, String(currentPrice));
+    const value = prompt(`${roomTypeLabel(type)} ${t("roomInventory.nightlyPrice")}, ${getCurrencySymbol()}`, String(currentPrice));
     if (value === null) return;
 
     const nextPrice = Number(value);
@@ -3799,6 +4355,14 @@ async function startApp() {
   if (!canStart) {
     selectors.appShell?.classList.remove("app-loading");
     return;
+  }
+
+  hotelSettings = await loadHotelSettings();
+  if (!hasStoredLanguage()) {
+    currentLanguage = hotelSettings.defaultLanguage;
+    applyStaticTranslations();
+  } else {
+    applyHotelSettings();
   }
 
   rooms = await loadRooms();

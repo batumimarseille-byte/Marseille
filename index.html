@@ -15,10 +15,10 @@
     <section class="auth-screen hidden" id="authScreen">
       <form class="auth-card" id="loginForm">
         <div class="brand auth-brand">
-          <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
+          <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" data-hotel-logo /></span>
           <div>
-            <p class="eyebrow" data-i18n="brand.eyebrow">Hotel</p>
-            <h1>Marseille</h1>
+            <p class="eyebrow" data-i18n="brand.eyebrow" data-hotel-label>Hotel</p>
+            <h1 data-hotel-name>Marseille</h1>
           </div>
         </div>
         <div>
@@ -43,10 +43,10 @@
       <aside class="sidebar">
         <div class="mobile-nav-header">
           <button class="brand brand-home" type="button" data-home-trigger aria-label="Open overview">
-            <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" /></span>
+            <span class="brand-mark logo-mark"><img src="assets/hotel-marseille-logo.png" alt="Hotel Marseille logo" data-hotel-logo /></span>
             <div>
-              <p class="eyebrow" data-i18n="brand.eyebrow">Hotel</p>
-              <h1>Marseille</h1>
+              <p class="eyebrow" data-i18n="brand.eyebrow" data-hotel-label>Hotel</p>
+              <h1 data-hotel-name>Marseille</h1>
             </div>
           </button>
           <div class="mobile-nav-actions">
@@ -388,9 +388,39 @@
             <div class="panel-header">
               <div>
                 <p class="eyebrow" data-i18n="panels.inventory">Inventory</p>
-                <h3 data-i18n="panels.roomsByCategory">13 rooms by category</h3>
+                <h3 id="roomsInventoryTitle">13 rooms by category</h3>
               </div>
+              <button type="button" class="room-add-button" id="addRoomButton" data-i18n="roomInventory.addRoom">Add room</button>
             </div>
+            <form class="room-editor-form hidden" id="roomEditorForm">
+              <div class="room-editor-header">
+                <strong id="roomEditorTitle" data-i18n="roomInventory.newRoom">New room</strong>
+                <p id="roomEditorMessage" aria-live="polite"></p>
+              </div>
+              <div class="room-editor-grid">
+                <label>
+                  <span data-i18n="roomInventory.roomNumber">Room number</span>
+                  <input type="text" name="roomId" inputmode="numeric" autocomplete="off" />
+                </label>
+                <label>
+                  <span data-i18n="roomInventory.roomType">Room type</span>
+                  <select name="roomType"></select>
+                </label>
+                <label>
+                  <span data-i18n="roomInventory.nightlyPrice">Default nightly price</span>
+                  <input type="number" name="nightlyPrice" min="0" step="1" inputmode="decimal" />
+                </label>
+                <label>
+                  <span data-i18n="roomInventory.sortOrder">Display order</span>
+                  <input type="number" name="sortOrder" min="0" step="1" inputmode="numeric" />
+                </label>
+              </div>
+              <div class="room-editor-actions">
+                <button type="button" class="room-hide-button hidden" id="roomEditorHide" data-i18n="roomInventory.hide">Hide room</button>
+                <button type="button" class="ghost-button" id="roomEditorCancel" data-i18n="roomInventory.cancel">Cancel</button>
+                <button type="submit" class="primary-button" data-i18n="roomInventory.save">Save room</button>
+              </div>
+            </form>
             <div class="room-groups" id="roomGroups"></div>
           </article>
         </section>
@@ -410,17 +440,45 @@
           </button>
         </header>
         <div class="settings-section">
-          <p class="settings-section-label" data-i18n="settings.preferences">Preferences</p>
-          <div class="settings-row">
-            <div>
-              <strong data-i18n="settings.language">Language</strong>
-              <span data-i18n="settings.languageHint">Choose the interface language</span>
+          <p class="settings-section-label" data-i18n="settings.hotel">Hotel settings</p>
+          <p class="settings-section-hint" data-i18n="settings.hotelHint">Name, logo, currency, and default app settings.</p>
+          <form class="hotel-settings-form" id="hotelSettingsForm">
+            <div class="settings-field-grid">
+              <label class="settings-field">
+                <span data-i18n="settings.hotelName">Hotel name</span>
+                <input id="settingsHotelName" name="hotelName" type="text" autocomplete="organization" required />
+              </label>
+              <label class="settings-field">
+                <span data-i18n="settings.hotelLabel">Brand label</span>
+                <input id="settingsHotelLabel" name="hotelLabel" type="text" required />
+              </label>
+              <label class="settings-field settings-field-wide">
+                <span data-i18n="settings.logoUrl">Logo path or URL</span>
+                <input id="settingsLogoUrl" name="logoUrl" type="text" autocomplete="off" required />
+              </label>
+              <label class="settings-field">
+                <span data-i18n="settings.defaultLanguage">Default language</span>
+                <select class="native-select-hidden" id="settingsDefaultLanguage" name="defaultLanguage">
+                  <option value="en">English</option>
+                  <option value="ka">ქართული</option>
+                </select>
+                <div class="align-dropdown settings-dropdown" id="settingsDefaultLanguageDropdown" data-dropdown="settings-language"></div>
+              </label>
+              <label class="settings-field">
+                <span data-i18n="settings.currency">Currency</span>
+                <select class="native-select-hidden" id="settingsCurrency" name="currency">
+                  <option value="GEL">GEL</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+                <div class="align-dropdown settings-dropdown" id="settingsCurrencyDropdown" data-dropdown="settings-currency"></div>
+              </label>
             </div>
-            <div class="settings-language-options" role="group" aria-label="Language">
-              <button type="button" data-settings-language="en">English</button>
-              <button type="button" data-settings-language="ka">ქართული</button>
+            <div class="settings-actions">
+              <p class="settings-message" id="hotelSettingsMessage" role="status"></p>
+              <button class="settings-save" type="submit" data-i18n="settings.save">Save changes</button>
             </div>
-          </div>
+          </form>
         </div>
         <div class="settings-section settings-session">
           <p class="settings-section-label" data-i18n="settings.session">Session</p>

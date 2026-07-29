@@ -636,9 +636,11 @@ body.staff-chat-active #staffChatSection {
 .settings-dialog {
   position: relative;
   z-index: 1;
-  width: min(420px, calc(100vw - 32px));
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 18px;
   background: var(--panel);
   box-shadow: 0 20px 40px rgba(15, 35, 56, 0.15);
   opacity: 0;
@@ -656,7 +658,7 @@ body.staff-chat-active #staffChatSection {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px 20px 16px;
+  padding: 22px 24px 18px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -673,12 +675,12 @@ body.staff-chat-active #staffChatSection {
 
 .settings-close {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   place-items: center;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--panel);
   color: var(--muted);
 }
@@ -691,7 +693,7 @@ body.staff-chat-active #staffChatSection {
 }
 
 .settings-section {
-  padding: 18px 20px;
+  padding: 20px 24px;
 }
 
 .settings-session {
@@ -704,6 +706,125 @@ body.staff-chat-active #staffChatSection {
   font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.settings-section-hint {
+  margin: -6px 0 16px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.hotel-settings-form {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.settings-field-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-field input,
+.settings-field select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: 0;
+  padding: 10px 12px;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.settings-field input:hover,
+.settings-field select:hover {
+  border-color: #d4e1ec;
+  background: #f8fafc;
+}
+
+.settings-field input:focus,
+.settings-field select:focus {
+  border-color: color-mix(in srgb, var(--accent) 72%, var(--line));
+  background: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-message {
+  min-height: 18px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.settings-message.success {
+  color: var(--green);
+}
+
+.settings-message.error {
+  color: var(--red);
+}
+
+.settings-save {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 72%, var(--line));
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  box-shadow: 0 12px 22px rgba(79, 124, 255, 0.22);
+}
+
+.settings-save:hover,
+.settings-save:focus-visible {
+  background: var(--accent-strong);
+  outline: 0;
+}
+
+.settings-save:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.settings-dropdown .align-dropdown-trigger {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 12px !important;
+  padding: 10px 12px;
+}
+
+.settings-dropdown .align-dropdown-menu {
+  border-radius: 12px !important;
 }
 
 .settings-row {
@@ -778,6 +899,47 @@ body.staff-chat-active #staffChatSection {
   font: inherit;
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .settings-overlay {
+    padding: 12px;
+  }
+
+  .settings-dialog {
+    width: 100%;
+    max-height: calc(100vh - 24px);
+    border-radius: 16px;
+  }
+
+  .settings-dialog-header,
+  .settings-section {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .settings-field-grid,
+  .settings-row {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-language-options {
+    width: 100%;
+  }
+
+  .settings-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-save {
+    width: 100%;
+  }
 }
 
 .settings-sign-out:hover,
@@ -876,6 +1038,181 @@ body.staff-chat-active #staffChatSection {
 
 #roomsSection .room-price-edit {
   color: var(--muted);
+}
+
+#roomsSection .panel-header {
+  align-items: center;
+}
+
+.room-add-button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--accent-strong);
+  padding: 0 14px;
+  font-weight: 800;
+}
+
+.room-add-button:hover,
+.room-add-button:focus-visible {
+  background: var(--accent-soft);
+  border-color: #dbeafe;
+  outline: none;
+}
+
+.room-editor-form {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  margin-bottom: 16px;
+  padding: 16px;
+}
+
+.room-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.room-editor-header strong {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.room-editor-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.room-editor-header p.error {
+  color: var(--red);
+}
+
+.room-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.room-editor-grid label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: .86rem;
+  font-weight: 800;
+}
+
+.room-editor-grid input,
+.room-editor-grid select {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.room-editor-grid input[readonly] {
+  color: var(--muted);
+  background: #f8fafc;
+}
+
+.room-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.room-editor-actions .primary-button,
+.room-editor-actions .ghost-button,
+.room-hide-button {
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 0 14px;
+}
+
+.room-hide-button {
+  margin-right: auto;
+  border: 1px solid #fecaca;
+  background: var(--red-soft);
+  color: var(--red);
+  font-weight: 800;
+}
+
+.room-hide-button:hover,
+.room-hide-button:focus-visible {
+  background: #fee2e2;
+  outline: none;
+}
+
+.room-group-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.room-group-card .room-price-edit {
+  position: static;
+  opacity: 1;
+  transform: none;
+}
+
+.room-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.room-inventory-chip {
+  min-width: 44px;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0 12px;
+  font-weight: 800;
+}
+
+.room-inventory-chip:hover,
+.room-inventory-chip:focus-visible {
+  background: var(--accent-soft);
+  border-color: #dbeafe;
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .room-editor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  #roomsSection .panel-header,
+  .room-editor-header,
+  .room-editor-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .room-add-button,
+  .room-editor-actions .primary-button,
+  .room-editor-actions .ghost-button,
+  .room-hide-button {
+    width: 100%;
+  }
+
+  .room-editor-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* New stay uses the same quiet control language as the restaurant workspace. */
