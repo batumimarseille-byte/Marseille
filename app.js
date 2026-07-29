@@ -38,8 +38,10 @@ const defaultBookingColor = "#4f7cff";
 const bookingCustomColorsStorageKey = "hotel-desk-booking-custom-colors-v2";
 const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df3", "#e978e0", "#e978b7", "#ef6669", "#ee8061", "#e89b43", "#d6bf38", "#b9df42", "#75c95d", "#6bcd65", "#3fbc83", "#2fb8aa", "#1cb7b8", "#22b8cf", "#36a4e9", "#5d85f2"];
 const staffMessagePalette = ["#4f7cff", "#9a6bf2", "#e978b7", "#ef6669", "#e89b43", "#75c95d", "#2fb8aa", "#36a4e9"];
+const currentHotelId = "marseille";
 const defaultHotelSettings = {
   id: "",
+  hotelId: currentHotelId,
   hotelName: "Marseille",
   hotelLabel: "Hotel",
   logoUrl: "/logo.png",
@@ -830,6 +832,7 @@ function normalizeHotelSettings(row = {}) {
   const currency = getSupportedCurrency(row.currency_code || row.currencyCode || defaultHotelSettings.currencyCode);
   const settings = {
     id: row.id || row.settingsId || defaultHotelSettings.id,
+    hotelId: row.hotel_id || row.hotelId || currentHotelId,
     hotelName: row.hotel_name || row.hotelName || defaultHotelSettings.hotelName,
     hotelLabel: row.hotel_label || row.hotelLabel || defaultHotelSettings.hotelLabel,
     logoUrl: row.logo_url || row.logoUrl || defaultHotelSettings.logoUrl,
@@ -879,9 +882,8 @@ async function loadHotelSettings() {
 
   const { data, error } = await supabaseClient
     .from("hotel_settings")
-    .select("id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone")
-    .order("created_at", { ascending: true })
-    .limit(1)
+    .select("id, hotel_id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone")
+    .eq("hotel_id", currentHotelId)
     .maybeSingle();
 
   if (error) {
@@ -914,6 +916,7 @@ function readHotelSettingsForm() {
   const currency = getSupportedCurrency(String(formData.get("currency") || defaultHotelSettings.currencyCode));
   return normalizeHotelSettings({
     id: hotelSettings.id,
+    hotelId: hotelSettings.hotelId || currentHotelId,
     hotelName: String(formData.get("hotelName") || "").trim(),
     hotelLabel: String(formData.get("hotelLabel") || "").trim(),
     logoUrl: String(formData.get("logoUrl") || "").trim(),
@@ -926,6 +929,7 @@ function readHotelSettingsForm() {
 
 function mapHotelSettingsToDatabase(settings) {
   return {
+    hotel_id: settings.hotelId || currentHotelId,
     hotel_name: settings.hotelName,
     hotel_label: settings.hotelLabel,
     logo_url: settings.logoUrl,
@@ -955,8 +959,8 @@ async function saveHotelSettings(nextSettings) {
 
   const payload = mapHotelSettingsToDatabase(nextSettings);
   const query = hotelSettings.id
-    ? supabaseClient.from("hotel_settings").update(payload).eq("id", hotelSettings.id).select("id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone").single()
-    : supabaseClient.from("hotel_settings").insert(payload).select("id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone").single();
+    ? supabaseClient.from("hotel_settings").update(payload).eq("id", hotelSettings.id).eq("hotel_id", currentHotelId).select("id, hotel_id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone").single()
+    : supabaseClient.from("hotel_settings").insert(payload).select("id, hotel_id, hotel_name, hotel_label, logo_url, default_language, currency_code, currency_symbol, timezone").single();
 
   const { data, error } = await query;
   if (error) {
@@ -1317,6 +1321,7 @@ async function loadCustomBookingColors() {
   const { data, error } = await supabaseClient
     .from("booking_colors")
     .select("color")
+    .eq("hotel_id", currentHotelId)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -1333,7 +1338,7 @@ async function loadCustomBookingColors() {
   if (colorsToMigrate.length > 0) {
     const { data: migratedColors, error: migrateError } = await supabaseClient
       .from("booking_colors")
-      .upsert(colorsToMigrate.map((color) => ({ color })), { onConflict: "color" })
+      .upsert(colorsToMigrate.map((color) => ({ hotel_id: currentHotelId, color })), { onConflict: "hotel_id,color" })
       .select("color");
 
     if (migrateError) {
@@ -1364,7 +1369,7 @@ async function saveCustomBookingColor(color) {
 
   const { data, error } = await supabaseClient
     .from("booking_colors")
-    .upsert({ color: normalizedColor }, { onConflict: "color" })
+    .upsert({ hotel_id: currentHotelId, color: normalizedColor }, { onConflict: "hotel_id,color" })
     .select("color")
     .single();
 
@@ -1391,6 +1396,7 @@ async function removeCustomBookingColor(color) {
   const { error } = await supabaseClient
     .from("booking_colors")
     .delete()
+    .eq("hotel_id", currentHotelId)
     .eq("color", normalizedColor);
 
   if (error) {
@@ -1489,6 +1495,7 @@ function renderColorPalette({ keepOpen = false, keepAdding = false } = {}) {
 function mapRoomFromDatabase(row) {
   return normalizeRoom({
     id: row.id,
+    hotelId: row.hotel_id || currentHotelId,
     type: row.type,
     group: row.group_name,
     sortOrder: row.sort_order,
@@ -1502,7 +1509,8 @@ async function loadRooms() {
 
   const { data, error } = await supabaseClient
     .from("rooms")
-    .select("id, type, group_name, sort_order, nightly_price, is_active")
+    .select("id, hotel_id, type, group_name, sort_order, nightly_price, is_active")
+    .eq("hotel_id", currentHotelId)
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
@@ -1526,6 +1534,7 @@ function hasOpenRoomStay(roomId) {
 function buildRoomPayload(room) {
   const normalized = normalizeRoom(room);
   return {
+    hotel_id: currentHotelId,
     id: normalized.id,
     type: normalized.type,
     group_name: normalized.group,
@@ -1559,8 +1568,8 @@ async function saveRoomInventoryItem(room, originalRoomId = "") {
   }
 
   const query = previousRoomId
-    ? supabaseClient.from("rooms").update(buildRoomPayload(nextRoom)).eq("id", previousRoomId)
-    : supabaseClient.from("rooms").upsert(buildRoomPayload(nextRoom), { onConflict: "id" });
+    ? supabaseClient.from("rooms").update(buildRoomPayload(nextRoom)).eq("hotel_id", currentHotelId).eq("id", previousRoomId)
+    : supabaseClient.from("rooms").upsert(buildRoomPayload(nextRoom), { onConflict: "hotel_id,id" });
 
   const { error } = await query;
   if (error) {
@@ -1586,6 +1595,7 @@ async function hideRoomInventoryItem(roomId) {
   const { error } = await supabaseClient
     .from("rooms")
     .update({ is_active: false })
+    .eq("hotel_id", currentHotelId)
     .eq("id", normalizedRoomId);
 
   if (error) {
@@ -1612,6 +1622,7 @@ async function loadStaffMessages() {
   const { data, error } = await supabaseClient
     .from("staff_messages")
     .select("id, color, message, created_at")
+    .eq("hotel_id", currentHotelId)
     .order("created_at", { ascending: false })
     .limit(80);
 
@@ -1641,7 +1652,7 @@ async function saveStaffMessage(color, messageText) {
 
   const { data, error } = await supabaseClient
     .from("staff_messages")
-    .insert({ author: "reception", color: message.color, message: message.message })
+    .insert({ hotel_id: currentHotelId, author: "reception", color: message.color, message: message.message })
     .select("id, color, message, created_at")
     .single();
 
@@ -1671,6 +1682,7 @@ async function saveRoomTypePrice(type, nightlyPrice) {
   const { error } = await supabaseClient
     .from("rooms")
     .update({ nightly_price: nextPrice })
+    .eq("hotel_id", currentHotelId)
     .eq("type", type)
     .eq("is_active", true);
 
@@ -1687,6 +1699,7 @@ function mapStayFromDatabase(row) {
 
   return {
     id: row.id,
+    hotelId: row.hotel_id || currentHotelId,
     guestName: row.guest_name,
     companyId: row.company_id || company?.id || undefined,
     companyName: company?.name || row.company_name || "",
@@ -1712,6 +1725,7 @@ function mapStayFromDatabase(row) {
 function mapStayToDatabase(stay) {
   return {
     id: stay.id,
+    hotel_id: currentHotelId,
     guest_name: stay.guestName,
     company_id: stay.companyId || null,
     room_id: stay.roomId,
@@ -1739,6 +1753,7 @@ async function loadCompanies() {
   const { data, error } = await supabaseClient
     .from("companies")
     .select("*")
+    .eq("hotel_id", currentHotelId)
     .order("name", { ascending: true });
 
   if (error) {
@@ -1782,10 +1797,11 @@ async function ensureStayCompanies() {
       .from("companies")
       .upsert(
         missingNames.map((name) => ({
+          hotel_id: currentHotelId,
           name,
           color: companyColorByName.get(name.toLocaleLowerCase())?.color || defaultBookingColor,
         })),
-        { onConflict: "name" }
+        { onConflict: "hotel_id,name" }
       )
       .select("*");
 
@@ -1808,6 +1824,7 @@ async function ensureStayCompanies() {
         return supabaseClient
           .from("companies")
           .update({ color })
+          .eq("hotel_id", currentHotelId)
           .eq("id", company.id)
           .select("*")
           .single();
@@ -1851,6 +1868,7 @@ async function loadStays() {
   const { data, error } = await supabaseClient
     .from("stays")
     .select("*, companies(id, name, color)")
+    .eq("hotel_id", currentHotelId)
     .order("check_in", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -1905,6 +1923,7 @@ async function deleteStay(stayId) {
   const { error } = await supabaseClient
     .from("stays")
     .delete()
+    .eq("hotel_id", currentHotelId)
     .eq("id", stayId);
 
   if (error) {
@@ -2411,6 +2430,7 @@ async function migrateLegacyFavoriteGuests() {
   const { error } = await supabaseClient
     .from("stays")
     .update({ is_pinned: true })
+    .eq("hotel_id", currentHotelId)
     .in("id", legacyIds);
 
   if (error) {
@@ -2440,6 +2460,7 @@ async function toggleFavoriteGuest(stayId) {
   const { error } = await supabaseClient
     .from("stays")
     .update({ is_pinned: isPinned })
+    .eq("hotel_id", currentHotelId)
     .eq("id", stayId);
 
   if (error) {
