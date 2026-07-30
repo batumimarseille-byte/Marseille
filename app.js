@@ -82,7 +82,7 @@ let pendingBookingColor = null;
 let customColorTone = 220;
 let customBookingColors = [];
 const languageFlagIcons = { en: flagUsUrl, ka: flagGeUrl };
-const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "staff-chat", "calendar", "rooms"]);
+const sectionStorageValues = new Set(["dashboard", "new-stay", "stays", "staff-chat", "calendar", "settings"]);
 const calendarVisibleDays = 14;
 const calendarBufferDays = 14;
 const calendarTodayOffsetDays = Math.floor(calendarVisibleDays / 2);
@@ -156,7 +156,6 @@ const translations = {
       preferences: "Preferences",
       language: "Language",
       languageHint: "Choose the interface language",
-      session: "Session",
       signOut: "Sign out",
     },
     auth: {
@@ -177,6 +176,7 @@ const translations = {
       stays: "Records",
       calendar: "Calendar",
       rooms: "Rooms",
+      settings: "Settings",
     },
     pageHeaders: {
       dashboard: {
@@ -208,6 +208,11 @@ const translations = {
         eyebrow: "Room inventory",
         title: "Rooms",
         description: "Rooms grouped by category and capacity.",
+      },
+      settings: {
+        eyebrow: "Preferences",
+        title: "Settings",
+        description: "Manage hotel details, rooms, staff access, and profile.",
       },
       "staff-chat": {
         eyebrow: "Team",
@@ -434,7 +439,6 @@ const translations = {
       preferences: "პარამეტრები",
       language: "ენა",
       languageHint: "აირჩიეთ ინტერფეისის ენა",
-      session: "სესია",
       signOut: "გასვლა",
     },
     auth: {
@@ -455,6 +459,7 @@ const translations = {
       stays: "ჟურნალი",
       calendar: "კალენდარი",
       rooms: "ნომრები",
+      settings: "პარამეტრები",
     },
     pageHeaders: {
       dashboard: {
@@ -486,6 +491,11 @@ const translations = {
         eyebrow: "ნომრების სია",
         title: "ნომრები",
         description: "ნომრები კატეგორიებისა და ტევადობის მიხედვით.",
+      },
+      settings: {
+        eyebrow: "პარამეტრები",
+        title: "პარამეტრები",
+        description: "მართეთ სასტუმროს მონაცემები, ნომრები, პერსონალი და პროფილი.",
       },
       "staff-chat": {
         eyebrow: "გუნდი",
@@ -787,9 +797,16 @@ const selectors = {
   settingsOverlay: document.querySelector("#settingsOverlay"),
   settingsTrigger: document.querySelector("#settingsTrigger"),
   settingsTriggers: document.querySelectorAll("[data-settings-trigger]"),
+  profileSettingsTriggers: document.querySelectorAll("[data-profile-settings-trigger]"),
+  sidebarSettingsTrigger: document.querySelector("#sidebarSettingsTrigger"),
+  accountMenuTrigger: document.querySelector("#accountMenuTrigger"),
+  accountMenu: document.querySelector("#accountMenu"),
+  accountProfileButton: document.querySelector("#accountProfileButton"),
+  accountSignOutButton: document.querySelector("#accountSignOutButton"),
   settingsCloseButtons: document.querySelectorAll("[data-settings-close]"),
+  settingsTabs: document.querySelectorAll("[data-settings-tab]"),
+  settingsPanels: document.querySelectorAll("[data-settings-panel]"),
   settingsLanguageButtons: document.querySelectorAll("[data-settings-language]"),
-  settingsSignOut: document.querySelector("#settingsSignOut"),
   profileSettingsForm: document.querySelector("#profileSettingsForm"),
   profileSettingsMessage: document.querySelector("#profileSettingsMessage"),
   settingsProfileName: document.querySelector("#settingsProfileName"),
@@ -1160,7 +1177,9 @@ function setStaffSettingsMessage(message, type) {
 }
 
 function renderStaffSettings() {
-  selectors.staffSettingsSection?.classList.toggle("hidden", !isCurrentUserAdmin());
+  selectors.settingsTabs.forEach((tab) => {
+    if (tab.dataset.settingsTab === "staff") tab.classList.toggle("hidden", !isCurrentUserAdmin());
+  });
   if (!selectors.staffSettingsList) return;
 
   if (!isCurrentUserAdmin()) {
@@ -3652,7 +3671,9 @@ async function handleFormSubmit(event) {
     return;
   }
 
-  if (toDate(stay.checkIn) < todayDate() && !canUseNightCheckInDate(toDate(stay.checkIn))) {
+  const existingStay = editingStayId ? stays.find((item) => item.id === editingStayId) : null;
+  const keepsExistingPastCheckIn = Boolean(existingStay && stay.checkIn === existingStay.checkIn);
+  if (toDate(stay.checkIn) < todayDate() && !keepsExistingPastCheckIn && !canUseNightCheckInDate(toDate(stay.checkIn))) {
     setFormMessage(t("common.pastDate"), "error");
     return;
   }
@@ -3823,6 +3844,13 @@ function navigateToSection(sectionName) {
     setJournalFilterBadge("all");
   }
 
+  if (sectionName === "settings") {
+    populateProfileSettingsForm();
+    populateHotelSettingsForm();
+    loadHotelStaffUsers();
+    showSettingsTab("hotel");
+  }
+
   showSection(sectionName);
 
   if (sectionName === "stays") {
@@ -3892,6 +3920,7 @@ function showSection(sectionName) {
   });
   selectors.staffChatTrigger?.classList.toggle("active", sectionName === "staff-chat");
   selectors.staffChatTrigger?.setAttribute("aria-expanded", String(sectionName === "staff-chat"));
+  selectors.sidebarSettingsTrigger?.classList.toggle("active", sectionName === "settings");
   selectors.sections.forEach((section) => {
     section.classList.toggle("hidden", section.id !== sectionToId(sectionName));
   });
@@ -3914,6 +3943,29 @@ function showSection(sectionName) {
   });
 }
 
+function showSettingsTab(tabName = "profile") {
+  const isAdmin = isCurrentUserAdmin();
+  const nextTab = tabName === "staff" && !isAdmin ? "profile" : tabName;
+
+  selectors.settingsTabs.forEach((tab) => {
+    const isStaffTab = tab.dataset.settingsTab === "staff";
+    tab.classList.toggle("hidden", isStaffTab && !isAdmin);
+    tab.classList.toggle("active", tab.dataset.settingsTab === nextTab);
+  });
+
+  selectors.settingsPanels.forEach((panel) => {
+    panel.classList.toggle("hidden", panel.dataset.settingsPanel !== nextTab);
+  });
+}
+
+function openSettings(tabName = "profile") {
+  populateProfileSettingsForm();
+  populateHotelSettingsForm();
+  loadHotelStaffUsers();
+  navigateToSection("settings");
+  showSettingsTab(tabName);
+}
+
 function sectionToId(sectionName) {
   return {
     dashboard: "dashboardSection",
@@ -3922,7 +3974,7 @@ function sectionToId(sectionName) {
     stays: "staysSection",
     "staff-chat": "staffChatSection",
     calendar: "calendarSection",
-    rooms: "roomsSection",
+    settings: "settingsSection",
   }[sectionName];
 }
 
@@ -3939,24 +3991,22 @@ function setStorageCardContent(title, text, showLogout) {
 }
 
 function setSettingsOpen(isOpen) {
-  selectors.settingsOverlay?.classList.toggle("is-open", isOpen);
-  selectors.settingsOverlay?.setAttribute("aria-hidden", String(!isOpen));
-  selectors.settingsTrigger?.setAttribute("aria-expanded", String(isOpen));
-  selectors.settingsTriggers.forEach((button) => {
-    button.setAttribute("aria-expanded", String(isOpen));
-  });
   if (isOpen) {
-    populateProfileSettingsForm();
-    populateHotelSettingsForm();
-    loadHotelStaffUsers();
+    openSettings("profile");
   } else {
     setStaffSettingsMessage("", "");
   }
-  document.body.classList.toggle("settings-open", isOpen);
+}
+
+function setAccountMenuOpen(isOpen) {
+  selectors.accountMenu?.classList.toggle("is-open", isOpen);
+  selectors.accountMenuTrigger?.classList.toggle("is-open", isOpen);
+  selectors.accountMenuTrigger?.setAttribute("aria-expanded", String(isOpen));
 }
 
 async function signOut() {
   setSettingsOpen(false);
+  setAccountMenuOpen(false);
   selectors.appShell?.classList.add("app-loading");
   if (usesSupabase) await supabaseClient.auth.signOut();
   stays = [];
@@ -4031,13 +4081,30 @@ function bindEvents() {
 
   selectors.mobileMenuBackdrop?.addEventListener("click", () => setMobileMenuOpen(false));
 
+  selectors.sidebarSettingsTrigger?.addEventListener("click", () => {
+    setAccountMenuOpen(false);
+    setMobileMenuOpen(false);
+    openSettings("hotel");
+  });
+
   selectors.settingsTriggers.forEach((button) => {
     button.addEventListener("click", () => {
+      setAccountMenuOpen(false);
       setMobileMenuOpen(false);
       setSettingsOpen(true);
     });
   });
+  selectors.profileSettingsTriggers.forEach((button) => {
+    button.addEventListener("click", () => {
+      setAccountMenuOpen(false);
+      setMobileMenuOpen(false);
+      openSettings("profile");
+    });
+  });
   selectors.settingsCloseButtons.forEach((button) => button.addEventListener("click", () => setSettingsOpen(false)));
+  selectors.settingsTabs.forEach((tab) => {
+    tab.addEventListener("click", () => showSettingsTab(tab.dataset.settingsTab));
+  });
   selectors.settingsLanguageButtons.forEach((button) => {
     button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
   });
@@ -4106,8 +4173,20 @@ function bindEvents() {
     }
     setHotelSettingsMessage(saved ? t("settings.saved") : t("settings.saveError"), saved ? "success" : "error");
   });
-  selectors.settingsSignOut?.addEventListener("click", signOut);
+  selectors.accountMenuTrigger?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setAccountMenuOpen(!selectors.accountMenu?.classList.contains("is-open"));
+  });
+  selectors.accountMenu?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+  selectors.accountProfileButton?.addEventListener("click", () => {
+    setAccountMenuOpen(false);
+    openSettings("profile");
+  });
+  selectors.accountSignOutButton?.addEventListener("click", signOut);
   selectors.staffChatTrigger?.addEventListener("click", () => {
+    setAccountMenuOpen(false);
     navigateToSection("staff-chat");
     setMobileMenuOpen(false);
     requestAnimationFrame(() => selectors.staffChatInput?.focus());
@@ -4137,8 +4216,13 @@ function bindEvents() {
   selectors.dashboardNewStayAction?.addEventListener("click", () => navigateToSection("new-stay"));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && selectors.settingsOverlay?.classList.contains("is-open")) setSettingsOpen(false);
-    if (event.key === "Escape") closeCustomDropdowns();
+    if (event.key === "Escape") {
+      setAccountMenuOpen(false);
+      closeCustomDropdowns();
+    }
   });
+
+  document.addEventListener("click", () => setAccountMenuOpen(false));
 
   selectors.languageToggles?.forEach((toggle) => {
     toggle.addEventListener("click", () => {
