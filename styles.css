@@ -1828,6 +1828,10 @@
   }
 }
 
+.admin-only-hidden {
+  display: none !important;
+}
+
 .settings-section[data-settings-panel="staff"] {
   padding: 24px 28px 28px;
 }

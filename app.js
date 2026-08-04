@@ -791,6 +791,7 @@ let editingStaffId = null;
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
+  adminOnlyControls: document.querySelectorAll("[data-admin-only]"),
   homeTriggers: document.querySelectorAll("[data-home-trigger]"),
   sections: document.querySelectorAll(".section-block"),
   newStaySection: document.querySelector("#newStaySection"),
@@ -882,6 +883,7 @@ const selectors = {
   accountSignOutButton: document.querySelector("#accountSignOutButton"),
   settingsCloseButtons: document.querySelectorAll("[data-settings-close]"),
   settingsTabs: document.querySelectorAll("[data-settings-tab]"),
+  settingsPageTabs: document.querySelector(".settings-page-tabs"),
   settingsPanels: document.querySelectorAll("[data-settings-panel]"),
   settingsPanelTitle: document.querySelector("#settingsPanelTitle"),
   settingsPanelDescription: document.querySelector("#settingsPanelDescription"),
@@ -996,7 +998,7 @@ function normalizeHotelUserProfile(row) {
 }
 
 function isCurrentUserAdmin() {
-  return currentUserProfile?.role === "admin";
+  return !usesSupabase || currentUserProfile?.role === "admin";
 }
 
 async function loadCurrentUserProfile(userId) {
@@ -1170,6 +1172,17 @@ function applyUserProfile() {
     selectedStaffColor = profileColor;
   }
   updateSettingsAvatarPreview();
+  applyRoleAccess();
+}
+
+function applyRoleAccess() {
+  const isAdmin = isCurrentUserAdmin();
+  selectors.adminOnlyControls?.forEach((control) => {
+    control.classList.toggle("admin-only-hidden", !isAdmin);
+    control.setAttribute("aria-hidden", String(!isAdmin));
+  });
+
+  selectors.settingsPageTabs?.classList.toggle("hidden", !isAdmin);
 }
 
 async function loadHotelSettings() {
@@ -4173,9 +4186,11 @@ function navigateToSection(sectionName) {
 
   if (sectionName === "settings") {
     populateProfileSettingsForm();
-    populateHotelSettingsForm();
-    loadHotelStaffUsers();
-    showSettingsTab("hotel");
+    if (isCurrentUserAdmin()) {
+      populateHotelSettingsForm();
+      loadHotelStaffUsers();
+    }
+    showSettingsTab(isCurrentUserAdmin() ? "hotel" : "profile");
   }
 
   showSection(sectionName);
@@ -4272,9 +4287,8 @@ function showSection(sectionName) {
 
 function showSettingsTab(tabName = "profile") {
   const isAdmin = isCurrentUserAdmin();
-  const nextTab = tabName === "staff"
-    ? (isAdmin ? "staff" : "profile")
-    : (["hotel", "rooms", "profile"].includes(tabName) ? tabName : "hotel");
+  const allowedTabs = isAdmin ? ["hotel", "rooms", "profile", "staff"] : ["profile"];
+  const nextTab = allowedTabs.includes(tabName) ? tabName : (isAdmin ? "hotel" : "profile");
 
   if (selectors.settingsPanelTitle) {
     selectors.settingsPanelTitle.textContent = t(`settings.${nextTab}`);
@@ -4284,10 +4298,11 @@ function showSettingsTab(tabName = "profile") {
   }
 
   selectors.settingsTabs.forEach((tab) => {
-    const isStaffTab = tab.dataset.settingsTab === "staff";
-    tab.classList.toggle("hidden", isStaffTab && !isAdmin);
+    tab.classList.toggle("hidden", !isAdmin && tab.dataset.settingsTab !== "profile");
     tab.classList.toggle("active", tab.dataset.settingsTab === nextTab);
   });
+
+  selectors.settingsPageTabs?.classList.toggle("hidden", !isAdmin);
 
   selectors.settingsPanels.forEach((panel) => {
     panel.classList.toggle("hidden", panel.dataset.settingsPanel !== nextTab);
@@ -4295,11 +4310,8 @@ function showSettingsTab(tabName = "profile") {
 }
 
 function openSettings(tabName = "hotel") {
-  populateProfileSettingsForm();
-  populateHotelSettingsForm();
-  loadHotelStaffUsers();
   navigateToSection("settings");
-  showSettingsTab(tabName);
+  showSettingsTab(isCurrentUserAdmin() ? tabName : "profile");
 }
 
 function sectionToId(sectionName) {
