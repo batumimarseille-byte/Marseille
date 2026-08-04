@@ -361,7 +361,6 @@
                   <input type="text" name="staffMessage" id="staffChatInput" maxlength="300" autocomplete="off" data-i18n-placeholder="staffChat.placeholder" placeholder="Write a message..." />
                   <button type="submit" data-i18n="staffChat.send">Send</button>
                 </div>
-                <div class="staff-chat-colors" id="staffChatColors" role="radiogroup" aria-label="Message color"></div>
               </form>
             </div>
           </article>
@@ -576,22 +575,17 @@
                       <input id="settingsProfileName" name="displayName" type="text" autocomplete="name" required />
                     </div>
                   </div>
-                  <div class="settings-detail-row">
-                    <label class="settings-detail-copy" for="settingsProfilePosition">
-                      <strong data-i18n="settings.position">Position</strong>
-                      <p data-i18n="settings.positionHint">Role label shown under the user name.</p>
+                  <div class="settings-detail-row hidden" id="profileLanguageRow" hidden>
+                    <label class="settings-detail-copy" for="settingsProfileLanguage">
+                      <strong data-i18n="settings.profileLanguage">Language</strong>
+                      <p data-i18n="settings.profileLanguageHint">Language used for your account.</p>
                     </label>
                     <div class="settings-detail-control">
-                      <input id="settingsProfilePosition" name="position" type="text" autocomplete="organization-title" />
-                    </div>
-                  </div>
-                  <div class="settings-detail-row">
-                    <label class="settings-detail-copy" for="settingsProfileAvatarUrl">
-                      <strong data-i18n="settings.avatarUrl">Avatar URL</strong>
-                      <p data-i18n="settings.avatarUrlHint">Temporary image path until cloud upload is connected.</p>
-                    </label>
-                    <div class="settings-detail-control">
-                      <input id="settingsProfileAvatarUrl" name="avatarUrl" type="text" autocomplete="off" />
+                      <select class="native-select-hidden" id="settingsProfileLanguage" name="profileLanguage" aria-label="Language">
+                        <option value="en">English</option>
+                        <option value="ka">ქართული</option>
+                      </select>
+                      <div class="align-dropdown settings-dropdown" id="settingsProfileLanguageDropdown" data-dropdown="profile-language"></div>
                     </div>
                   </div>
                   <div class="settings-detail-row">

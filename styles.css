@@ -938,13 +938,13 @@
 }
 
 .settings-save {
-  background: var(--ink);
+  background: var(--accent);
   box-shadow: none;
 }
 
 .settings-save:hover,
 .settings-save:focus-visible {
-  background: #1a2a3d;
+  background: var(--accent-strong);
   outline: none;
 }
 
@@ -979,13 +979,13 @@
 }
 
 .room-editor-actions .primary-button {
-  background: var(--ink);
+  background: var(--accent);
   box-shadow: none;
 }
 
 .room-editor-actions .primary-button:hover,
 .room-editor-actions .primary-button:focus-visible {
-  background: #1a2a3d;
+  background: var(--accent-strong);
   outline: none;
 }
 
@@ -1300,12 +1300,12 @@
   border: 0 !important;
   padding: 0 18px !important;
   color: #fff !important;
-  background: var(--ink) !important;
+  background: var(--accent) !important;
 }
 
 .settings-save:hover,
 .settings-save:focus-visible {
-  background: #1a2a3d !important;
+  background: var(--accent-strong) !important;
 }
 
 .settings-message {
@@ -1832,6 +1832,97 @@
   display: none !important;
 }
 
+[hidden],
+.settings-page-tabs.hidden,
+.settings-tab.hidden {
+  display: none !important;
+}
+
+/* Staff chat uses account identity and the color stored in that profile. */
+.staff-chat-active .staff-message {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 12px !important;
+  width: min(880px, 100%) !important;
+  margin: 0 auto !important;
+  padding: 14px 16px !important;
+  border: 1px solid color-mix(in srgb, var(--staff-color, var(--accent)) 38%, var(--line)) !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, var(--staff-color, var(--accent)) 10%, #fff) !important;
+  box-shadow: 0 8px 22px rgba(44, 83, 124, 0.06) !important;
+}
+
+.staff-message-avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #f3f7fc;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.staff-message-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.staff-message-body {
+  min-width: 0;
+}
+
+.staff-chat-active .staff-message-meta {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 10px !important;
+  color: var(--ink) !important;
+}
+
+.staff-chat-active .staff-message-meta strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: color-mix(in srgb, var(--staff-color, var(--accent)) 78%, var(--ink)) !important;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.staff-chat-active .staff-message-meta > span {
+  flex: none;
+  margin-left: auto !important;
+  color: #95a2b1 !important;
+  font-size: 12px;
+  font-weight: 700 !important;
+}
+
+.staff-chat-active .staff-message p {
+  margin: 7px 0 0 !important;
+  color: var(--ink);
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.5 !important;
+  overflow-wrap: anywhere;
+}
+
+@media (width <= 700px) {
+  .staff-chat-active .staff-message {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  .staff-message-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+}
+
 .settings-section[data-settings-panel="staff"] {
   padding: 24px 28px 28px;
 }
@@ -2137,7 +2228,7 @@
 .staff-editor-actions .primary-button {
   border: 0;
   color: #fff;
-  background: var(--ink);
+  background: var(--accent);
 }
 
 .staff-access-button {
@@ -2185,4 +2276,32 @@
   .staff-editor-actions {
     flex-wrap: wrap;
   }
+}
+
+/* Keep the first heading aligned consistently inside every workspace panel. */
+body .form-panel {
+  padding-top: 16px !important;
+  padding-left: 16px !important;
+}
+
+body .table-panel,
+body .calendar-panel,
+body .settings-page-panel {
+  padding: 0 !important;
+}
+
+body .table-panel > .panel-header,
+body .calendar-panel > .panel-header,
+body .settings-page-panel > .settings-panel-header {
+  padding-top: 16px !important;
+  padding-left: 16px !important;
+}
+
+body .settings-section[data-settings-panel="profile"] {
+  padding-top: 16px !important;
+  padding-left: 16px !important;
+}
+
+body .settings-section[data-settings-panel="profile"] .settings-row-list > .settings-detail-row:first-child {
+  padding-top: 0 !important;
 }

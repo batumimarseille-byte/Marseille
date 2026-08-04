@@ -33,7 +33,6 @@ const languageStorageKey = "hotel-desk-language-v1";
 const favoriteGuestStorageKey = "hotel-desk-favorite-guests-v1";
 const favoriteGuestMigrationStorageKey = "hotel-desk-favorite-guests-supabase-migrated-v1";
 const staffMessagesStorageKey = "hotel-desk-staff-messages-v1";
-const staffColorStorageKey = "hotel-desk-staff-color-v1";
 const defaultBookingColor = "#4f7cff";
 const bookingCustomColorsStorageKey = "hotel-desk-booking-custom-colors-v2";
 const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df3", "#e978e0", "#e978b7", "#ef6669", "#ee8061", "#e89b43", "#d6bf38", "#b9df42", "#75c95d", "#6bcd65", "#3fbc83", "#2fb8aa", "#1cb7b8", "#22b8cf", "#36a4e9", "#5d85f2"];
@@ -121,7 +120,7 @@ const translations = {
       administrator: "Administrator",
       role: "Hotel staff",
       profile: "Profile",
-      profileHint: "Name, role label, avatar, and chat color.",
+      profileHint: "Name, avatar, and chat color.",
       displayName: "Display name",
       position: "Position",
       avatarUrl: "Avatar URL",
@@ -171,6 +170,8 @@ const translations = {
       logoUrlHint: "Temporary logo file path until cloud upload is connected.",
       defaultLanguage: "Default language",
       defaultLanguageHint: "Language used when the hotel opens the app.",
+      profileLanguage: "Language",
+      profileLanguageHint: "Language used for your account.",
       currency: "Currency",
       currencyHint: "Currency used for prices and payments.",
       displayNameHint: "Name shown in account and chat messages.",
@@ -439,7 +440,7 @@ const translations = {
       administrator: "ადმინისტრატორი",
       role: "სასტუმროს პერსონალი",
       profile: "პროფილი",
-      profileHint: "სახელი, როლი, ავატარი და ჩატის ფერი.",
+      profileHint: "სახელი, ავატარი და ჩატის ფერი.",
       displayName: "სახელი",
       position: "პოზიცია",
       avatarUrl: "ავატარის მისამართი",
@@ -489,6 +490,8 @@ const translations = {
       logoUrlHint: "დროებითი ლოგოს გზა, სანამ ღრუბლოვანი ატვირთვა დაემატება.",
       defaultLanguage: "საწყისი ენა",
       defaultLanguageHint: "ენა, რომლითაც სასტუმრო აპს გახსნის.",
+      profileLanguage: "ენა",
+      profileLanguageHint: "ენა, რომელიც გამოიყენება თქვენს ანგარიშში.",
       currency: "ვალუტა",
       currencyHint: "ვალუტა ფასებისა და გადახდებისთვის.",
       displayNameHint: "სახელი ანგარიშსა და ჩატის შეტყობინებებში.",
@@ -784,7 +787,6 @@ let nightlyRateWasEdited = false;
 let isUpdatingNightlyRate = false;
 let pendingCompanyColorUpdates = new Map();
 let openCustomDropdown = null;
-let selectedStaffColor = getStoredStaffColor();
 let editingRoomId = null;
 let roomEditorTypeMode = "existing";
 let editingStaffId = null;
@@ -884,6 +886,7 @@ const selectors = {
   settingsCloseButtons: document.querySelectorAll("[data-settings-close]"),
   settingsTabs: document.querySelectorAll("[data-settings-tab]"),
   settingsPageTabs: document.querySelector(".settings-page-tabs"),
+  settingsPanelHeader: document.querySelector(".settings-panel-header"),
   settingsPanels: document.querySelectorAll("[data-settings-panel]"),
   settingsPanelTitle: document.querySelector("#settingsPanelTitle"),
   settingsPanelDescription: document.querySelector("#settingsPanelDescription"),
@@ -891,8 +894,9 @@ const selectors = {
   profileSettingsForm: document.querySelector("#profileSettingsForm"),
   profileSettingsMessage: document.querySelector("#profileSettingsMessage"),
   settingsProfileName: document.querySelector("#settingsProfileName"),
-  settingsProfilePosition: document.querySelector("#settingsProfilePosition"),
-  settingsProfileAvatarUrl: document.querySelector("#settingsProfileAvatarUrl"),
+  profileLanguageRow: document.querySelector("#profileLanguageRow"),
+  settingsProfileLanguage: document.querySelector("#settingsProfileLanguage"),
+  settingsProfileLanguageDropdown: document.querySelector("#settingsProfileLanguageDropdown"),
   settingsProfileAvatarPreview: document.querySelector("[data-settings-profile-avatar-preview]"),
   settingsAvatarUpload: document.querySelector("[data-settings-avatar-upload]"),
   settingsProfileChatColor: document.querySelector("#settingsProfileChatColor"),
@@ -930,7 +934,6 @@ const selectors = {
   staffChatMessages: document.querySelector("#staffChatMessages"),
   staffChatForm: document.querySelector("#staffChatForm"),
   staffChatInput: document.querySelector("#staffChatInput"),
-  staffChatColors: document.querySelector("#staffChatColors"),
   hotelNames: document.querySelectorAll("[data-hotel-name]"),
   hotelLabels: document.querySelectorAll("[data-hotel-label]"),
   hotelLogos: document.querySelectorAll("[data-hotel-logo]"),
@@ -1017,15 +1020,6 @@ async function loadCurrentUserProfile(userId) {
   }
 
   return normalizeHotelUserProfile(data);
-}
-
-function getStoredStaffColor() {
-  try {
-    const stored = normalizeBookingColor(localStorage.getItem(staffColorStorageKey));
-    return staffMessagePalette.includes(stored) ? stored : staffMessagePalette[0];
-  } catch {
-    return staffMessagePalette[0];
-  }
 }
 
 function getStoredSection() {
@@ -1134,7 +1128,7 @@ function updateSettingsLogoPreview() {
 
 function updateSettingsAvatarPreview() {
   if (!selectors.settingsProfileAvatarPreview) return;
-  const avatarUrl = selectors.settingsProfileAvatarUrl?.value || currentUserProfile?.avatarUrl || "";
+  const avatarUrl = currentUserProfile?.avatarUrl || "";
   if (avatarUrl) {
     selectors.settingsProfileAvatarPreview.innerHTML = `<img src="${escapeHtml(avatarUrl)}" alt="" />`;
     return;
@@ -1167,10 +1161,6 @@ function applyUserProfile() {
     node.textContent = getProfilePosition();
   });
 
-  const profileColor = normalizeBookingColor(currentUserProfile?.chatColor);
-  if (profileColor) {
-    selectedStaffColor = profileColor;
-  }
   updateSettingsAvatarPreview();
   applyRoleAccess();
 }
@@ -1180,9 +1170,27 @@ function applyRoleAccess() {
   selectors.adminOnlyControls?.forEach((control) => {
     control.classList.toggle("admin-only-hidden", !isAdmin);
     control.setAttribute("aria-hidden", String(!isAdmin));
+    control.hidden = !isAdmin;
   });
 
-  selectors.settingsPageTabs?.classList.toggle("hidden", !isAdmin);
+  if (selectors.settingsPageTabs) {
+    selectors.settingsPageTabs.classList.toggle("hidden", !isAdmin);
+    selectors.settingsPageTabs.hidden = !isAdmin;
+  }
+
+  if (selectors.settingsPanelHeader) {
+    selectors.settingsPanelHeader.classList.toggle("hidden", !isAdmin);
+    selectors.settingsPanelHeader.hidden = !isAdmin;
+  }
+
+  if (selectors.profileLanguageRow) {
+    selectors.profileLanguageRow.classList.toggle("hidden", isAdmin);
+    selectors.profileLanguageRow.hidden = isAdmin;
+  }
+
+  if (currentSectionName === "settings") {
+    applyPageHeader("settings");
+  }
 }
 
 async function loadHotelSettings() {
@@ -1241,9 +1249,8 @@ function renderProfileColorOptions() {
 function populateProfileSettingsForm() {
   if (!selectors.profileSettingsForm) return;
   selectors.settingsProfileName.value = getProfileDisplayName();
-  selectors.settingsProfilePosition.value = currentUserProfile?.position || "";
-  selectors.settingsProfileAvatarUrl.value = currentUserProfile?.avatarUrl || "";
-  selectors.settingsProfileChatColor.value = currentUserProfile?.chatColor || selectedStaffColor || staffMessagePalette[0];
+  if (selectors.settingsProfileLanguage) selectors.settingsProfileLanguage.value = currentLanguage;
+  selectors.settingsProfileChatColor.value = currentUserProfile?.chatColor || staffMessagePalette[0];
   setProfileSettingsMessage("", "");
   updateSettingsAvatarPreview();
   renderProfileColorOptions();
@@ -1253,9 +1260,9 @@ function readProfileSettingsForm() {
   const formData = new FormData(selectors.profileSettingsForm);
   return {
     displayName: String(formData.get("displayName") || "").trim(),
-    position: String(formData.get("position") || "").trim(),
-    avatarUrl: String(formData.get("avatarUrl") || "").trim(),
-    chatColor: normalizeBookingColor(String(formData.get("chatColor") || "")) || staffMessagePalette[0],
+    position: currentUserProfile?.position || "",
+    avatarUrl: currentUserProfile?.avatarUrl || "",
+    chatColor: normalizeBookingColor(String(formData.get("chatColor") || "")) || currentUserProfile?.chatColor || staffMessagePalette[0],
   };
 }
 
@@ -1269,12 +1276,6 @@ async function saveOwnProfile(nextProfile) {
       chatColor: nextProfile.chatColor,
     };
     applyUserProfile();
-    try {
-      localStorage.setItem(staffColorStorageKey, selectedStaffColor);
-    } catch {
-      // Ignore blocked storage.
-    }
-    renderStaffChatColors();
     return true;
   }
 
@@ -1292,12 +1293,6 @@ async function saveOwnProfile(nextProfile) {
 
   currentUserProfile = normalizeHotelUserProfile(data);
   applyUserProfile();
-  try {
-    localStorage.setItem(staffColorStorageKey, selectedStaffColor);
-  } catch {
-    // Ignore blocked storage.
-  }
-  renderStaffChatColors();
   renderStaffChat();
   return true;
 }
@@ -1632,7 +1627,26 @@ function roomTypeLabel(type) {
 }
 
 function getPageHeader(sectionName) {
+  if (sectionName === "settings" && !isCurrentUserAdmin()) {
+    return {
+      eyebrow: "",
+      title: t("settings.profile"),
+      description: t("settings.profileHint"),
+      hideEyebrow: true,
+    };
+  }
+
   return t(`pageHeaders.${sectionName}`) || translations.en.pageHeaders.dashboard;
+}
+
+function applyPageHeader(sectionName) {
+  const header = getPageHeader(sectionName);
+  if (selectors.pageEyebrow) {
+    selectors.pageEyebrow.textContent = header.eyebrow;
+    selectors.pageEyebrow.classList.toggle("hidden", Boolean(header.hideEyebrow));
+  }
+  if (selectors.pageTitle) selectors.pageTitle.textContent = header.title;
+  if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
 }
 
 function applyStaticTranslations() {
@@ -1695,10 +1709,7 @@ function setLanguage(language) {
   populateCompanyOptions();
   updateDateRangeDisplay();
 
-  const header = getPageHeader(currentSectionName);
-  if (selectors.pageEyebrow) selectors.pageEyebrow.textContent = header.eyebrow;
-  if (selectors.pageTitle) selectors.pageTitle.textContent = header.title;
-  if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
+  applyPageHeader(currentSectionName);
 
   renderCustomDropdowns();
   renderAll();
@@ -1771,6 +1782,10 @@ function loadLocalStaffMessages() {
     return (JSON.parse(localStorage.getItem(staffMessagesStorageKey)) || [])
       .map((message) => ({
         id: message.id || crypto.randomUUID(),
+        authorUserId: message.authorUserId || "",
+        authorName: message.authorName || t("staffChat.message"),
+        authorPosition: message.authorPosition || "",
+        authorAvatarUrl: message.authorAvatarUrl || "",
         color: normalizeBookingColor(message.color) || staffMessagePalette[0],
         message: String(message.message || "").trim(),
         createdAt: message.createdAt || new Date().toISOString(),
@@ -2320,14 +2335,14 @@ async function loadStaffMessages() {
   return (data || []).map(mapStaffMessageFromDatabase).reverse();
 }
 
-async function saveStaffMessage(color, messageText) {
+async function saveStaffMessage(messageText) {
   const message = {
     id: crypto.randomUUID(),
     authorUserId: currentUserProfile?.userId || "",
     authorName: currentUserProfile?.displayName || t("staffChat.message"),
     authorPosition: currentUserProfile?.position || "",
     authorAvatarUrl: currentUserProfile?.avatarUrl || "",
-    color: normalizeBookingColor(color) || staffMessagePalette[0],
+    color: normalizeBookingColor(currentUserProfile?.chatColor) || staffMessagePalette[0],
     message: String(messageText || "").trim(),
     createdAt: new Date().toISOString(),
   };
@@ -2887,6 +2902,15 @@ function getDropdownConfig(type) {
     };
   }
 
+  if (type === "profile-language") {
+    return {
+      container: selectors.settingsProfileLanguageDropdown,
+      select: selectors.settingsProfileLanguage,
+      items: getSettingsLanguageDropdownItems(),
+      placeholder: t("settings.profileLanguage"),
+    };
+  }
+
   if (type === "settings-currency") {
     return {
       container: selectors.settingsCurrencyDropdown,
@@ -2972,6 +2996,7 @@ function renderCustomDropdowns() {
   renderCustomDropdown("company");
   renderCustomDropdown("room");
   renderCustomDropdown("settings-language");
+  renderCustomDropdown("profile-language");
   renderCustomDropdown("settings-currency");
   renderCustomDropdown("room-editor-type");
   renderCustomDropdown("staff-role");
@@ -3342,23 +3367,6 @@ function formatStaffMessageTime(value) {
   });
 }
 
-function renderStaffChatColors() {
-  if (!selectors.staffChatColors) return;
-  selectors.staffChatColors.innerHTML = staffMessagePalette
-    .map((color) => `
-      <button
-        type="button"
-        class="staff-chat-color${color === selectedStaffColor ? " is-selected" : ""}"
-        data-staff-color="${color}"
-        role="radio"
-        aria-checked="${color === selectedStaffColor}"
-        aria-label="${t("staffChat.color")}"
-        style="--staff-color: ${color}"
-      ></button>
-    `)
-    .join("");
-}
-
 function scrollStaffChatToBottom() {
   if (!selectors.staffChatMessages) return;
   const scroll = () => {
@@ -3371,23 +3379,45 @@ function scrollStaffChatToBottom() {
 }
 
 function renderStaffChat({ scrollToBottom = false } = {}) {
-  renderStaffChatColors();
   if (!selectors.staffChatMessages) return;
 
   if (!staffMessages.length) {
     selectors.staffChatMessages.innerHTML = `<p class="staff-chat-empty">${t("staffChat.empty")}</p>`;
   } else {
     selectors.staffChatMessages.innerHTML = staffMessages
-      .map((item) => `
-        <article class="staff-message" style="--staff-color: ${normalizeBookingColor(item.color) || staffMessagePalette[0]}">
-          <div class="staff-message-meta">
-            <strong><span></span>${escapeHtml(item.authorName || t("staffChat.message"))}</strong>
-            ${item.authorPosition ? `<small>${escapeHtml(item.authorPosition)}</small>` : ""}
-            <span>${escapeHtml(formatStaffMessageTime(item.createdAt))}</span>
+      .map((item) => {
+        const currentAuthor = hotelStaffUsers.find((user) => user.userId && user.userId === item.authorUserId);
+        const authorName = currentAuthor?.displayName || item.authorName || t("staffChat.message");
+        const authorAvatarUrl = currentAuthor?.avatarUrl || item.authorAvatarUrl || "";
+        const authorProfileColor =
+          item.authorUserId && item.authorUserId === currentUserProfile?.userId
+            ? currentUserProfile?.chatColor
+            : currentAuthor?.chatColor;
+        const authorColor = normalizeBookingColor(authorProfileColor || item.color) || staffMessagePalette[0];
+        const initials = authorName
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part.charAt(0))
+          .join("")
+          .toUpperCase() || "?";
+        const avatar = authorAvatarUrl
+          ? `<span class="staff-message-avatar"><img src="${escapeHtml(authorAvatarUrl)}" alt="" loading="lazy" /></span>`
+          : `<span class="staff-message-avatar is-fallback" aria-hidden="true">${escapeHtml(initials)}</span>`;
+
+        return `
+        <article class="staff-message" style="--staff-color: ${authorColor}">
+          ${avatar}
+          <div class="staff-message-body">
+            <div class="staff-message-meta">
+              <strong>${escapeHtml(authorName)}</strong>
+              <span>${escapeHtml(formatStaffMessageTime(item.createdAt))}</span>
+            </div>
+            <p>${escapeHtml(item.message)}</p>
           </div>
-          <p>${escapeHtml(item.message)}</p>
         </article>
-      `)
+      `;
+      })
       .join("");
   }
 
@@ -4267,10 +4297,7 @@ function showSection(sectionName) {
     section.classList.toggle("hidden", section.id !== sectionToId(sectionName));
   });
 
-  const header = getPageHeader(sectionName);
-  if (selectors.pageEyebrow) selectors.pageEyebrow.textContent = header.eyebrow;
-  if (selectors.pageTitle) selectors.pageTitle.textContent = header.title;
-  if (selectors.pageDescription) selectors.pageDescription.textContent = header.description;
+  applyPageHeader(sectionName);
   selectors.topbarActions?.classList.toggle("hidden", sectionName !== "dashboard");
   selectors.topbar?.classList.toggle("hidden", sectionName === "staff-chat");
   document.documentElement.classList.toggle("staff-chat-active", sectionName === "staff-chat");
@@ -4298,11 +4325,21 @@ function showSettingsTab(tabName = "profile") {
   }
 
   selectors.settingsTabs.forEach((tab) => {
-    tab.classList.toggle("hidden", !isAdmin && tab.dataset.settingsTab !== "profile");
+    const shouldHide = !isAdmin && tab.dataset.settingsTab !== "profile";
+    tab.classList.toggle("hidden", shouldHide);
+    tab.hidden = shouldHide;
     tab.classList.toggle("active", tab.dataset.settingsTab === nextTab);
   });
 
-  selectors.settingsPageTabs?.classList.toggle("hidden", !isAdmin);
+  if (selectors.settingsPageTabs) {
+    selectors.settingsPageTabs.classList.toggle("hidden", !isAdmin);
+    selectors.settingsPageTabs.hidden = !isAdmin;
+  }
+
+  if (selectors.settingsPanelHeader) {
+    selectors.settingsPanelHeader.classList.toggle("hidden", !isAdmin);
+    selectors.settingsPanelHeader.hidden = !isAdmin;
+  }
 
   selectors.settingsPanels.forEach((panel) => {
     panel.classList.toggle("hidden", panel.dataset.settingsPanel !== nextTab);
@@ -4457,12 +4494,11 @@ function bindEvents() {
   selectors.settingsLogoUpload?.addEventListener("click", () => {
     selectors.settingsLogoUrl?.focus();
   });
-  selectors.settingsProfileAvatarUrl?.addEventListener("input", updateSettingsAvatarPreview);
-  selectors.settingsAvatarUpload?.addEventListener("click", () => {
-    selectors.settingsProfileAvatarUrl?.focus();
-  });
   selectors.settingsLanguageButtons.forEach((button) => {
     button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
+  });
+  selectors.settingsProfileLanguage?.addEventListener("change", () => {
+    setLanguage(selectors.settingsProfileLanguage.value);
   });
   selectors.settingsProfileColors?.addEventListener("click", (event) => {
     const colorButton = event.target.closest("[data-profile-color]");
@@ -4556,23 +4592,11 @@ function bindEvents() {
     setMobileMenuOpen(false);
     requestAnimationFrame(() => selectors.staffChatInput?.focus());
   });
-  selectors.staffChatColors?.addEventListener("click", (event) => {
-    const colorButton = event.target.closest("[data-staff-color]");
-    const color = normalizeBookingColor(colorButton?.dataset.staffColor);
-    if (!color) return;
-    selectedStaffColor = color;
-    try {
-      localStorage.setItem(staffColorStorageKey, selectedStaffColor);
-    } catch {
-      // Ignore blocked storage.
-    }
-    renderStaffChatColors();
-  });
   selectors.staffChatForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = String(selectors.staffChatInput?.value || "").trim();
     if (!message) return;
-    const saved = await saveStaffMessage(selectedStaffColor, message);
+    const saved = await saveStaffMessage(message);
     if (!saved) return;
     selectors.staffChatInput.value = "";
     renderStaffChat({ scrollToBottom: true });
