@@ -109,6 +109,14 @@ const supabaseAnonKey =
 const configuredLoginEmail = env.VITE_APP_LOGIN_EMAIL || "batumimarseille@gmail.com";
 const supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const usesSupabase = Boolean(supabaseClient);
+const hotelAssetsBucketName = "hotel-assets";
+const imageUploadMaxBytes = 5 * 1024 * 1024;
+const imageUploadMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+const imageUploadExtensions = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
 
 const translations = {
   en: {
@@ -159,15 +167,20 @@ const translations = {
       roomsHint: "Room numbers, types, and default nightly prices.",
       upload: "Upload",
       uploadLogo: "Upload logo",
-      uploadLogoHint: "Min 400x400px, PNG or JPEG formats.",
+      uploadLogoHint: "Min 400x400px, PNG, JPEG, or WebP formats.",
       uploadAvatar: "Upload avatar",
       uploadAvatarHint: "Profile image for the sidebar and staff chat.",
+      uploading: "Uploading...",
+      uploadError: "Could not upload image. Check Supabase Storage and try again.",
+      uploadTypeError: "Use PNG, JPEG, or WebP up to 5 MB.",
+      logoUploaded: "Logo uploaded.",
+      avatarUploaded: "Avatar uploaded.",
       hotelName: "Hotel name",
       hotelNameHint: "The public name shown in the app.",
       hotelLabel: "Brand label",
       hotelLabelHint: "Small text above the hotel name.",
       logoUrl: "Logo path or URL",
-      logoUrlHint: "Temporary logo file path until cloud upload is connected.",
+      logoUrlHint: "Logo file path or uploaded image URL.",
       defaultLanguage: "Default language",
       defaultLanguageHint: "Language used when the hotel opens the app.",
       profileLanguage: "Language",
@@ -479,15 +492,20 @@ const translations = {
       roomsHint: "ნომრები, ტიპები და საწყისი ღამის ფასები.",
       upload: "ატვირთვა",
       uploadLogo: "ლოგოს ატვირთვა",
-      uploadLogoHint: "მინ. 400x400px, PNG ან JPEG ფორმატი.",
+      uploadLogoHint: "მინ. 400x400px, PNG, JPEG ან WebP ფორმატი.",
       uploadAvatar: "ავატარის ატვირთვა",
       uploadAvatarHint: "პროფილის ფოტო გვერდითა მენიუსა და ჩატისთვის.",
+      uploading: "იტვირთება...",
+      uploadError: "სურათის ატვირთვა ვერ მოხერხდა. გადაამოწმეთ Supabase Storage.",
+      uploadTypeError: "გამოიყენეთ PNG, JPEG ან WebP 5 MB-მდე.",
+      logoUploaded: "ლოგო აიტვირთა.",
+      avatarUploaded: "ავატარი აიტვირთა.",
       hotelName: "სასტუმროს სახელი",
       hotelNameHint: "სახელი, რომელიც აპში გამოჩნდება.",
       hotelLabel: "ბრენდის წარწერა",
       hotelLabelHint: "პატარა ტექსტი სასტუმროს სახელის ზემოთ.",
       logoUrl: "ლოგოს მისამართი",
-      logoUrlHint: "დროებითი ლოგოს გზა, სანამ ღრუბლოვანი ატვირთვა დაემატება.",
+      logoUrlHint: "ლოგოს ფაილის გზა ან ატვირთული სურათის მისამართი.",
       defaultLanguage: "საწყისი ენა",
       defaultLanguageHint: "ენა, რომლითაც სასტუმრო აპს გახსნის.",
       profileLanguage: "ენა",
@@ -1142,6 +1160,115 @@ function updateSettingsAvatarPreview() {
     .join("")
     .toUpperCase() || "A";
   selectors.settingsProfileAvatarPreview.textContent = initials;
+}
+
+function selectImageFile() {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png,image/jpeg,image/webp";
+    input.addEventListener("change", () => resolve(input.files?.[0] || null), { once: true });
+    input.click();
+  });
+}
+
+function getAssetFileExtension(file) {
+  return imageUploadExtensions[file?.type] || String(file?.name || "").split(".").pop()?.toLowerCase() || "png";
+}
+
+function sanitizeAssetPathPart(value) {
+  return String(value || "asset")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || "asset";
+}
+
+function createAssetFileName(kind, file) {
+  const extension = getAssetFileExtension(file);
+  const uniqueId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.round(Math.random() * 100000)}`;
+  return `${sanitizeAssetPathPart(kind)}-${uniqueId}.${extension}`;
+}
+
+function validateImageUpload(file) {
+  return Boolean(file && imageUploadMimeTypes.has(file.type) && file.size <= imageUploadMaxBytes);
+}
+
+async function uploadHotelAsset(file, kind) {
+  if (!file) return { ok: false, skipped: true };
+  if (!validateImageUpload(file)) return { ok: false, reason: "type" };
+  if (!usesSupabase) return { ok: false };
+
+  const hotelPath = sanitizeAssetPathPart(currentHotelId);
+  const userPath = sanitizeAssetPathPart(currentUserProfile?.userId || "user");
+  const folder = kind === "avatar" ? `${hotelPath}/users/${userPath}` : `${hotelPath}/hotel`;
+  const filePath = `${folder}/${createAssetFileName(kind, file)}`;
+  const { error } = await supabaseClient.storage
+    .from(hotelAssetsBucketName)
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: true,
+    });
+
+  if (error) {
+    console.error("Failed to upload image", error);
+    return { ok: false, error };
+  }
+
+  const { data } = supabaseClient.storage.from(hotelAssetsBucketName).getPublicUrl(filePath);
+  return { ok: Boolean(data?.publicUrl), url: data?.publicUrl || "" };
+}
+
+function setUploadButtonBusy(button, isBusy) {
+  if (!button) return;
+  if (!button.dataset.idleText) button.dataset.idleText = button.textContent;
+  button.disabled = isBusy;
+  button.textContent = isBusy ? t("settings.uploading") : button.dataset.idleText;
+}
+
+async function handleLogoUpload() {
+  const file = await selectImageFile();
+  if (!file) return;
+
+  setUploadButtonBusy(selectors.settingsLogoUpload, true);
+  setHotelSettingsMessage(t("settings.uploading"), "");
+  const result = await uploadHotelAsset(file, "logo");
+  setUploadButtonBusy(selectors.settingsLogoUpload, false);
+
+  if (!result.ok) {
+    setHotelSettingsMessage(result.reason === "type" ? t("settings.uploadTypeError") : t("settings.uploadError"), "error");
+    return;
+  }
+
+  if (selectors.settingsLogoUrl) selectors.settingsLogoUrl.value = result.url;
+  updateSettingsLogoPreview();
+  const saved = await saveHotelSettings(readHotelSettingsForm());
+  if (saved) populateHotelSettingsForm();
+  setHotelSettingsMessage(saved ? t("settings.logoUploaded") : t("settings.saveError"), saved ? "success" : "error");
+}
+
+async function handleAvatarUpload() {
+  const file = await selectImageFile();
+  if (!file) return;
+
+  setUploadButtonBusy(selectors.settingsAvatarUpload, true);
+  setProfileSettingsMessage(t("settings.uploading"), "");
+  const result = await uploadHotelAsset(file, "avatar");
+  setUploadButtonBusy(selectors.settingsAvatarUpload, false);
+
+  if (!result.ok) {
+    setProfileSettingsMessage(result.reason === "type" ? t("settings.uploadTypeError") : t("settings.uploadError"), "error");
+    return;
+  }
+
+  const saved = await saveOwnProfile({
+    ...readProfileSettingsForm(),
+    avatarUrl: result.url,
+  });
+  if (saved) populateProfileSettingsForm();
+  setProfileSettingsMessage(saved ? t("settings.avatarUploaded") : t("settings.profileSaveError"), saved ? "success" : "error");
 }
 
 function getProfileDisplayName() {
@@ -4491,9 +4618,8 @@ function bindEvents() {
     tab.addEventListener("click", () => showSettingsTab(tab.dataset.settingsTab));
   });
   selectors.settingsLogoUrl?.addEventListener("input", updateSettingsLogoPreview);
-  selectors.settingsLogoUpload?.addEventListener("click", () => {
-    selectors.settingsLogoUrl?.focus();
-  });
+  selectors.settingsLogoUpload?.addEventListener("click", handleLogoUpload);
+  selectors.settingsAvatarUpload?.addEventListener("click", handleAvatarUpload);
   selectors.settingsLanguageButtons.forEach((button) => {
     button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
   });
