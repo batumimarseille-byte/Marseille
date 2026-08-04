@@ -395,157 +395,285 @@
 
         <section class="section-block hidden" id="settingsSection">
           <article class="panel settings-page-panel">
-            <div class="settings-page-tabs" role="tablist" aria-label="Settings sections">
-              <button class="settings-tab active" type="button" data-settings-tab="profile" data-i18n="settings.profile">Profile</button>
-              <button class="settings-tab" type="button" data-settings-tab="hotel" data-i18n="settings.hotel">Hotel settings</button>
-              <button class="settings-tab" type="button" data-settings-tab="rooms" data-i18n="nav.rooms">Rooms</button>
-              <button class="settings-tab hidden" type="button" data-settings-tab="staff" data-i18n="settings.staff">Staff</button>
-            </div>
-            <div class="settings-section" data-settings-panel="profile">
-          <p class="settings-section-label" data-i18n="settings.profile">Profile</p>
-          <p class="settings-section-hint" data-i18n="settings.profileHint">Name, role label, avatar, and chat color.</p>
-          <form class="hotel-settings-form" id="profileSettingsForm">
-            <div class="settings-field-grid">
-              <label class="settings-field">
-                <span data-i18n="settings.displayName">Display name</span>
-                <input id="settingsProfileName" name="displayName" type="text" autocomplete="name" required />
-              </label>
-              <label class="settings-field">
-                <span data-i18n="settings.position">Position</span>
-                <input id="settingsProfilePosition" name="position" type="text" autocomplete="organization-title" />
-              </label>
-              <label class="settings-field settings-field-wide">
-                <span data-i18n="settings.avatarUrl">Avatar URL</span>
-                <input id="settingsProfileAvatarUrl" name="avatarUrl" type="text" autocomplete="off" />
-              </label>
-              <div class="settings-field settings-field-wide">
-                <span data-i18n="settings.chatColor">Chat color</span>
-                <input id="settingsProfileChatColor" name="chatColor" type="hidden" />
-                <div class="settings-profile-colors" id="settingsProfileColors" role="radiogroup" aria-label="Chat color"></div>
+            <div class="panel-header split-header settings-panel-header">
+              <div>
+                <h3 id="settingsPanelTitle" data-i18n="settings.hotel">Hotel settings</h3>
+                <p class="settings-panel-description" id="settingsPanelDescription" data-i18n="settings.hotelHint">Name, logo, currency, rooms, and default app settings.</p>
+              </div>
+              <div class="filter-group settings-page-tabs" role="tablist" aria-label="Settings sections">
+                <button class="filter-chip settings-tab active" type="button" data-settings-tab="hotel" data-i18n="settings.hotel">Hotel settings</button>
+                <button class="filter-chip settings-tab" type="button" data-settings-tab="rooms" data-i18n="settings.rooms">Rooms</button>
+                <button class="filter-chip settings-tab" type="button" data-settings-tab="profile" data-i18n="settings.profile">Profile</button>
+                <button class="filter-chip settings-tab hidden" type="button" data-settings-tab="staff" data-i18n="settings.staff">Staff</button>
               </div>
             </div>
-            <div class="settings-actions">
-              <p class="settings-message" id="profileSettingsMessage" role="status"></p>
-              <button class="settings-save" type="submit" data-i18n="settings.save">Save changes</button>
+            <div class="settings-section" data-settings-panel="hotel">
+              <form class="hotel-settings-form settings-detail-form" id="hotelSettingsForm">
+                <div class="settings-row-list">
+                  <div class="settings-detail-row settings-upload-row">
+                    <div class="settings-detail-copy">
+                      <strong data-i18n="settings.uploadLogo">Upload logo</strong>
+                      <p data-i18n="settings.uploadLogoHint">Min 400x400px, PNG or JPEG formats.</p>
+                    </div>
+                    <div class="settings-detail-control settings-upload-control">
+                      <span class="settings-logo-preview">
+                        <img src="assets/icon-512.png" alt="" data-settings-logo-preview />
+                      </span>
+                      <button class="settings-upload-button" type="button" data-settings-logo-upload data-i18n="settings.upload">Upload</button>
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <label class="settings-detail-copy" for="settingsHotelName">
+                      <strong data-i18n="settings.hotelName">Hotel name</strong>
+                      <p data-i18n="settings.hotelNameHint">The public name shown in the app.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <input id="settingsHotelName" name="hotelName" type="text" autocomplete="organization" required />
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <label class="settings-detail-copy" for="settingsHotelLabel">
+                      <strong data-i18n="settings.hotelLabel">Brand label</strong>
+                      <p data-i18n="settings.hotelLabelHint">Small text above the hotel name.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <input id="settingsHotelLabel" name="hotelLabel" type="text" required />
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <label class="settings-detail-copy" for="settingsLogoUrl">
+                      <strong data-i18n="settings.logoUrl">Logo path or URL</strong>
+                      <p data-i18n="settings.logoUrlHint">Temporary logo file path until cloud upload is connected.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <input id="settingsLogoUrl" name="logoUrl" type="text" autocomplete="off" required />
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <label class="settings-detail-copy" for="settingsDefaultLanguage">
+                      <strong data-i18n="settings.defaultLanguage">Default language</strong>
+                      <p data-i18n="settings.defaultLanguageHint">Language used when the hotel opens the app.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <select class="native-select-hidden" id="settingsDefaultLanguage" name="defaultLanguage">
+                        <option value="en">English</option>
+                        <option value="ka">ქართული</option>
+                      </select>
+                      <div class="align-dropdown settings-dropdown" id="settingsDefaultLanguageDropdown" data-dropdown="settings-language"></div>
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <label class="settings-detail-copy" for="settingsCurrency">
+                      <strong data-i18n="settings.currency">Currency</strong>
+                      <p data-i18n="settings.currencyHint">Currency used for prices and payments.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <select class="native-select-hidden" id="settingsCurrency" name="currency">
+                        <option value="GEL">GEL</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                      </select>
+                      <div class="align-dropdown settings-dropdown" id="settingsCurrencyDropdown" data-dropdown="settings-currency"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-actions">
+                  <p class="settings-message" id="hotelSettingsMessage" role="status"></p>
+                  <button class="settings-save" type="submit" data-i18n="settings.save">Save changes</button>
+                </div>
+              </form>
+
             </div>
-          </form>
-        </div>
-        <div class="settings-section hidden" id="staffSettingsSection" data-settings-panel="staff">
-          <p class="settings-section-label" data-i18n="settings.staff">Staff</p>
-          <p class="settings-section-hint" data-i18n="settings.staffHint">Add reception staff and manage access for this hotel.</p>
-          <div class="staff-settings-list" id="staffSettingsList"></div>
-          <form class="hotel-settings-form staff-settings-form" id="staffSettingsForm">
-            <div class="settings-field-grid">
-              <label class="settings-field">
-                <span data-i18n="settings.staffEmail">Email</span>
-                <input id="settingsStaffEmail" name="email" type="email" autocomplete="email" required />
-              </label>
-              <label class="settings-field">
-                <span data-i18n="settings.staffPassword">Password</span>
-                <input id="settingsStaffPassword" name="password" type="password" autocomplete="new-password" minlength="6" required />
-              </label>
-              <label class="settings-field">
-                <span data-i18n="settings.displayName">Display name</span>
-                <input id="settingsStaffName" name="displayName" type="text" autocomplete="name" required />
-              </label>
-              <label class="settings-field">
-                <span data-i18n="settings.position">Position</span>
-                <input id="settingsStaffPosition" name="position" type="text" autocomplete="organization-title" />
-              </label>
-              <label class="settings-field">
-                <span data-i18n="settings.staffRole">Role</span>
-                <select id="settingsStaffRole" name="role">
-                  <option value="staff" data-i18n="settings.roleStaff">Staff</option>
-                  <option value="admin" data-i18n="settings.roleAdmin">Admin</option>
-                </select>
-              </label>
+
+            <div class="settings-section hidden" data-settings-panel="rooms">
+              <div class="settings-room-header">
+                <div>
+                  <p class="settings-section-label" data-i18n="panels.inventory">Inventory</p>
+                  <p class="settings-section-hint" id="roomsInventoryTitle">13 rooms</p>
+                </div>
+                <button type="button" class="room-add-button" id="addRoomButton" data-i18n="roomInventory.addRoom">Add room</button>
+              </div>
+
+              <div class="room-inventory-table-wrap">
+                <table class="room-inventory-table">
+                  <thead>
+                    <tr>
+                      <th data-i18n="roomInventory.roomType">Room type</th>
+                      <th data-i18n="roomInventory.roomNumber">Room number</th>
+                      <th data-i18n="roomInventory.nightlyPrice">Default nightly price</th>
+                      <th><span class="sr-only" data-i18n="roomInventory.actions">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="roomGroups"></tbody>
+                </table>
+              </div>
+
+              <form class="room-editor-form hidden" id="roomEditorForm">
+                <div class="room-editor-header">
+                  <div>
+                    <p class="settings-section-label" data-i18n="roomInventory.details">Room details</p>
+                    <strong id="roomEditorTitle" data-i18n="roomInventory.newRoom">New room</strong>
+                  </div>
+                  <p id="roomEditorMessage" aria-live="polite"></p>
+                </div>
+
+                <div class="room-type-mode" id="roomTypeMode" role="group" aria-label="Room type mode">
+                  <button class="active" type="button" data-room-type-mode="existing" data-i18n="roomInventory.existingType">Existing type</button>
+                  <button type="button" data-room-type-mode="new" data-i18n="roomInventory.newType">New type</button>
+                </div>
+
+                <div class="room-editor-grid">
+                  <label data-room-existing-type>
+                    <span data-i18n="roomInventory.roomType">Room type</span>
+                    <select class="native-select-hidden" name="roomType"></select>
+                    <div class="align-dropdown room-editor-type-dropdown" id="roomEditorTypeDropdown" data-dropdown="room-editor-type"></div>
+                  </label>
+                  <label class="hidden" data-room-new-type>
+                    <span data-i18n="roomInventory.newTypeName">New type name</span>
+                    <input type="text" name="newRoomType" autocomplete="off" />
+                  </label>
+                  <label>
+                    <span data-i18n="roomInventory.roomNumber">Room number</span>
+                    <input type="text" name="roomId" inputmode="numeric" autocomplete="off" required />
+                  </label>
+                  <label>
+                    <span data-i18n="roomInventory.nightlyPrice">Default nightly price</span>
+                    <span class="room-editor-price-input">
+                      <input type="number" name="nightlyPrice" min="0" step="1" inputmode="decimal" required />
+                      <span data-currency-symbol aria-hidden="true">₾</span>
+                    </span>
+                  </label>
+                  <input type="hidden" name="sortOrder" />
+                </div>
+                <div class="room-editor-actions">
+                  <button type="button" class="room-hide-button hidden" id="roomEditorHide" data-i18n="roomInventory.hide">Hide room</button>
+                  <span class="room-editor-action-spacer"></span>
+                  <button type="button" class="ghost-button" id="roomEditorCancel" data-i18n="roomInventory.cancel">Cancel</button>
+                  <button type="submit" class="primary-button" data-i18n="roomInventory.save">Save room</button>
+                </div>
+              </form>
             </div>
-            <div class="settings-actions">
-              <p class="settings-message" id="staffSettingsMessage" role="status"></p>
-              <button class="settings-save" type="submit" data-i18n="settings.addStaff">Add staff</button>
+
+            <div class="settings-section hidden" data-settings-panel="profile">
+              <form class="hotel-settings-form settings-detail-form" id="profileSettingsForm">
+                <div class="settings-row-list">
+                  <div class="settings-detail-row settings-upload-row">
+                    <div class="settings-detail-copy">
+                      <strong data-i18n="settings.uploadAvatar">Upload avatar</strong>
+                      <p data-i18n="settings.uploadAvatarHint">Profile image for the sidebar and staff chat.</p>
+                    </div>
+                    <div class="settings-detail-control settings-upload-control">
+                      <span class="settings-avatar-preview" data-settings-profile-avatar-preview></span>
+                      <button class="settings-upload-button" type="button" data-settings-avatar-upload data-i18n="settings.upload">Upload</button>
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <label class="settings-detail-copy" for="settingsProfileName">
+                      <strong data-i18n="settings.displayName">Display name</strong>
+                      <p data-i18n="settings.displayNameHint">Name shown in account and chat messages.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <input id="settingsProfileName" name="displayName" type="text" autocomplete="name" required />
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <label class="settings-detail-copy" for="settingsProfilePosition">
+                      <strong data-i18n="settings.position">Position</strong>
+                      <p data-i18n="settings.positionHint">Role label shown under the user name.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <input id="settingsProfilePosition" name="position" type="text" autocomplete="organization-title" />
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <label class="settings-detail-copy" for="settingsProfileAvatarUrl">
+                      <strong data-i18n="settings.avatarUrl">Avatar URL</strong>
+                      <p data-i18n="settings.avatarUrlHint">Temporary image path until cloud upload is connected.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <input id="settingsProfileAvatarUrl" name="avatarUrl" type="text" autocomplete="off" />
+                    </div>
+                  </div>
+                  <div class="settings-detail-row">
+                    <div class="settings-detail-copy">
+                      <strong data-i18n="settings.chatColor">Chat color</strong>
+                      <p data-i18n="settings.chatColorHint">Color used for your staff chat messages.</p>
+                    </div>
+                    <div class="settings-detail-control">
+                      <input id="settingsProfileChatColor" name="chatColor" type="hidden" />
+                      <div class="settings-profile-colors" id="settingsProfileColors" role="radiogroup" aria-label="Chat color"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-actions">
+                  <p class="settings-message" id="profileSettingsMessage" role="status"></p>
+                  <button class="settings-save" type="submit" data-i18n="settings.save">Save changes</button>
+                </div>
+              </form>
             </div>
-          </form>
-        </div>
-        <div class="settings-section hidden" data-settings-panel="hotel">
-          <p class="settings-section-label" data-i18n="settings.hotel">Hotel settings</p>
-          <p class="settings-section-hint" data-i18n="settings.hotelHint">Name, logo, currency, and default app settings.</p>
-          <form class="hotel-settings-form" id="hotelSettingsForm">
-            <div class="settings-field-grid">
-              <label class="settings-field">
-                <span data-i18n="settings.hotelName">Hotel name</span>
-                <input id="settingsHotelName" name="hotelName" type="text" autocomplete="organization" required />
-              </label>
-              <label class="settings-field">
-                <span data-i18n="settings.hotelLabel">Brand label</span>
-                <input id="settingsHotelLabel" name="hotelLabel" type="text" required />
-              </label>
-              <label class="settings-field settings-field-wide">
-                <span data-i18n="settings.logoUrl">Logo path or URL</span>
-                <input id="settingsLogoUrl" name="logoUrl" type="text" autocomplete="off" required />
-              </label>
-              <label class="settings-field">
-                <span data-i18n="settings.defaultLanguage">Default language</span>
-                <select class="native-select-hidden" id="settingsDefaultLanguage" name="defaultLanguage">
-                  <option value="en">English</option>
-                  <option value="ka">ქართული</option>
-                </select>
-                <div class="align-dropdown settings-dropdown" id="settingsDefaultLanguageDropdown" data-dropdown="settings-language"></div>
-              </label>
-              <label class="settings-field">
-                <span data-i18n="settings.currency">Currency</span>
-                <select class="native-select-hidden" id="settingsCurrency" name="currency">
-                  <option value="GEL">GEL</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                </select>
-                <div class="align-dropdown settings-dropdown" id="settingsCurrencyDropdown" data-dropdown="settings-currency"></div>
-              </label>
+
+            <div class="settings-section hidden" id="staffSettingsSection" data-settings-panel="staff">
+              <div class="staff-settings-header">
+                <div>
+                  <p class="settings-section-label" data-i18n="settings.team">Team</p>
+                  <p class="settings-section-hint" id="staffSettingsCount">0 staff members</p>
+                </div>
+                <button type="button" class="staff-add-button" id="addStaffButton" data-i18n="settings.addStaff">Add staff</button>
+              </div>
+
+              <div class="staff-settings-table-wrap">
+                <table class="staff-settings-table">
+                  <thead>
+                    <tr>
+                      <th data-i18n="settings.staffMember">Staff member</th>
+                      <th data-i18n="settings.staffEmail">Email</th>
+                      <th data-i18n="settings.staffRole">Role</th>
+                      <th><span class="sr-only" data-i18n="roomInventory.actions">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="staffSettingsList"></tbody>
+                </table>
+              </div>
+
+              <form class="staff-editor-form hidden" id="staffSettingsForm">
+                <div class="staff-editor-header">
+                  <div>
+                    <p class="settings-section-label" data-i18n="settings.staffDetails">Staff details</p>
+                    <strong id="staffEditorTitle" data-i18n="settings.newStaff">New staff member</strong>
+                  </div>
+                  <p class="settings-message" id="staffSettingsMessage" role="status"></p>
+                </div>
+                <div class="staff-editor-grid">
+                  <label>
+                    <span data-i18n="settings.displayName">Display name</span>
+                    <input id="settingsStaffName" name="displayName" type="text" autocomplete="name" required />
+                  </label>
+                  <label>
+                    <span data-i18n="settings.staffEmail">Email</span>
+                    <input id="settingsStaffEmail" name="email" type="email" autocomplete="email" required />
+                  </label>
+                  <label>
+                    <span data-i18n="settings.staffPassword">Password</span>
+                    <input id="settingsStaffPassword" name="password" type="password" autocomplete="new-password" minlength="6" />
+                    <small id="staffPasswordHint" data-i18n="settings.staffPasswordNewHint">Required for a new staff member.</small>
+                  </label>
+                  <label>
+                    <span data-i18n="settings.staffRole">Role</span>
+                    <select class="native-select-hidden" id="settingsStaffRole" name="role">
+                      <option value="staff" data-i18n="settings.roleStaff">Staff</option>
+                      <option value="admin" data-i18n="settings.roleAdmin">Admin</option>
+                    </select>
+                    <div class="align-dropdown staff-role-dropdown" id="staffRoleDropdown" data-dropdown="staff-role"></div>
+                  </label>
+                </div>
+                <div class="staff-editor-actions">
+                  <button type="button" class="staff-access-button hidden" id="staffEditorAccess"></button>
+                  <span class="staff-editor-action-spacer"></span>
+                  <button type="button" class="ghost-button" id="staffEditorCancel" data-i18n="roomInventory.cancel">Cancel</button>
+                  <button type="submit" class="primary-button" data-i18n="settings.saveStaff">Save staff member</button>
+                </div>
+              </form>
             </div>
-            <div class="settings-actions">
-              <p class="settings-message" id="hotelSettingsMessage" role="status"></p>
-              <button class="settings-save" type="submit" data-i18n="settings.save">Save changes</button>
-            </div>
-          </form>
-        </div>
-        <div class="settings-section hidden" data-settings-panel="rooms">
-          <div class="panel-header settings-room-header">
-            <div>
-              <p class="settings-section-label" data-i18n="panels.inventory">Inventory</p>
-              <p class="settings-section-hint" id="roomsInventoryTitle">13 rooms by category</p>
-            </div>
-            <button type="button" class="room-add-button" id="addRoomButton" data-i18n="roomInventory.addRoom">Add room</button>
-          </div>
-          <form class="room-editor-form hidden" id="roomEditorForm">
-            <div class="room-editor-header">
-              <strong id="roomEditorTitle" data-i18n="roomInventory.newRoom">New room</strong>
-              <p id="roomEditorMessage" aria-live="polite"></p>
-            </div>
-            <div class="room-editor-grid">
-              <label>
-                <span data-i18n="roomInventory.roomNumber">Room number</span>
-                <input type="text" name="roomId" inputmode="numeric" autocomplete="off" />
-              </label>
-              <label>
-                <span data-i18n="roomInventory.roomType">Room type</span>
-                <select name="roomType"></select>
-              </label>
-              <label>
-                <span data-i18n="roomInventory.nightlyPrice">Default nightly price</span>
-                <input type="number" name="nightlyPrice" min="0" step="1" inputmode="decimal" />
-              </label>
-              <label>
-                <span data-i18n="roomInventory.sortOrder">Display order</span>
-                <input type="number" name="sortOrder" min="0" step="1" inputmode="numeric" />
-              </label>
-            </div>
-            <div class="room-editor-actions">
-              <button type="button" class="room-hide-button hidden" id="roomEditorHide" data-i18n="roomInventory.hide">Hide room</button>
-              <button type="button" class="ghost-button" id="roomEditorCancel" data-i18n="roomInventory.cancel">Cancel</button>
-              <button type="submit" class="primary-button" data-i18n="roomInventory.save">Save room</button>
-            </div>
-          </form>
-          <div class="room-groups" id="roomGroups"></div>
-        </div>
           </article>
         </section>
       </main>

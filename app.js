@@ -130,8 +130,18 @@ const translations = {
       profileSaveError: "Could not save profile. Check Supabase and try again.",
       staff: "Staff",
       staffHint: "Add reception staff and manage access for this hotel.",
+      team: "Team",
+      staffMember: "Staff member",
+      staffDetails: "Staff details",
+      newStaff: "New staff member",
+      editStaff: "Edit staff member",
+      editStaffAction: "Edit",
+      saveStaff: "Save staff member",
+      staffCount: "{count} staff members",
       staffEmail: "Email",
       staffPassword: "Password",
+      staffPasswordNewHint: "Required for a new staff member.",
+      staffPasswordEditHint: "Leave blank to keep the current password.",
       staffRole: "Role",
       roleAdmin: "Admin",
       roleStaff: "Staff",
@@ -142,13 +152,31 @@ const translations = {
       staffCurrent: "You",
       staffActive: "Active",
       staffInactive: "Disabled",
+      disableStaff: "Disable access",
+      enableStaff: "Enable access",
       hotel: "Hotel settings",
       hotelHint: "Name, logo, currency, and default app settings.",
+      rooms: "Rooms",
+      roomsHint: "Room numbers, types, and default nightly prices.",
+      upload: "Upload",
+      uploadLogo: "Upload logo",
+      uploadLogoHint: "Min 400x400px, PNG or JPEG formats.",
+      uploadAvatar: "Upload avatar",
+      uploadAvatarHint: "Profile image for the sidebar and staff chat.",
       hotelName: "Hotel name",
+      hotelNameHint: "The public name shown in the app.",
       hotelLabel: "Brand label",
+      hotelLabelHint: "Small text above the hotel name.",
       logoUrl: "Logo path or URL",
+      logoUrlHint: "Temporary logo file path until cloud upload is connected.",
       defaultLanguage: "Default language",
+      defaultLanguageHint: "Language used when the hotel opens the app.",
       currency: "Currency",
+      currencyHint: "Currency used for prices and payments.",
+      displayNameHint: "Name shown in account and chat messages.",
+      positionHint: "Role label shown under the user name.",
+      avatarUrlHint: "Temporary image path until cloud upload is connected.",
+      chatColorHint: "Color used for your staff chat messages.",
       save: "Save changes",
       saving: "Saving...",
       saved: "Settings saved.",
@@ -282,10 +310,17 @@ const translations = {
       roomType: "Room type",
       nightlyPrice: "Default nightly price",
       sortOrder: "Display order",
+      existingType: "Existing type",
+      newType: "New type",
+      newTypeName: "New type name",
+      details: "Room details",
+      actions: "Actions",
+      empty: "No rooms have been added yet.",
       save: "Save room",
       cancel: "Cancel",
       hide: "Hide room",
       editPrice: "Edit price",
+      savePrice: "Save price",
       saved: "Room saved.",
       hidden: "Room hidden.",
       duplicate: "This room already exists.",
@@ -413,8 +448,18 @@ const translations = {
       profileSaveError: "პროფილი ვერ შეინახა. გადაამოწმეთ Supabase.",
       staff: "პერსონალი",
       staffHint: "დაამატეთ რესეფშენის თანამშრომლები და მართეთ წვდომა.",
+      team: "გუნდი",
+      staffMember: "თანამშრომელი",
+      staffDetails: "თანამშრომლის მონაცემები",
+      newStaff: "ახალი თანამშრომელი",
+      editStaff: "თანამშრომლის რედაქტირება",
+      editStaffAction: "რედაქტირება",
+      saveStaff: "თანამშრომლის შენახვა",
+      staffCount: "{count} თანამშრომელი",
       staffEmail: "ელფოსტა",
       staffPassword: "პაროლი",
+      staffPasswordNewHint: "ახალი თანამშრომლისთვის პაროლი სავალდებულოა.",
+      staffPasswordEditHint: "ძველი პაროლის შესანარჩუნებლად დატოვეთ ცარიელი.",
       staffRole: "როლი",
       roleAdmin: "ადმინისტრატორი",
       roleStaff: "თანამშრომელი",
@@ -425,13 +470,31 @@ const translations = {
       staffCurrent: "თქვენ",
       staffActive: "აქტიური",
       staffInactive: "გამორთული",
+      disableStaff: "წვდომის გამორთვა",
+      enableStaff: "წვდომის ჩართვა",
       hotel: "სასტუმროს პარამეტრები",
       hotelHint: "სახელი, ლოგო, ვალუტა და საწყისი პარამეტრები.",
+      rooms: "ნომრები",
+      roomsHint: "ნომრები, ტიპები და საწყისი ღამის ფასები.",
+      upload: "ატვირთვა",
+      uploadLogo: "ლოგოს ატვირთვა",
+      uploadLogoHint: "მინ. 400x400px, PNG ან JPEG ფორმატი.",
+      uploadAvatar: "ავატარის ატვირთვა",
+      uploadAvatarHint: "პროფილის ფოტო გვერდითა მენიუსა და ჩატისთვის.",
       hotelName: "სასტუმროს სახელი",
+      hotelNameHint: "სახელი, რომელიც აპში გამოჩნდება.",
       hotelLabel: "ბრენდის წარწერა",
+      hotelLabelHint: "პატარა ტექსტი სასტუმროს სახელის ზემოთ.",
       logoUrl: "ლოგოს მისამართი",
+      logoUrlHint: "დროებითი ლოგოს გზა, სანამ ღრუბლოვანი ატვირთვა დაემატება.",
       defaultLanguage: "საწყისი ენა",
+      defaultLanguageHint: "ენა, რომლითაც სასტუმრო აპს გახსნის.",
       currency: "ვალუტა",
+      currencyHint: "ვალუტა ფასებისა და გადახდებისთვის.",
+      displayNameHint: "სახელი ანგარიშსა და ჩატის შეტყობინებებში.",
+      positionHint: "როლის წარწერა მომხმარებლის სახელის ქვემოთ.",
+      avatarUrlHint: "დროებითი სურათის გზა, სანამ ღრუბლოვანი ატვირთვა დაემატება.",
+      chatColorHint: "თქვენი ჩატის შეტყობინებების ფერი.",
       save: "ცვლილებების შენახვა",
       saving: "ინახება...",
       saved: "პარამეტრები შენახულია.",
@@ -565,10 +628,17 @@ const translations = {
       roomType: "ნომრის ტიპი",
       nightlyPrice: "საწყისი ღამის ფასი",
       sortOrder: "ჩვენების რიგი",
+      existingType: "არსებული ტიპი",
+      newType: "ახალი ტიპი",
+      newTypeName: "ახალი ტიპის სახელი",
+      details: "ნომრის დეტალები",
+      actions: "მოქმედებები",
+      empty: "ნომრები ჯერ არ არის დამატებული.",
       save: "ნომრის შენახვა",
       cancel: "გაუქმება",
       hide: "ნომრის დამალვა",
       editPrice: "ფასის შეცვლა",
+      savePrice: "ფასის შენახვა",
       saved: "ნომერი შენახულია.",
       hidden: "ნომერი დამალულია.",
       duplicate: "ეს ნომერი უკვე არსებობს.",
@@ -716,6 +786,8 @@ let pendingCompanyColorUpdates = new Map();
 let openCustomDropdown = null;
 let selectedStaffColor = getStoredStaffColor();
 let editingRoomId = null;
+let roomEditorTypeMode = "existing";
+let editingStaffId = null;
 
 const selectors = {
   navItems: document.querySelectorAll(".nav-item"),
@@ -752,8 +824,13 @@ const selectors = {
   cancelEditButton: document.querySelector("#cancelEditButton"),
   roomMap: document.querySelector("#roomMap"),
   roomGroups: document.querySelector("#roomGroups"),
+  roomInventoryTableWrap: document.querySelector(".room-inventory-table-wrap"),
   addRoomButton: document.querySelector("#addRoomButton"),
   roomEditorForm: document.querySelector("#roomEditorForm"),
+  roomEditorTypeDropdown: document.querySelector("#roomEditorTypeDropdown"),
+  roomTypeMode: document.querySelector("#roomTypeMode"),
+  roomExistingTypeField: document.querySelector("[data-room-existing-type]"),
+  roomNewTypeField: document.querySelector("[data-room-new-type]"),
   roomEditorTitle: document.querySelector("#roomEditorTitle"),
   roomEditorMessage: document.querySelector("#roomEditorMessage"),
   roomEditorCancel: document.querySelector("#roomEditorCancel"),
@@ -761,7 +838,7 @@ const selectors = {
   roomsInventoryTitle: document.querySelector("#roomsInventoryTitle"),
   activeGuestList: document.querySelector("#activeGuestList"),
   staysTable: document.querySelector("#staysTable"),
-  filterChips: document.querySelectorAll(".filter-chip"),
+  filterChips: document.querySelectorAll(".filter-chip[data-filter]"),
   occupiedStat: document.querySelector("#occupiedStat"),
   arrivalsStat: document.querySelector("#arrivalsStat"),
   departuresStat: document.querySelector("#departuresStat"),
@@ -806,28 +883,41 @@ const selectors = {
   settingsCloseButtons: document.querySelectorAll("[data-settings-close]"),
   settingsTabs: document.querySelectorAll("[data-settings-tab]"),
   settingsPanels: document.querySelectorAll("[data-settings-panel]"),
+  settingsPanelTitle: document.querySelector("#settingsPanelTitle"),
+  settingsPanelDescription: document.querySelector("#settingsPanelDescription"),
   settingsLanguageButtons: document.querySelectorAll("[data-settings-language]"),
   profileSettingsForm: document.querySelector("#profileSettingsForm"),
   profileSettingsMessage: document.querySelector("#profileSettingsMessage"),
   settingsProfileName: document.querySelector("#settingsProfileName"),
   settingsProfilePosition: document.querySelector("#settingsProfilePosition"),
   settingsProfileAvatarUrl: document.querySelector("#settingsProfileAvatarUrl"),
+  settingsProfileAvatarPreview: document.querySelector("[data-settings-profile-avatar-preview]"),
+  settingsAvatarUpload: document.querySelector("[data-settings-avatar-upload]"),
   settingsProfileChatColor: document.querySelector("#settingsProfileChatColor"),
   settingsProfileColors: document.querySelector("#settingsProfileColors"),
   staffSettingsSection: document.querySelector("#staffSettingsSection"),
   staffSettingsList: document.querySelector("#staffSettingsList"),
   staffSettingsForm: document.querySelector("#staffSettingsForm"),
   staffSettingsMessage: document.querySelector("#staffSettingsMessage"),
+  staffSettingsTableWrap: document.querySelector(".staff-settings-table-wrap"),
+  staffSettingsCount: document.querySelector("#staffSettingsCount"),
+  addStaffButton: document.querySelector("#addStaffButton"),
+  staffEditorTitle: document.querySelector("#staffEditorTitle"),
+  staffEditorCancel: document.querySelector("#staffEditorCancel"),
+  staffEditorAccess: document.querySelector("#staffEditorAccess"),
+  staffPasswordHint: document.querySelector("#staffPasswordHint"),
+  staffRoleDropdown: document.querySelector("#staffRoleDropdown"),
   settingsStaffEmail: document.querySelector("#settingsStaffEmail"),
   settingsStaffPassword: document.querySelector("#settingsStaffPassword"),
   settingsStaffName: document.querySelector("#settingsStaffName"),
-  settingsStaffPosition: document.querySelector("#settingsStaffPosition"),
   settingsStaffRole: document.querySelector("#settingsStaffRole"),
   hotelSettingsForm: document.querySelector("#hotelSettingsForm"),
   hotelSettingsMessage: document.querySelector("#hotelSettingsMessage"),
   settingsHotelName: document.querySelector("#settingsHotelName"),
   settingsHotelLabel: document.querySelector("#settingsHotelLabel"),
   settingsLogoUrl: document.querySelector("#settingsLogoUrl"),
+  settingsLogoPreview: document.querySelector("[data-settings-logo-preview]"),
+  settingsLogoUpload: document.querySelector("[data-settings-logo-upload]"),
   settingsDefaultLanguage: document.querySelector("#settingsDefaultLanguage"),
   settingsDefaultLanguageDropdown: document.querySelector("#settingsDefaultLanguageDropdown"),
   settingsCurrency: document.querySelector("#settingsCurrency"),
@@ -899,6 +989,7 @@ function normalizeHotelUserProfile(row) {
     role: row.role || "staff",
     position: row.position || "",
     avatarUrl: row.avatar_url || row.avatarUrl || "",
+    email: row.email || "",
     chatColor: normalizeBookingColor(row.chat_color || row.chatColor) || fallbackColor,
     isActive: row.is_active ?? row.isActive ?? true,
   };
@@ -1030,6 +1121,31 @@ function applyHotelSettings() {
     image.src = hotelSettings.logoUrl || defaultHotelSettings.logoUrl;
     image.alt = `${fullName} logo`;
   });
+  updateSettingsLogoPreview();
+}
+
+function updateSettingsLogoPreview() {
+  if (!selectors.settingsLogoPreview) return;
+  selectors.settingsLogoPreview.src = selectors.settingsLogoUrl?.value || hotelSettings.logoUrl || defaultHotelSettings.logoUrl;
+  selectors.settingsLogoPreview.alt = `${hotelSettings.hotelName || defaultHotelSettings.hotelName} logo`;
+}
+
+function updateSettingsAvatarPreview() {
+  if (!selectors.settingsProfileAvatarPreview) return;
+  const avatarUrl = selectors.settingsProfileAvatarUrl?.value || currentUserProfile?.avatarUrl || "";
+  if (avatarUrl) {
+    selectors.settingsProfileAvatarPreview.innerHTML = `<img src="${escapeHtml(avatarUrl)}" alt="" />`;
+    return;
+  }
+
+  const initials = getProfileDisplayName()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "A";
+  selectors.settingsProfileAvatarPreview.textContent = initials;
 }
 
 function getProfileDisplayName() {
@@ -1053,6 +1169,7 @@ function applyUserProfile() {
   if (profileColor) {
     selectedStaffColor = profileColor;
   }
+  updateSettingsAvatarPreview();
 }
 
 async function loadHotelSettings() {
@@ -1080,6 +1197,7 @@ function populateHotelSettingsForm() {
   selectors.settingsDefaultLanguage.value = translations[hotelSettings.defaultLanguage] ? hotelSettings.defaultLanguage : defaultHotelSettings.defaultLanguage;
   selectors.settingsCurrency.value = getSupportedCurrency(hotelSettings.currencyCode).code;
   setHotelSettingsMessage("", "");
+  updateSettingsLogoPreview();
   renderCustomDropdowns();
 }
 
@@ -1114,6 +1232,7 @@ function populateProfileSettingsForm() {
   selectors.settingsProfileAvatarUrl.value = currentUserProfile?.avatarUrl || "";
   selectors.settingsProfileChatColor.value = currentUserProfile?.chatColor || selectedStaffColor || staffMessagePalette[0];
   setProfileSettingsMessage("", "");
+  updateSettingsAvatarPreview();
   renderProfileColorOptions();
 }
 
@@ -1176,6 +1295,91 @@ function setStaffSettingsMessage(message, type) {
   selectors.staffSettingsMessage.className = `settings-message ${type || ""}`;
 }
 
+function getStaffInitials(user) {
+  const name = String(user?.displayName || user?.email || "").trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return parts.slice(0, 2).map((part) => part.charAt(0)).join("").toUpperCase();
+}
+
+function getStaffRoleLabel(role) {
+  return role === "admin" ? t("settings.roleAdmin") : t("settings.roleStaff");
+}
+
+function resetStaffEditorPlacement() {
+  const form = selectors.staffSettingsForm;
+  const tableWrap = selectors.staffSettingsTableWrap;
+  if (!form || !tableWrap) return;
+
+  const inlineRow = form.closest(".staff-editor-inline-row");
+  tableWrap.after(form);
+  inlineRow?.remove();
+  form.classList.remove("staff-editor-inline", "staff-editor-new-position");
+}
+
+function placeStaffEditor(user = null) {
+  const form = selectors.staffSettingsForm;
+  const tableWrap = selectors.staffSettingsTableWrap;
+  if (!form || !tableWrap) return;
+
+  resetStaffEditorPlacement();
+  if (!user) {
+    tableWrap.before(form);
+    form.classList.add("staff-editor-new-position");
+    return;
+  }
+
+  const editButton = [...selectors.staffSettingsList.querySelectorAll("[data-edit-staff]")]
+    .find((button) => button.dataset.editStaff === user.id);
+  const staffRow = editButton?.closest("tr");
+  if (!staffRow) return;
+
+  const inlineRow = document.createElement("tr");
+  const inlineCell = document.createElement("td");
+  inlineRow.className = "staff-editor-inline-row";
+  inlineCell.colSpan = 4;
+  inlineRow.append(inlineCell);
+  staffRow.after(inlineRow);
+  inlineCell.append(form);
+  form.classList.add("staff-editor-inline");
+}
+
+function closeStaffEditor() {
+  editingStaffId = null;
+  if (openCustomDropdown === "staff-role") openCustomDropdown = null;
+  selectors.staffSettingsForm?.classList.add("hidden");
+  resetStaffEditorPlacement();
+  selectors.staffSettingsForm?.reset();
+  setStaffSettingsMessage();
+  renderCustomDropdown("staff-role");
+}
+
+function openStaffEditor(user = null) {
+  if (!selectors.staffSettingsForm) return;
+  const isEdit = Boolean(user);
+  editingStaffId = user?.id || null;
+  selectors.staffEditorTitle.textContent = isEdit ? t("settings.editStaff") : t("settings.newStaff");
+  selectors.settingsStaffName.value = user?.displayName || "";
+  selectors.settingsStaffEmail.value = user?.email || "";
+  selectors.settingsStaffPassword.value = "";
+  selectors.settingsStaffPassword.required = !isEdit;
+  selectors.settingsStaffRole.value = user?.role === "admin" ? "admin" : "staff";
+  selectors.staffPasswordHint.textContent = isEdit
+    ? t("settings.staffPasswordEditHint")
+    : t("settings.staffPasswordNewHint");
+  const isCurrentUser = user?.userId === currentUserProfile?.userId;
+  selectors.staffEditorAccess?.classList.toggle("hidden", !isEdit || isCurrentUser);
+  if (selectors.staffEditorAccess && isEdit && !isCurrentUser) {
+    selectors.staffEditorAccess.textContent = user.isActive ? t("settings.disableStaff") : t("settings.enableStaff");
+    selectors.staffEditorAccess.classList.toggle("is-enable", !user.isActive);
+  }
+  setStaffSettingsMessage();
+  placeStaffEditor(user);
+  selectors.staffSettingsForm.classList.remove("hidden");
+  renderCustomDropdown("staff-role");
+  selectors.settingsStaffName.focus();
+}
+
 function renderStaffSettings() {
   selectors.settingsTabs.forEach((tab) => {
     if (tab.dataset.settingsTab === "staff") tab.classList.toggle("hidden", !isCurrentUserAdmin());
@@ -1187,8 +1391,16 @@ function renderStaffSettings() {
     return;
   }
 
+  const editorWasInline = Boolean(selectors.staffSettingsForm?.closest(".staff-editor-inline-row"));
+  const openStaffId = editingStaffId;
+  if (editorWasInline) resetStaffEditorPlacement();
+
+  if (selectors.staffSettingsCount) {
+    selectors.staffSettingsCount.textContent = t("settings.staffCount").replace("{count}", String(hotelStaffUsers.length));
+  }
+
   if (!hotelStaffUsers.length) {
-    selectors.staffSettingsList.innerHTML = `<p class="staff-settings-empty">${t("settings.staffEmpty")}</p>`;
+    selectors.staffSettingsList.innerHTML = `<tr><td class="staff-settings-empty" colspan="4">${t("settings.staffEmpty")}</td></tr>`;
     return;
   }
 
@@ -1196,22 +1408,28 @@ function renderStaffSettings() {
     .map((user) => {
       const isCurrentUser = user.userId === currentUserProfile?.userId;
       return `
-        <article class="staff-settings-card" data-staff-user="${escapeHtml(user.id)}">
-          <div>
-            <strong>${escapeHtml(user.displayName || t("settings.role"))}</strong>
-            <span>${escapeHtml(user.position || user.role || t("settings.roleStaff"))}${isCurrentUser ? ` · ${t("settings.staffCurrent")}` : ""}</span>
-          </div>
-          <select class="staff-settings-role" data-staff-role${isCurrentUser ? " disabled" : ""}>
-            <option value="staff"${user.role !== "admin" ? " selected" : ""}>${t("settings.roleStaff")}</option>
-            <option value="admin"${user.role === "admin" ? " selected" : ""}>${t("settings.roleAdmin")}</option>
-          </select>
-          <button class="staff-settings-toggle${user.isActive ? "" : " is-disabled"}" type="button" data-staff-toggle${isCurrentUser ? " disabled" : ""}>
-            ${user.isActive ? t("settings.staffActive") : t("settings.staffInactive")}
-          </button>
-        </article>
+        <tr class="${user.isActive ? "" : "is-disabled"}" data-staff-user="${escapeHtml(user.id)}">
+          <td>
+            <span class="staff-member-cell">
+              <span class="staff-member-avatar"${user.avatarUrl ? ` style="background-image:url('${escapeHtml(user.avatarUrl)}')"` : ""}>${user.avatarUrl ? "" : escapeHtml(getStaffInitials(user))}</span>
+              <span class="staff-member-copy">
+                <strong>${escapeHtml(user.displayName || t("settings.role"))}</strong>
+                <small>${isCurrentUser ? t("settings.staffCurrent") : (user.isActive ? t("settings.staffActive") : t("settings.staffInactive"))}</small>
+              </span>
+            </span>
+          </td>
+          <td class="staff-email-cell">${escapeHtml(user.email || "—")}</td>
+          <td><span class="staff-role-badge"><i></i>${escapeHtml(getStaffRoleLabel(user.role))}</span></td>
+          <td class="staff-settings-actions"><button type="button" class="staff-settings-edit" data-edit-staff="${escapeHtml(user.id)}">${escapeHtml(t("settings.editStaffAction"))}</button></td>
+        </tr>
       `;
     })
     .join("");
+
+  if (editorWasInline && openStaffId) {
+    const user = hotelStaffUsers.find((item) => item.id === openStaffId);
+    if (user) placeStaffEditor(user);
+  }
 }
 
 async function loadHotelStaffUsers() {
@@ -1221,18 +1439,20 @@ async function loadHotelStaffUsers() {
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("hotel_users")
-    .select("id, user_id, hotel_id, display_name, role, position, avatar_url, chat_color, is_active")
-    .eq("hotel_id", currentHotelId)
-    .order("role", { ascending: true })
-    .order("display_name", { ascending: true });
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  const response = accessToken
+    ? await fetch(`/api/create-staff-user?hotelId=${encodeURIComponent(currentHotelId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    : null;
+  const result = await response?.json().catch(() => null);
 
-  if (error) {
-    console.error("Failed to load hotel staff", error);
+  if (!response?.ok) {
+    console.error("Failed to load hotel staff", result?.error || response?.statusText);
     hotelStaffUsers = currentUserProfile ? [currentUserProfile] : [];
   } else {
-    hotelStaffUsers = (data || []).map(normalizeHotelUserProfile).filter(Boolean);
+    hotelStaffUsers = (result?.users || []).map(normalizeHotelUserProfile).filter(Boolean);
   }
 
   renderStaffSettings();
@@ -1244,12 +1464,11 @@ function readStaffSettingsForm() {
     email: String(formData.get("email") || "").trim().toLowerCase(),
     password: String(formData.get("password") || ""),
     displayName: String(formData.get("displayName") || "").trim(),
-    position: String(formData.get("position") || "").trim(),
     role: String(formData.get("role") || "staff") === "admin" ? "admin" : "staff",
   };
 }
 
-async function addHotelStaffUser(nextStaff) {
+async function saveHotelStaffUser(nextStaff, staffId = null) {
   if (!usesSupabase || !isCurrentUserAdmin()) return false;
 
   const { data: sessionData } = await supabaseClient.auth.getSession();
@@ -1267,7 +1486,7 @@ async function addHotelStaffUser(nextStaff) {
       email: nextStaff.email,
       password: nextStaff.password,
       displayName: nextStaff.displayName,
-      position: nextStaff.position,
+      staffId,
       role: nextStaff.role,
       chatColor: staffMessagePalette[0],
     }),
@@ -1275,7 +1494,7 @@ async function addHotelStaffUser(nextStaff) {
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    console.error("Failed to add hotel staff", data?.error || response.statusText);
+    console.error("Failed to save hotel staff", data?.error || response.statusText);
     return false;
   }
 
@@ -1292,6 +1511,8 @@ async function addHotelStaffUser(nextStaff) {
 
 async function updateHotelStaffUser(staffId, patch) {
   if (!usesSupabase || !isCurrentUserAdmin() || !staffId) return false;
+
+  const previousUser = hotelStaffUsers.find((user) => user.id === staffId);
 
   const payload = {};
   if (patch.role) payload.role = patch.role === "admin" ? "admin" : "staff";
@@ -1312,6 +1533,7 @@ async function updateHotelStaffUser(staffId, patch) {
 
   const normalized = normalizeHotelUserProfile(data);
   if (normalized) {
+    normalized.email = previousUser?.email || normalized.email;
     hotelStaffUsers = hotelStaffUsers.map((user) => (user.id === staffId ? normalized : user));
     if (normalized.userId === currentUserProfile?.userId) {
       currentUserProfile = normalized;
@@ -1391,7 +1613,9 @@ async function saveHotelSettings(nextSettings) {
 }
 
 function roomTypeLabel(type) {
-  return t(`roomTypes.${type}`) || type;
+  const translationPath = `roomTypes.${type}`;
+  const label = t(translationPath);
+  return label === translationPath ? type : label;
 }
 
 function getPageHeader(sectionName) {
@@ -1557,6 +1781,18 @@ function normalizeRoomId(value) {
   return String(value || "").trim().replace(/\s+/g, "");
 }
 
+function normalizeRoomType(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function getExistingRoomTypes() {
+  const roomTypes = rooms.map((room) => normalizeRoomType(room.type)).filter(Boolean);
+  return [...new Set([
+    ...roomTypeOrder.filter((type) => roomTypes.includes(type)),
+    ...roomTypes,
+  ])];
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -1567,13 +1803,13 @@ function escapeHtml(value) {
 }
 
 function normalizeRoom(room) {
-  const type = roomTypeOrder.includes(room?.type) ? room.type : roomTypeOrder[0];
+  const type = normalizeRoomType(room?.type) || roomTypeOrder[0];
   const id = normalizeRoomId(room?.id);
   const fallbackOrder = Number(id);
   return {
     id,
     type,
-    group: room?.group || roomGroupByType[type] || type.toLowerCase(),
+    group: room?.group || roomGroupByType[type] || type.toLowerCase().replace(/\s+/g, "-"),
     sortOrder: Number.isFinite(Number(room?.sortOrder)) ? Number(room.sortOrder) : (Number.isFinite(fallbackOrder) ? fallbackOrder : 999),
     nightlyPrice: Math.max(Number(room?.nightlyPrice ?? roomNightPrices[type] ?? 0), 0),
     isActive: room?.isActive !== false,
@@ -1967,9 +2203,20 @@ function buildRoomPayload(room) {
 }
 
 async function saveRoomInventoryItem(room, originalRoomId = "") {
-  const normalized = normalizeRoom(room);
+  const requestedId = normalizeRoomId(room?.id);
+  const requestedType = normalizeRoomType(room?.type);
+  const requestedPrice = Number(room?.nightlyPrice);
   const previousRoomId = normalizeRoomId(originalRoomId);
-  if (!normalized.id || !Number.isFinite(normalized.nightlyPrice)) return { ok: false, message: t("roomInventory.required") };
+  if (!requestedId || !requestedType || !Number.isFinite(requestedPrice) || requestedPrice < 0) {
+    return { ok: false, message: t("roomInventory.required") };
+  }
+
+  const normalized = normalizeRoom({
+    ...room,
+    id: requestedId,
+    type: requestedType,
+    nightlyPrice: requestedPrice,
+  });
 
   if (!previousRoomId && rooms.some((item) => item.id === normalized.id)) {
     return { ok: false, message: t("roomInventory.duplicate") };
@@ -2103,33 +2350,6 @@ async function saveStaffMessage(color, messageText) {
   }
 
   staffMessages = [...staffMessages, mapStaffMessageFromDatabase(data)].slice(-80);
-  return true;
-}
-
-async function saveRoomTypePrice(type, nightlyPrice) {
-  const nextPrice = Math.max(Number(nightlyPrice || 0), 0);
-
-  rooms = rooms.map((room) => (
-    room.type === type ? { ...room, nightlyPrice: nextPrice } : room
-  ));
-
-  if (!usesSupabase) {
-    saveLocalRoomInventory();
-    return true;
-  }
-
-  const { error } = await supabaseClient
-    .from("rooms")
-    .update({ nightly_price: nextPrice })
-    .eq("hotel_id", currentHotelId)
-    .eq("type", type)
-    .eq("is_active", true);
-
-  if (error) {
-    console.error("Failed to save room price", error);
-    return false;
-  }
-
   return true;
 }
 
@@ -2626,6 +2846,15 @@ function getSettingsCurrencyDropdownItems() {
   }));
 }
 
+function getRoomEditorTypeDropdownItems() {
+  return getExistingRoomTypes().map((type) => ({
+    value: type,
+    title: roomTypeLabel(type),
+    meta: "",
+    color: "",
+  }));
+}
+
 function getDropdownConfig(type) {
   if (type === "company") {
     return {
@@ -2651,6 +2880,27 @@ function getDropdownConfig(type) {
       select: selectors.settingsCurrency,
       items: getSettingsCurrencyDropdownItems(),
       placeholder: t("settings.currency"),
+    };
+  }
+
+  if (type === "room-editor-type") {
+    return {
+      container: selectors.roomEditorTypeDropdown,
+      select: selectors.roomEditorForm?.roomType,
+      items: getRoomEditorTypeDropdownItems(),
+      placeholder: t("roomInventory.roomType"),
+    };
+  }
+
+  if (type === "staff-role") {
+    return {
+      container: selectors.staffRoleDropdown,
+      select: selectors.settingsStaffRole,
+      items: [
+        { value: "staff", title: t("settings.roleStaff"), meta: "" },
+        { value: "admin", title: t("settings.roleAdmin"), meta: "" },
+      ],
+      placeholder: t("settings.staffRole"),
     };
   }
 
@@ -2710,6 +2960,8 @@ function renderCustomDropdowns() {
   renderCustomDropdown("room");
   renderCustomDropdown("settings-language");
   renderCustomDropdown("settings-currency");
+  renderCustomDropdown("room-editor-type");
+  renderCustomDropdown("staff-role");
 }
 
 function closeCustomDropdowns() {
@@ -2755,41 +3007,68 @@ function renderRoomMap() {
 
 function renderRoomGroups() {
   if (!selectors.roomGroups) return;
+  const editorWasInline = Boolean(selectors.roomEditorForm?.closest(".room-editor-inline-row"));
+  const openRoomId = editingRoomId;
+  if (editorWasInline) resetRoomEditorPlacement();
+
   if (selectors.roomsInventoryTitle) {
-    selectors.roomsInventoryTitle.textContent = `${rooms.length} ${t("panels.roomsByCategory")}`;
+    selectors.roomsInventoryTitle.textContent = `${rooms.length} ${getRoomWord(rooms.length)}`;
   }
 
-  selectors.roomGroups.innerHTML = roomTypeOrder
-    .map((type) => {
-      const groupRooms = rooms.filter((room) => room.type === type);
-      return `
-        <div class="room-group-card" data-room-type="${type}">
-          <div class="room-group-topline">
-            <span>${groupRooms.length} ${getRoomWord(groupRooms.length)}</span>
-            <button type="button" class="room-price-edit" data-edit-room-price="${type}" aria-label="${escapeHtml(t("roomInventory.editPrice"))}">${t("roomInventory.editPrice")}</button>
-          </div>
-          <h4>${roomTypeLabel(type)}</h4>
-          <strong class="room-group-price">${formatMoney(getRoomNightPrice(type))} / ${t("panels.perNight")}</strong>
-          <div class="room-chip-list">
-            ${groupRooms.map((room) => `
-              <button type="button" class="room-inventory-chip" data-edit-room="${escapeHtml(room.id)}" aria-label="${escapeHtml(t("roomInventory.editRoom"))} ${escapeHtml(room.id)}">
-                ${escapeHtml(room.id)}
-              </button>
-            `).join("")}
-          </div>
-        </div>
-      `;
-    })
-    .join("");
+  if (!rooms.length) {
+    selectors.roomGroups.innerHTML = `<tr><td class="room-inventory-empty" colspan="4">${escapeHtml(t("roomInventory.empty"))}</td></tr>`;
+    return;
+  }
+
+  selectors.roomGroups.innerHTML = rooms.map((room) => `
+    <tr>
+      <td>${escapeHtml(roomTypeLabel(room.type))}</td>
+      <td><strong class="room-inventory-number">${escapeHtml(room.id)}</strong></td>
+      <td><strong class="room-inventory-price">${escapeHtml(formatMoney(room.nightlyPrice))}</strong></td>
+      <td class="room-inventory-actions">
+        <button type="button" class="room-inventory-edit" data-edit-room="${escapeHtml(room.id)}">${escapeHtml(t("roomInventory.editRoom"))}</button>
+      </td>
+    </tr>
+  `).join("");
+
+  if (editorWasInline && openRoomId) {
+    const room = rooms.find((item) => item.id === openRoomId);
+    if (room) placeRoomEditor(room);
+  }
 }
 
 function renderRoomEditorTypeOptions() {
   if (!selectors.roomEditorForm?.roomType) return;
-  const currentValue = selectors.roomEditorForm.roomType.value || roomTypeOrder[0];
-  selectors.roomEditorForm.roomType.innerHTML = roomTypeOrder
+  const types = getExistingRoomTypes();
+  const currentValue = selectors.roomEditorForm.roomType.value || types[0] || "";
+  selectors.roomEditorForm.roomType.innerHTML = types
     .map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(roomTypeLabel(type))}</option>`)
     .join("");
-  selectors.roomEditorForm.roomType.value = roomTypeOrder.includes(currentValue) ? currentValue : roomTypeOrder[0];
+  selectors.roomEditorForm.roomType.value = types.includes(currentValue) ? currentValue : (types[0] || "");
+  renderCustomDropdown("room-editor-type");
+}
+
+function setRoomEditorTypeMode(mode = "existing") {
+  const hasExistingTypes = getExistingRoomTypes().length > 0;
+  roomEditorTypeMode = mode === "new" || !hasExistingTypes ? "new" : "existing";
+  selectors.roomTypeMode?.querySelectorAll("[data-room-type-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.roomTypeMode === roomEditorTypeMode);
+  });
+  selectors.roomExistingTypeField?.classList.toggle("hidden", roomEditorTypeMode !== "existing");
+  selectors.roomNewTypeField?.classList.toggle("hidden", roomEditorTypeMode !== "new");
+  if (selectors.roomEditorForm?.roomType) {
+    selectors.roomEditorForm.roomType.required = roomEditorTypeMode === "existing";
+  }
+  if (selectors.roomEditorForm?.newRoomType) {
+    selectors.roomEditorForm.newRoomType.required = roomEditorTypeMode === "new";
+  }
+  if (roomEditorTypeMode === "existing" && !editingRoomId) {
+    const selectedType = selectors.roomEditorForm?.roomType?.value;
+    if (selectedType) selectors.roomEditorForm.nightlyPrice.value = String(getRoomNightPrice(selectedType));
+  } else if (roomEditorTypeMode === "new" && !editingRoomId) {
+    selectors.roomEditorForm.nightlyPrice.value = "";
+  }
+  renderCustomDropdown("room-editor-type");
 }
 
 function setRoomEditorMessage(message = "", type = "") {
@@ -2798,9 +3077,50 @@ function setRoomEditorMessage(message = "", type = "") {
   selectors.roomEditorMessage.className = type || "";
 }
 
+function resetRoomEditorPlacement() {
+  const form = selectors.roomEditorForm;
+  const tableWrap = selectors.roomInventoryTableWrap;
+  if (!form || !tableWrap) return;
+
+  const inlineRow = form.closest(".room-editor-inline-row");
+  tableWrap.after(form);
+  inlineRow?.remove();
+  form.classList.remove("room-editor-inline", "room-editor-new-position");
+}
+
+function placeRoomEditor(room = null) {
+  const form = selectors.roomEditorForm;
+  const tableWrap = selectors.roomInventoryTableWrap;
+  if (!form || !tableWrap) return;
+
+  resetRoomEditorPlacement();
+  if (!room) {
+    tableWrap.before(form);
+    form.classList.add("room-editor-new-position");
+    return;
+  }
+
+  const editButton = [...selectors.roomGroups.querySelectorAll("[data-edit-room]")]
+    .find((button) => button.dataset.editRoom === room.id);
+  const roomRow = editButton?.closest("tr");
+  if (!roomRow) return;
+
+  const inlineRow = document.createElement("tr");
+  const inlineCell = document.createElement("td");
+  inlineRow.className = "room-editor-inline-row";
+  inlineCell.colSpan = 4;
+  inlineRow.append(inlineCell);
+  roomRow.after(inlineRow);
+  inlineCell.append(form);
+  form.classList.add("room-editor-inline");
+}
+
 function closeRoomEditor() {
   editingRoomId = null;
+  roomEditorTypeMode = "existing";
+  if (openCustomDropdown === "room-editor-type") openCustomDropdown = null;
   selectors.roomEditorForm?.classList.add("hidden");
+  resetRoomEditorPlacement();
   selectors.roomEditorForm?.reset();
   setRoomEditorMessage();
 }
@@ -2810,26 +3130,33 @@ function openRoomEditor(room = null) {
 
   renderRoomEditorTypeOptions();
   const isEdit = Boolean(room);
-  const type = room?.type || "Standard";
+  const existingTypes = getExistingRoomTypes();
+  const type = room?.type || existingTypes[0] || "";
   editingRoomId = isEdit ? room.id : null;
   selectors.roomEditorTitle.textContent = isEdit ? t("roomInventory.editRoom") : t("roomInventory.newRoom");
   selectors.roomEditorForm.roomId.value = room?.id || "";
   selectors.roomEditorForm.roomId.readOnly = isEdit;
   selectors.roomEditorForm.roomType.value = type;
+  selectors.roomEditorForm.newRoomType.value = "";
   selectors.roomEditorForm.nightlyPrice.value = String(room?.nightlyPrice ?? getRoomNightPrice(type));
   selectors.roomEditorForm.sortOrder.value = String(room?.sortOrder ?? getNextRoomSortOrder());
+  selectors.roomTypeMode?.classList.toggle("hidden", isEdit);
+  setRoomEditorTypeMode(isEdit || existingTypes.length ? "existing" : "new");
   selectors.roomEditorHide?.classList.toggle("hidden", !isEdit);
   setRoomEditorMessage();
+  placeRoomEditor(room);
   selectors.roomEditorForm.classList.remove("hidden");
   requestAnimationFrame(() => selectors.roomEditorForm.scrollIntoView({ block: "nearest", behavior: "smooth" }));
 }
 
 function readRoomEditorForm() {
-  const type = selectors.roomEditorForm.roomType.value;
+  const type = normalizeRoomType(roomEditorTypeMode === "new"
+    ? selectors.roomEditorForm.newRoomType.value
+    : selectors.roomEditorForm.roomType.value);
   return {
     id: normalizeRoomId(selectors.roomEditorForm.roomId.value),
     type,
-    group: roomGroupByType[type] || type.toLowerCase(),
+    group: roomGroupByType[type] || type.toLowerCase().replace(/\s+/g, "-"),
     nightlyPrice: Number(selectors.roomEditorForm.nightlyPrice.value || 0),
     sortOrder: Number(selectors.roomEditorForm.sortOrder.value || getNextRoomSortOrder()),
     isActive: true,
@@ -3945,7 +4272,16 @@ function showSection(sectionName) {
 
 function showSettingsTab(tabName = "profile") {
   const isAdmin = isCurrentUserAdmin();
-  const nextTab = tabName === "staff" && !isAdmin ? "profile" : tabName;
+  const nextTab = tabName === "staff"
+    ? (isAdmin ? "staff" : "profile")
+    : (["hotel", "rooms", "profile"].includes(tabName) ? tabName : "hotel");
+
+  if (selectors.settingsPanelTitle) {
+    selectors.settingsPanelTitle.textContent = t(`settings.${nextTab}`);
+  }
+  if (selectors.settingsPanelDescription) {
+    selectors.settingsPanelDescription.textContent = t(`settings.${nextTab}Hint`);
+  }
 
   selectors.settingsTabs.forEach((tab) => {
     const isStaffTab = tab.dataset.settingsTab === "staff";
@@ -3958,7 +4294,7 @@ function showSettingsTab(tabName = "profile") {
   });
 }
 
-function openSettings(tabName = "profile") {
+function openSettings(tabName = "hotel") {
   populateProfileSettingsForm();
   populateHotelSettingsForm();
   loadHotelStaffUsers();
@@ -4105,6 +4441,14 @@ function bindEvents() {
   selectors.settingsTabs.forEach((tab) => {
     tab.addEventListener("click", () => showSettingsTab(tab.dataset.settingsTab));
   });
+  selectors.settingsLogoUrl?.addEventListener("input", updateSettingsLogoPreview);
+  selectors.settingsLogoUpload?.addEventListener("click", () => {
+    selectors.settingsLogoUrl?.focus();
+  });
+  selectors.settingsProfileAvatarUrl?.addEventListener("input", updateSettingsAvatarPreview);
+  selectors.settingsAvatarUpload?.addEventListener("click", () => {
+    selectors.settingsProfileAvatarUrl?.focus();
+  });
   selectors.settingsLanguageButtons.forEach((button) => {
     button.addEventListener("click", () => setLanguage(button.dataset.settingsLanguage));
   });
@@ -4132,30 +4476,39 @@ function bindEvents() {
     event.preventDefault();
     const submitButton = selectors.staffSettingsForm.querySelector("button[type='submit']");
     const nextStaff = readStaffSettingsForm();
+    if (!editingStaffId && nextStaff.password.length < 6) {
+      selectors.settingsStaffPassword.focus();
+      setStaffSettingsMessage(t("settings.staffSaveError"), "error");
+      return;
+    }
     submitButton.disabled = true;
     submitButton.textContent = t("settings.saving");
     setStaffSettingsMessage(t("settings.saving"), "");
-    const saved = await addHotelStaffUser(nextStaff);
+    const saved = await saveHotelStaffUser(nextStaff, editingStaffId);
     submitButton.disabled = false;
-    submitButton.textContent = t("settings.addStaff");
-    if (saved) selectors.staffSettingsForm.reset();
+    submitButton.textContent = t("settings.saveStaff");
+    if (saved) closeStaffEditor();
     setStaffSettingsMessage(saved ? t("settings.staffSaved") : t("settings.staffSaveError"), saved ? "success" : "error");
   });
-  selectors.staffSettingsList?.addEventListener("change", async (event) => {
-    const roleSelect = event.target.closest("[data-staff-role]");
-    if (!roleSelect) return;
-    const card = roleSelect.closest("[data-staff-user]");
-    const saved = await updateHotelStaffUser(card?.dataset.staffUser, { role: roleSelect.value });
-    setStaffSettingsMessage(saved ? t("settings.staffSaved") : t("settings.staffSaveError"), saved ? "success" : "error");
+  selectors.addStaffButton?.addEventListener("click", () => openStaffEditor());
+  selectors.staffEditorCancel?.addEventListener("click", closeStaffEditor);
+  selectors.staffSettingsList?.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-edit-staff]");
+    if (!editButton) return;
+    const staffUser = hotelStaffUsers.find((user) => user.id === editButton.dataset.editStaff);
+    if (staffUser) openStaffEditor(staffUser);
   });
-  selectors.staffSettingsList?.addEventListener("click", async (event) => {
-    const toggleButton = event.target.closest("[data-staff-toggle]");
-    if (!toggleButton) return;
-    const card = toggleButton.closest("[data-staff-user]");
-    const staffUser = hotelStaffUsers.find((user) => user.id === card?.dataset.staffUser);
-    if (!staffUser) return;
+  selectors.staffEditorAccess?.addEventListener("click", async () => {
+    const staffUser = hotelStaffUsers.find((user) => user.id === editingStaffId);
+    if (!staffUser || staffUser.userId === currentUserProfile?.userId) return;
+    selectors.staffEditorAccess.disabled = true;
     const saved = await updateHotelStaffUser(staffUser.id, { isActive: !staffUser.isActive });
+    selectors.staffEditorAccess.disabled = false;
     setStaffSettingsMessage(saved ? t("settings.staffSaved") : t("settings.staffSaveError"), saved ? "success" : "error");
+    if (saved) {
+      const updatedUser = hotelStaffUsers.find((user) => user.id === staffUser.id);
+      if (updatedUser) openStaffEditor(updatedUser);
+    }
   });
   selectors.hotelSettingsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -4802,6 +5155,12 @@ function bindEvents() {
 
   selectors.roomEditorCancel?.addEventListener("click", closeRoomEditor);
 
+  selectors.roomTypeMode?.addEventListener("click", (event) => {
+    const modeButton = event.target.closest("[data-room-type-mode]");
+    if (!modeButton) return;
+    setRoomEditorTypeMode(modeButton.dataset.roomTypeMode);
+  });
+
   selectors.roomEditorForm?.roomType?.addEventListener("change", () => {
     if (editingRoomId) return;
     selectors.roomEditorForm.nightlyPrice.value = String(getRoomNightPrice(selectors.roomEditorForm.roomType.value));
@@ -4817,9 +5176,8 @@ function bindEvents() {
 
     populateRoomSelect();
     updateEstimatedTotal({ forceNightly: !nightlyRateWasEdited });
-    renderAll();
-    setRoomEditorMessage(t("roomInventory.saved"), "success");
     closeRoomEditor();
+    renderAll();
   });
 
   selectors.roomEditorHide?.addEventListener("click", async () => {
@@ -4833,35 +5191,15 @@ function bindEvents() {
     }
 
     populateRoomSelect();
-    renderAll();
     closeRoomEditor();
+    renderAll();
   });
 
   selectors.roomGroups?.addEventListener("click", async (event) => {
     const roomButton = event.target.closest("[data-edit-room]");
-    if (roomButton) {
-      const room = rooms.find((item) => item.id === roomButton.dataset.editRoom);
-      if (room) openRoomEditor(room);
-      return;
-    }
-
-    const editButton = event.target.closest("[data-edit-room-price]");
-    if (!editButton) return;
-
-    const type = editButton.dataset.editRoomPrice;
-    const currentPrice = getRoomNightPrice(type);
-    const value = prompt(`${roomTypeLabel(type)} ${t("roomInventory.nightlyPrice")}, ${getCurrencySymbol()}`, String(currentPrice));
-    if (value === null) return;
-
-    const nextPrice = Number(value);
-    if (!Number.isFinite(nextPrice) || nextPrice < 0) return;
-
-    const saved = await saveRoomTypePrice(type, nextPrice);
-    if (!saved) return;
-
-    populateRoomSelect();
-    updateEstimatedTotal({ forceNightly: !nightlyRateWasEdited });
-    renderRoomGroups();
+    if (!roomButton) return;
+    const room = rooms.find((item) => item.id === roomButton.dataset.editRoom);
+    if (room) openRoomEditor(room);
   });
 
   selectors.activeGuestList.addEventListener("click", async (event) => {
