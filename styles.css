@@ -3297,6 +3297,17 @@ textarea {
   color: #0f223a7a
 }
 
+.stay-form-section input[readonly][name=debt] {
+  cursor: default;
+  background: #f6f9fc;
+  color: #65758b
+}
+
+.stay-form-section input[readonly][name=debt]:focus {
+  border-color: #dbe6f1;
+  box-shadow: none
+}
+
 .stay-form-section .finance-notes-layout .notes-field {
   grid-area: 1/5/3/9;
   grid-template-rows: auto 1fr;

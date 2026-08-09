@@ -2552,7 +2552,7 @@ function mapStayToDatabase(stay) {
     cash_amount: Number(stay.cash || 0),
     card_amount: Number(stay.card || 0),
     invoice_amount: Number(stay.invoice || 0),
-    debt_amount: Number(stay.debt || 0),
+    debt_amount: getDebt(stay),
     notes: stay.notes || "",
     is_pinned: Boolean(stay.isPinned),
     is_cancelled: stay.status === "cancelled",
@@ -2784,10 +2784,12 @@ function getPaidAmount(stay) {
   return Number(stay.cash || 0) + Number(stay.card || 0) + Number(stay.invoice || 0);
 }
 
+function calculateDebt(total, paid) {
+  return Math.max(Number(total || 0) - Number(paid || 0), 0);
+}
+
 function getDebt(stay) {
-  const explicitDebt = Number(stay.debt || 0);
-  const calculatedDebt = Number(stay.total || 0) - getPaidAmount(stay);
-  return Math.max(explicitDebt, calculatedDebt, 0);
+  return calculateDebt(stay?.total, getPaidAmount(stay || {}));
 }
 
 function getStayStatus(stay) {
@@ -2864,6 +2866,18 @@ function updateFormNumberStates() {
   });
 }
 
+function updateFormDebtDisplay() {
+  const debtInput = selectors.stayForm?.debt;
+  if (!debtInput) return;
+  const total = Number(selectors.stayForm?.total?.value || 0);
+  const paid =
+    Number(selectors.stayForm?.cash?.value || 0) +
+    Number(selectors.stayForm?.card?.value || 0) +
+    Number(selectors.stayForm?.invoice?.value || 0);
+  debtInput.value = String(calculateDebt(total, paid));
+  updateEmptyNumberState(debtInput);
+}
+
 function updateNightCountDisplay() {
   const nightsInput = selectors.stayForm?.nights;
   if (!nightsInput) return;
@@ -2928,11 +2942,13 @@ function updateEstimatedTotal({ force = false, forceNightly = false } = {}) {
     currentValue === lastAutoTotalAmount;
 
   if (!canAutoUpdate) {
+    updateFormDebtDisplay();
     updateFormNumberStates();
     return;
   }
   setTotalAmountValue(estimatedTotal);
   totalAmountWasEdited = false;
+  updateFormDebtDisplay();
   updateFormNumberStates();
 }
 
@@ -3852,7 +3868,7 @@ function extendStayCheckout(stayId, nextCheckOut) {
   const nights = getNightCount(stay.checkIn, nextCheckOut);
   const total = Math.max(nightlyRate * nights - Number(stay.discount || 0), 0);
   const paid = getPaidAmount(stay);
-  const debt = Math.max(Number(stay.debt || 0), total - paid, 0);
+  const debt = calculateDebt(total, paid);
 
   stays = stays.map((item) =>
     item.id === stayId
@@ -4129,6 +4145,10 @@ function readFormStay() {
   const checkIn = isCheckoutOnlyDateEdit() && existing?.checkIn ? existing.checkIn : String(formData.get("checkIn"));
   const checkOut = String(formData.get("checkOut"));
   const nights = Number(formData.get("nights") || getNightCount(checkIn, checkOut));
+  const total = Number(formData.get("total") || 0);
+  const cash = Number(formData.get("cash") || 0);
+  const card = Number(formData.get("card") || 0);
+  const invoice = Number(formData.get("invoice") || 0);
 
   return {
     id: editingStayId || crypto.randomUUID(),
@@ -4139,12 +4159,12 @@ function readFormStay() {
     checkIn,
     checkOut,
     nights,
-    total: Number(formData.get("total") || 0),
+    total,
     discount: Number(formData.get("discount") || 0),
-    cash: Number(formData.get("cash") || 0),
-    card: Number(formData.get("card") || 0),
-    invoice: Number(formData.get("invoice") || 0),
-    debt: Number(formData.get("debt") || 0),
+    cash,
+    card,
+    invoice,
+    debt: calculateDebt(total, cash + card + invoice),
     notes: String(formData.get("notes") || "").trim(),
     color: String(formData.get("color") || defaultBookingColor),
     createdAt: existing?.createdAt || new Date().toISOString(),
@@ -4247,10 +4267,10 @@ function startEditStay(id) {
   selectors.stayForm.cash.value = stay.cash || 0;
   selectors.stayForm.card.value = stay.card || 0;
   selectors.stayForm.invoice.value = stay.invoice || 0;
-  selectors.stayForm.debt.value = stay.debt || 0;
   selectors.stayForm.notes.value = stay.notes || "";
   selectors.stayForm.color.value = stay.color || defaultBookingColor;
   renderColorPalette();
+  updateFormDebtDisplay();
   updateFormNumberStates();
 
   selectors.formTitle.textContent = t("form.editStay");
@@ -4887,14 +4907,18 @@ function bindEvents() {
     if (isUpdatingTotalAmount) return;
     updateEmptyNumberState(selectors.stayForm.total);
     totalAmountWasEdited = String(selectors.stayForm.total.value || "") !== lastAutoTotalAmount;
+    updateFormDebtDisplay();
   });
 
-  ["nightlyRate", "discount", "total", "cash", "card", "invoice", "debt"].forEach((fieldName) => {
+  ["nightlyRate", "discount", "total", "cash", "card", "invoice"].forEach((fieldName) => {
     const input = selectors.stayForm[fieldName];
     input?.addEventListener("focus", () => {
       if (input.value === "0") input.select();
     });
-    input?.addEventListener("input", () => updateEmptyNumberState(input));
+    input?.addEventListener("input", () => {
+      updateEmptyNumberState(input);
+      if (["cash", "card", "invoice"].includes(fieldName)) updateFormDebtDisplay();
+    });
     input?.addEventListener("blur", () => {
       if (input.value !== "") return;
       input.value = "0";
@@ -4907,6 +4931,7 @@ function bindEvents() {
       } else if (fieldName === "total") {
         totalAmountWasEdited = String(input.value || "") !== lastAutoTotalAmount;
       }
+      if (["total", "cash", "card", "invoice"].includes(fieldName)) updateFormDebtDisplay();
     });
   });
 
@@ -5250,6 +5275,7 @@ function bindEvents() {
     const didExtend = extendStayCheckout(resizeState.stayId, resizeState.previewCheckOut);
     selectedCalendarStayId = resizeState.stayId;
     shouldSuppressCalendarClick = true;
+    preserveCalendarScrollPosition();
     renderAll();
 
     if (!didExtend) {
@@ -5261,6 +5287,7 @@ function bindEvents() {
 
     saveStay(resizeState.stayId).then((saved) => {
       if (!saved) console.error("Calendar resize was not saved.");
+      preserveCalendarScrollPosition();
       refreshStays();
       shouldSuppressCalendarClick = false;
     });
