@@ -2790,7 +2790,9 @@ function getRoomNightPrice(roomOrType) {
 }
 
 function isComplimentaryStay(stay) {
-  return Boolean(stay?.isComplimentary);
+  if (!stay) return false;
+  if (stay.isComplimentary) return true;
+  return Number(stay.total || 0) === 0 && Number(stay.discount || 0) === 0 && getPaidAmount(stay) === 0;
 }
 
 function getStayNightlyRate(stay) {
@@ -4364,7 +4366,7 @@ function startEditStay(id) {
   selectors.stayForm.invoice.value = stay.invoice || 0;
   selectors.stayForm.notes.value = stay.notes || "";
   selectors.stayForm.color.value = stay.color || defaultBookingColor;
-  if (selectors.complimentaryToggle) selectors.complimentaryToggle.checked = Boolean(stay.isComplimentary);
+  if (selectors.complimentaryToggle) selectors.complimentaryToggle.checked = isComplimentaryStay(stay);
   applyComplimentaryFormState();
   renderColorPalette();
   updateFormDebtDisplay();
