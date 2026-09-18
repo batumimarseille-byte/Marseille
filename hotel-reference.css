@@ -1890,6 +1890,10 @@ body:has(.date-range-field.open)::before {
   display: none !important;
 }
 
+.complimentary-toggle {
+  justify-self: start !important;
+}
+
 .night-checkin-toggle {
   display: inline-flex !important;
   align-items: center;
@@ -2040,7 +2044,7 @@ body:has(.date-range-field.open)::before {
   }
 }
 
-.stay-form-section .finance-notes-layout label:not(.nights-field):not(.notes-field)::after,
+.stay-form-section .finance-notes-layout label:not(.nights-field):not(.notes-field):not(.complimentary-toggle)::after,
 .stay-form-section .payment-grid label::after {
   font-size: 13px !important;
   font-weight: 700 !important;

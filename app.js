@@ -362,6 +362,7 @@ const translations = {
       noNotes: "No notes",
       paid: "Paid",
       debt: "Debt",
+      complimentary: "Complimentary",
       edit: "Edit",
       delete: "Delete",
       confirmDelete: "Delete this record?",
@@ -389,6 +390,8 @@ const translations = {
       selectCheckout: "select check-out",
       clearDates: "Clear dates",
       nightCheckIn: "Night check-in",
+      complimentary: "Complimentary stay",
+      complimentaryHint: "No charge and no debt for this stay.",
       nightlyRate: "Price per night",
       nights: "Nights",
       discount: "Discount",
@@ -420,6 +423,7 @@ const translations = {
       total: "Total",
       outstandingDebt: "Outstanding debt",
       paymentBalanced: "Payment is balanced.",
+      complimentaryStay: "This stay is complimentary.",
       closeDetails: "Close details",
     },
     activeGuests: {
@@ -687,6 +691,7 @@ const translations = {
       noNotes: "შენიშვნები არ არის",
       paid: "გადახდილია",
       debt: "ვალი",
+      complimentary: "უფასო",
       edit: "რედაქტირება",
       delete: "წაშლა",
       confirmDelete: "წავშალოთ ეს ჩანაწერი?",
@@ -714,6 +719,8 @@ const translations = {
       selectCheckout: "აირჩიეთ გასვლის თარიღი",
       clearDates: "თარიღების გასუფთავება",
       nightCheckIn: "ღამის შესვლა",
+      complimentary: "უფასო განთავსება",
+      complimentaryHint: "ამ სტუმრობისთვის გადასახადი და ვალი არ არის.",
       nightlyRate: "ღამის ფასი",
       nights: "ღამეები",
       discount: "ფასდაკლება",
@@ -745,6 +752,7 @@ const translations = {
       total: "ჯამი",
       outstandingDebt: "დარჩენილი ვალი",
       paymentBalanced: "გადახდა დაბალანსებულია.",
+      complimentaryStay: "ეს განთავსება უფასოა.",
       closeDetails: "დეტალების დახურვა",
     },
     activeGuests: {
@@ -884,6 +892,7 @@ const selectors = {
   dateRangeDisplay: document.querySelector("#dateRangeDisplay"),
   dateClearButton: document.querySelector("#dateClearButton"),
   nightCheckInToggle: document.querySelector("#nightCheckInToggle"),
+  complimentaryToggle: document.querySelector("#complimentaryToggle"),
   formDateCalendar: document.querySelector("#formDateCalendar"),
   topbar: document.querySelector(".topbar"),
   topbarActions: document.querySelector(".topbar-actions"),
@@ -2530,6 +2539,7 @@ function mapStayFromDatabase(row) {
     notes: row.notes || "",
     color: row.color || defaultBookingColor,
     isPinned: Boolean(row.is_pinned),
+    isComplimentary: Boolean(row.is_complimentary),
     status: row.is_cancelled ? "cancelled" : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -2555,6 +2565,7 @@ function mapStayToDatabase(stay) {
     debt_amount: getDebt(stay),
     notes: stay.notes || "",
     is_pinned: Boolean(stay.isPinned),
+    is_complimentary: Boolean(stay.isComplimentary),
     is_cancelled: stay.status === "cancelled",
   };
 }
@@ -2720,6 +2731,14 @@ async function saveStay(stayId) {
     upsertError = retryResult.error;
   }
 
+  if (upsertError && String(upsertError.message || "").includes("is_complimentary")) {
+    const { is_complimentary: _isComplimentary, ...rowWithoutComplimentary } = mapStayToDatabase(stay);
+    const retryResult = await supabaseClient
+      .from("stays")
+      .upsert(rowWithoutComplimentary, { onConflict: "id" });
+    upsertError = retryResult.error;
+  }
+
   if (upsertError) {
     console.error("Failed to save stays", upsertError);
     return false;
@@ -2770,7 +2789,12 @@ function getRoomNightPrice(roomOrType) {
   return Number(room?.nightlyPrice ?? roomNightPrices[roomOrType] ?? 0);
 }
 
+function isComplimentaryStay(stay) {
+  return Boolean(stay?.isComplimentary);
+}
+
 function getStayNightlyRate(stay) {
+  if (isComplimentaryStay(stay)) return 0;
   const nights = getNightCount(stay?.checkIn, stay?.checkOut);
   if (nights > 0) {
     const subtotal = Number(stay.total || 0) + Number(stay.discount || 0);
@@ -2789,6 +2813,7 @@ function calculateDebt(total, paid) {
 }
 
 function getDebt(stay) {
+  if (isComplimentaryStay(stay)) return 0;
   return calculateDebt(stay?.total, getPaidAmount(stay || {}));
 }
 
@@ -2866,9 +2891,63 @@ function updateFormNumberStates() {
   });
 }
 
+function isComplimentaryFormChecked() {
+  return Boolean(selectors.complimentaryToggle?.checked);
+}
+
+function setMoneyFieldValue(fieldName, value) {
+  const input = selectors.stayForm?.[fieldName];
+  if (!input) return;
+  if (fieldName === "nightlyRate") {
+    setNightlyRateValue(value);
+    return;
+  }
+  if (fieldName === "total") {
+    setTotalAmountValue(value);
+    return;
+  }
+  input.value = String(value);
+  updateEmptyNumberState(input);
+}
+
+function applyComplimentaryFormState() {
+  const complimentary = isComplimentaryFormChecked();
+  updateNightCountDisplay();
+  const moneyFields = ["nightlyRate", "discount", "total", "cash", "card", "invoice"];
+  moneyFields.forEach((fieldName) => {
+    const input = selectors.stayForm?.[fieldName];
+    if (!input) return;
+    input.disabled = complimentary;
+    input.toggleAttribute("readonly", complimentary);
+    if (fieldName === "total") input.required = !complimentary;
+  });
+  selectors.stayForm?.classList.toggle("is-complimentary", complimentary);
+  selectors.stayFormPanel?.classList.toggle("is-complimentary", complimentary);
+  if (!complimentary) {
+    updateFormDebtDisplay();
+    updateFormNumberStates();
+    return;
+  }
+  setMoneyFieldValue("nightlyRate", 0);
+  setMoneyFieldValue("discount", 0);
+  setMoneyFieldValue("total", 0);
+  setMoneyFieldValue("cash", 0);
+  setMoneyFieldValue("card", 0);
+  setMoneyFieldValue("invoice", 0);
+  nightlyRateWasEdited = true;
+  totalAmountWasEdited = true;
+  updateFormDebtDisplay();
+  updateFormNumberStates();
+}
+
 function updateFormDebtDisplay() {
   const debtInput = selectors.stayForm?.debt;
   if (!debtInput) return;
+  if (isComplimentaryFormChecked()) {
+    debtInput.value = "0";
+    updateEmptyNumberState(debtInput);
+    return;
+  }
   const total = Number(selectors.stayForm?.total?.value || 0);
   const paid =
     Number(selectors.stayForm?.cash?.value || 0) +
@@ -2929,6 +3008,12 @@ function updateNightlyRateFromRoom({ force = false } = {}) {
 function updateEstimatedTotal({ force = false, forceNightly = false } = {}) {
   const totalInput = selectors.stayForm?.total;
   if (!totalInput) return;
+
+  if (isComplimentaryFormChecked()) {
+    updateNightCountDisplay();
+    applyComplimentaryFormState();
+    return;
+  }
 
   updateNightlyRateFromRoom({ force: forceNightly });
   updateNightCountDisplay();
@@ -3603,10 +3688,12 @@ function renderStaysTable() {
           </td>
           <td>${room.id}<span>${roomTypeLabel(room.type)}</span></td>
           <td>${formatDate(stay.checkIn)} - ${formatDate(stay.checkOut)}</td>
-          <td>${formatMoney(stay.total)}${Number(stay.discount || 0) > 0 ? `<span>${t("form.discount")}: ${formatMoney(stay.discount)}</span>` : ""}</td>
+          <td>${isComplimentaryStay(stay) ? t("table.complimentary") : formatMoney(stay.total)}${!isComplimentaryStay(stay) && Number(stay.discount || 0) > 0 ? `<span>${t("form.discount")}: ${formatMoney(stay.discount)}</span>` : ""}</td>
           <td>
-            <span>${t("table.paid")}: ${formatMoney(getPaidAmount(stay))}</span>
-            <span class="${debt > 0 ? "debt-text" : "paid-text"}">${t("table.debt")}: ${formatMoney(debt)}</span>
+            ${isComplimentaryStay(stay)
+              ? `<span class="paid-text">${t("table.complimentary")}</span>`
+              : `<span>${t("table.paid")}: ${formatMoney(getPaidAmount(stay))}</span>
+            <span class="${debt > 0 ? "debt-text" : "paid-text"}">${t("table.debt")}: ${formatMoney(debt)}</span>`}
           </td>
           <td><span class="status-pill ${getStatusClass(status)}">${getStatusLabel(status)}</span></td>
         </tr>
@@ -3655,10 +3742,14 @@ function renderBookingDetails() {
     stay.companyName ? '  <p class="detail-company">' + stay.companyName + '</p>' : '',
     '  <div class="detail-meta"><span>' + t("calendar.room") + ' ' + room.id + '</span><span>' + roomTypeLabel(room.type) + '</span><span>' + getStatusLabel(status) + '</span></div>',
     '  <div class="detail-dates"><strong>' + formatDate(stay.checkIn) + '</strong><span>' + t("calendar.to") + '</span><strong>' + formatDate(stay.checkOut) + '</strong></div>',
-    '  <div class="detail-total"><span>' + t("calendar.total") + '</span><strong>' + formatMoney(stay.total) + '</strong></div>',
-    discount > 0 ? '  <div class="detail-discount"><span>' + t("form.discount") + '</span><strong>-' + formatMoney(discount) + '</strong></div>' : '',
-    '  <div class="detail-payments">' + payments + '</div>',
-    debt > 0 ? '  <div class="detail-alert">' + t("calendar.outstandingDebt") + ': ' + formatMoney(debt) + '</div>' : '  <div class="detail-ok">' + t("calendar.paymentBalanced") + '</div>',
+    '  <div class="detail-total"><span>' + t("calendar.total") + '</span><strong>' + (isComplimentaryStay(stay) ? t("table.complimentary") : formatMoney(stay.total)) + '</strong></div>',
+    !isComplimentaryStay(stay) && discount > 0 ? '  <div class="detail-discount"><span>' + t("form.discount") + '</span><strong>-' + formatMoney(discount) + '</strong></div>' : '',
+    isComplimentaryStay(stay) ? '' : '  <div class="detail-payments">' + payments + '</div>',
+    isComplimentaryStay(stay)
+      ? '  <div class="detail-ok">' + t("calendar.complimentaryStay") + '</div>'
+      : debt > 0
+        ? '  <div class="detail-alert">' + t("calendar.outstandingDebt") + ': ' + formatMoney(debt) + '</div>'
+        : '  <div class="detail-ok">' + t("calendar.paymentBalanced") + '</div>',
     stay.notes ? '  <p class="detail-notes">' + stay.notes + '</p>' : '',
     '  <div class="detail-actions">',
     '    <button type="button" class="primary-button" data-detail-edit="' + stay.id + '">' + t("table.edit") + '</button>',
@@ -3866,9 +3957,9 @@ function extendStayCheckout(stayId, nextCheckOut) {
 
   const nightlyRate = getStayNightlyRate(stay);
   const nights = getNightCount(stay.checkIn, nextCheckOut);
-  const total = Math.max(nightlyRate * nights - Number(stay.discount || 0), 0);
-  const paid = getPaidAmount(stay);
-  const debt = calculateDebt(total, paid);
+  const total = isComplimentaryStay(stay) ? 0 : Math.max(nightlyRate * nights - Number(stay.discount || 0), 0);
+  const paid = isComplimentaryStay(stay) ? 0 : getPaidAmount(stay);
+  const debt = isComplimentaryStay(stay) ? 0 : calculateDebt(total, paid);
 
   stays = stays.map((item) =>
     item.id === stayId
@@ -4145,10 +4236,11 @@ function readFormStay() {
   const checkIn = isCheckoutOnlyDateEdit() && existing?.checkIn ? existing.checkIn : String(formData.get("checkIn"));
   const checkOut = String(formData.get("checkOut"));
   const nights = Number(formData.get("nights") || getNightCount(checkIn, checkOut));
-  const total = Number(formData.get("total") || 0);
-  const cash = Number(formData.get("cash") || 0);
-  const card = Number(formData.get("card") || 0);
-  const invoice = Number(formData.get("invoice") || 0);
+  const isComplimentary = isComplimentaryFormChecked();
+  const total = isComplimentary ? 0 : Number(formData.get("total") || 0);
+  const cash = isComplimentary ? 0 : Number(formData.get("cash") || 0);
+  const card = isComplimentary ? 0 : Number(formData.get("card") || 0);
+  const invoice = isComplimentary ? 0 : Number(formData.get("invoice") || 0);
 
   return {
     id: editingStayId || crypto.randomUUID(),
@@ -4160,13 +4252,16 @@ function readFormStay() {
     checkOut,
     nights,
     total,
-    discount: Number(formData.get("discount") || 0),
+    discount: isComplimentary ? 0 : Number(formData.get("discount") || 0),
     cash,
     card,
     invoice,
-    debt: calculateDebt(total, cash + card + invoice),
+    debt: isComplimentary ? 0 : calculateDebt(total, cash + card + invoice),
     notes: String(formData.get("notes") || "").trim(),
     color: String(formData.get("color") || defaultBookingColor),
+    isPinned: Boolean(existing?.isPinned),
+    isComplimentary,
+    status: existing?.status,
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: editingStayId ? new Date().toISOString() : undefined,
   };
@@ -4269,6 +4364,8 @@ function startEditStay(id) {
   selectors.stayForm.invoice.value = stay.invoice || 0;
   selectors.stayForm.notes.value = stay.notes || "";
   selectors.stayForm.color.value = stay.color || defaultBookingColor;
+  if (selectors.complimentaryToggle) selectors.complimentaryToggle.checked = Boolean(stay.isComplimentary);
+  applyComplimentaryFormState();
   renderColorPalette();
   updateFormDebtDisplay();
   updateFormNumberStates();
@@ -4286,6 +4383,8 @@ function resetFormMode() {
   checkoutOnlyEditStayId = null;
   selectors.stayForm.reset();
   if (selectors.nightCheckInToggle) selectors.nightCheckInToggle.checked = false;
+  if (selectors.complimentaryToggle) selectors.complimentaryToggle.checked = false;
+  applyComplimentaryFormState();
   selectors.stayForm.color.value = getNextAvailableBookingColor();
   renderColorPalette();
   updateFormNumberStates();
@@ -4889,6 +4988,17 @@ function bindEvents() {
       updateEstimatedTotal({ force: true });
     }
     renderFormDateCalendar();
+  });
+
+  selectors.complimentaryToggle?.addEventListener("change", () => {
+    if (isComplimentaryFormChecked()) {
+      applyComplimentaryFormState();
+      return;
+    }
+    nightlyRateWasEdited = false;
+    totalAmountWasEdited = false;
+    applyComplimentaryFormState();
+    updateEstimatedTotal({ force: true, forceNightly: true });
   });
 
   selectors.stayForm.nightlyRate.addEventListener("input", () => {

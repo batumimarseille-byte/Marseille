@@ -134,6 +134,7 @@ create table if not exists public.stays (
   debt_amount numeric(12, 2) not null default 0,
   notes text not null default '',
   is_cancelled boolean not null default false,
+  is_complimentary boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint stays_valid_dates check (check_out > check_in),
@@ -155,6 +156,9 @@ add column if not exists night_count integer not null default 0;
 
 alter table public.stays
 add column if not exists is_pinned boolean not null default false;
+
+alter table public.stays
+add column if not exists is_complimentary boolean not null default false;
 
 update public.stays
 set night_count = greatest(check_out - check_in, 0)
