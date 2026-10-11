@@ -138,6 +138,24 @@
               <strong id="debtStat">0 ₾</strong>
               <p data-i18n="stats.activeRecords">across active records</p>
             </article>
+            <article class="stat-card cash-till-card" id="cashTillCard" role="button" tabindex="0">
+              <span data-i18n="stats.cashTill">Cash in till</span>
+              <div class="cash-till-value" id="cashTillDisplay">
+                <strong id="cashTillStat">—</strong>
+                <p id="cashTillHint">left at close</p>
+              </div>
+              <form class="cash-till-form hidden" id="cashTillForm">
+                <label class="cash-till-field">
+                  <span data-i18n="stats.cashTillAmount">Amount left in till</span>
+                  <input id="cashTillInput" name="amount" type="number" min="0" step="1" inputmode="numeric" />
+                </label>
+                <div class="cash-till-actions">
+                  <button type="button" class="ghost-button" id="cashTillCancel" data-i18n="form.cancel">Cancel</button>
+                  <button type="submit" class="primary-button" id="cashTillSave" data-i18n="stats.cashTillSave">Save</button>
+                </div>
+                <p class="cash-till-message" id="cashTillMessage" role="status"></p>
+              </form>
+            </article>
           </div>
 
           <div class="content-grid">

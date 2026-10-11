@@ -327,7 +327,7 @@ button {
 }
 
 .stats-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 14px;
   display: grid
@@ -921,6 +921,12 @@ td span {
 
 .room-group-card p {
   margin: 0
+}
+
+@media (width<=1400px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
 }
 
 @media (width<=1024px) {
@@ -4728,6 +4734,79 @@ input[type=color]::-webkit-color-swatch {
   border-color: #fecaca
 }
 
+.cash-till-card:before {
+  background-color: #ecfdf5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 24 24' fill='none' stroke='%23047857' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='6' width='20' height='12' rx='2'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Cpath d='M6 12h.01M18 12h.01'/%3E%3C/svg%3E");
+  border-color: #bbf7d0
+}
+
+.cash-till-card {
+  cursor: pointer
+}
+
+.cash-till-card.is-editing {
+  cursor: default;
+  grid-template-rows: 34px auto
+}
+
+.cash-till-value strong {
+  margin: 8px 0;
+  font-size: inherit;
+  line-height: inherit;
+  display: block
+}
+
+.cash-till-form {
+  display: grid;
+  gap: 10px;
+  min-width: 0
+}
+
+.cash-till-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0
+}
+
+.cash-till-field span {
+  padding-left: 0;
+  min-height: auto;
+  font-size: .72rem;
+  font-weight: 800
+}
+
+.cash-till-field input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line, #dbe6f1);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700
+}
+
+.cash-till-actions {
+  display: flex;
+  gap: 8px
+}
+
+.cash-till-actions .ghost-button,
+.cash-till-actions .primary-button {
+  min-height: 38px;
+  padding: 0 12px;
+  flex: 1
+}
+
+.cash-till-message {
+  min-height: 0;
+  margin: 0;
+  font-size: .75rem
+}
+
+.cash-till-message.error {
+  color: var(--red, #b91c1c)
+}
+
 .stat-card span {
   align-self: end
 }
@@ -4893,6 +4972,11 @@ table,
 
 .stat-card p {
   margin: 0
+}
+
+.cash-till-card .cash-till-field span {
+  min-height: auto;
+  padding-left: 0
 }
 
 .calendar-cell.calendar-booked {

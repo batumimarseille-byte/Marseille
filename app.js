@@ -33,6 +33,7 @@ const languageStorageKey = "hotel-desk-language-v1";
 const favoriteGuestStorageKey = "hotel-desk-favorite-guests-v1";
 const favoriteGuestMigrationStorageKey = "hotel-desk-favorite-guests-supabase-migrated-v1";
 const staffMessagesStorageKey = "hotel-desk-staff-messages-v1";
+const cashTillStorageKey = "hotel-desk-cash-till-v1";
 const defaultBookingColor = "#4f7cff";
 const bookingCustomColorsStorageKey = "hotel-desk-booking-custom-colors-v2";
 const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df3", "#e978e0", "#e978b7", "#ef6669", "#ee8061", "#e89b43", "#d6bf38", "#b9df42", "#75c95d", "#6bcd65", "#3fbc83", "#2fb8aa", "#1cb7b8", "#22b8cf", "#36a4e9", "#5d85f2"];
@@ -301,6 +302,14 @@ const translations = {
       needReview: "need review",
       debt: "Debt",
       activeRecords: "across active records",
+      cashTill: "Cash in till",
+      cashTillHint: "left at close",
+      cashTillEmpty: "Not entered",
+      cashTillAmount: "Amount left in till",
+      cashTillSave: "Save",
+      cashTillSaved: "Saved.",
+      cashTillError: "Could not save the cash amount. Try again.",
+      cashTillRequired: "Enter the cash left in the till.",
     },
     panels: {
       rooms: "Rooms",
@@ -630,6 +639,14 @@ const translations = {
       needReview: "საჭიროა შემოწმება",
       debt: "ვალი",
       activeRecords: "აქტიურ ჩანაწერებში",
+      cashTill: "სალაროს ნაშთი",
+      cashTillHint: "დღის ბოლოს სალაროში",
+      cashTillEmpty: "არ არის შეტანილი",
+      cashTillAmount: "სალაროში დარჩენილი თანხა",
+      cashTillSave: "შენახვა",
+      cashTillSaved: "შენახულია.",
+      cashTillError: "თანხის შენახვა ვერ მოხერხდა. სცადეთ თავიდან.",
+      cashTillRequired: "შეიყვანეთ სალაროში დარჩენილი თანხა.",
     },
     panels: {
       rooms: "ნომრები",
@@ -815,6 +832,8 @@ let pendingCompanyColorUpdates = new Map();
 let openCustomDropdown = null;
 let editingRoomId = null;
 let roomEditorTypeMode = "existing";
+let todayCashTillAmount = null;
+let isCashTillEditing = false;
 let editingStaffId = null;
 
 const selectors = {
@@ -872,6 +891,14 @@ const selectors = {
   arrivalsStat: document.querySelector("#arrivalsStat"),
   departuresStat: document.querySelector("#departuresStat"),
   debtStat: document.querySelector("#debtStat"),
+  cashTillCard: document.querySelector("#cashTillCard"),
+  cashTillStat: document.querySelector("#cashTillStat"),
+  cashTillHint: document.querySelector("#cashTillHint"),
+  cashTillDisplay: document.querySelector("#cashTillDisplay"),
+  cashTillForm: document.querySelector("#cashTillForm"),
+  cashTillInput: document.querySelector("#cashTillInput"),
+  cashTillCancel: document.querySelector("#cashTillCancel"),
+  cashTillMessage: document.querySelector("#cashTillMessage"),
   statCards: document.querySelectorAll("[data-stat-filter]"),
   occupancyCalendar: document.querySelector("#occupancyCalendar"),
   bookingDetailsPanel: document.querySelector("#bookingDetailsPanel"),
@@ -1935,6 +1962,119 @@ function loadLocalStaffMessages() {
 
 function saveLocalStaffMessages() {
   localStorage.setItem(staffMessagesStorageKey, JSON.stringify(staffMessages.slice(-80)));
+}
+
+function todayCashTillDate() {
+  return toInputDate(todayDate());
+}
+
+function readLocalCashTillStore() {
+  try {
+    return JSON.parse(localStorage.getItem(cashTillStorageKey) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function readLocalCashTillAmount(date = todayCashTillDate()) {
+  const hotelStore = readLocalCashTillStore()[currentHotelId] || {};
+  if (!Object.prototype.hasOwnProperty.call(hotelStore, date)) return null;
+  const amount = Number(hotelStore[date]);
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function writeLocalCashTillAmount(amount, date = todayCashTillDate()) {
+  const store = readLocalCashTillStore();
+  const hotelStore = { ...(store[currentHotelId] || {}) };
+  hotelStore[date] = Number(amount || 0);
+  store[currentHotelId] = hotelStore;
+  localStorage.setItem(cashTillStorageKey, JSON.stringify(store));
+}
+
+function setCashTillMessage(message = "", type = "") {
+  if (!selectors.cashTillMessage) return;
+  selectors.cashTillMessage.textContent = message;
+  selectors.cashTillMessage.className = `cash-till-message ${type}`.trim();
+}
+
+function setCashTillEditing(editing) {
+  isCashTillEditing = Boolean(editing);
+  selectors.cashTillCard?.classList.toggle("is-editing", isCashTillEditing);
+  selectors.cashTillDisplay?.classList.toggle("hidden", isCashTillEditing);
+  selectors.cashTillForm?.classList.toggle("hidden", !isCashTillEditing);
+  if (!isCashTillEditing) {
+    setCashTillMessage("", "");
+    return;
+  }
+  if (selectors.cashTillInput) {
+    selectors.cashTillInput.value = todayCashTillAmount === null ? "" : String(todayCashTillAmount);
+    requestAnimationFrame(() => selectors.cashTillInput?.focus());
+  }
+}
+
+function renderCashTill() {
+  if (!selectors.cashTillStat || !selectors.cashTillHint) return;
+  if (todayCashTillAmount === null) {
+    selectors.cashTillStat.textContent = "—";
+    selectors.cashTillHint.textContent = t("stats.cashTillEmpty");
+    return;
+  }
+  selectors.cashTillStat.textContent = formatMoney(todayCashTillAmount);
+  selectors.cashTillHint.textContent = t("stats.cashTillHint");
+}
+
+async function loadCashTill() {
+  const date = todayCashTillDate();
+  todayCashTillAmount = readLocalCashTillAmount(date);
+
+  if (!usesSupabase) {
+    renderCashTill();
+    return todayCashTillAmount;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("cash_closings")
+    .select("amount")
+    .eq("hotel_id", currentHotelId)
+    .eq("close_date", date)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load cash till amount", error);
+    renderCashTill();
+    return todayCashTillAmount;
+  }
+
+  todayCashTillAmount = data ? Number(data.amount || 0) : null;
+  if (todayCashTillAmount !== null) writeLocalCashTillAmount(todayCashTillAmount, date);
+  renderCashTill();
+  return todayCashTillAmount;
+}
+
+async function saveCashTill(amount) {
+  const date = todayCashTillDate();
+  const nextAmount = Math.max(Number(amount || 0), 0);
+  todayCashTillAmount = nextAmount;
+  writeLocalCashTillAmount(nextAmount, date);
+  renderCashTill();
+
+  if (!usesSupabase) return true;
+
+  const { error } = await supabaseClient.from("cash_closings").upsert(
+    {
+      hotel_id: currentHotelId,
+      close_date: date,
+      amount: nextAmount,
+    },
+    { onConflict: "hotel_id,close_date" }
+  );
+
+  if (error) {
+    console.error("Failed to save cash till amount", error);
+    return false;
+  }
+
+  return true;
 }
 
 function normalizeCompanyName(name) {
@@ -3585,6 +3725,7 @@ function renderStats() {
   selectors.arrivalsStat.textContent = String(arrivals.length);
   selectors.departuresStat.textContent = String(departures.length);
   selectors.debtStat.textContent = formatMoney(debt);
+  renderCashTill();
 }
 
 function formatStaffMessageTime(value) {
@@ -5227,6 +5368,43 @@ function bindEvents() {
     });
   });
 
+  const openCashTillEditor = () => {
+    if (isCashTillEditing) return;
+    setCashTillEditing(true);
+  };
+
+  selectors.cashTillCard?.addEventListener("click", (event) => {
+    if (event.target.closest("#cashTillForm")) return;
+    openCashTillEditor();
+  });
+  selectors.cashTillCard?.addEventListener("keydown", (event) => {
+    if (isCashTillEditing) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openCashTillEditor();
+  });
+  selectors.cashTillCancel?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setCashTillEditing(false);
+  });
+  selectors.cashTillForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const rawAmount = String(selectors.cashTillInput?.value ?? "").trim();
+    if (rawAmount === "") {
+      setCashTillMessage(t("stats.cashTillRequired"), "error");
+      selectors.cashTillInput?.focus();
+      return;
+    }
+    const saved = await saveCashTill(rawAmount);
+    if (!saved) {
+      setCashTillMessage(t("stats.cashTillError"), "error");
+      return;
+    }
+    setCashTillEditing(false);
+  });
+
   selectors.staysTable.addEventListener("click", (event) => {
     const row = event.target.closest("[data-stay-row]");
     if (!row) return;
@@ -5599,6 +5777,7 @@ async function startApp() {
   companies = usesSupabase ? await loadCompanies() : [];
   stays = await loadStays();
   staffMessages = await loadStaffMessages();
+  await loadCashTill();
   await loadCustomBookingColors();
   await migrateLegacyFavoriteGuests();
   if (!usesSupabase) companies = await loadCompanies();

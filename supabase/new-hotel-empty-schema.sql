@@ -137,6 +137,16 @@ create index if not exists stays_hotel_debt_idx on public.stays (hotel_id, debt_
 create index if not exists stays_hotel_pinned_idx on public.stays (hotel_id, is_pinned) where is_pinned = true;
 create index if not exists rooms_hotel_active_sort_idx on public.rooms (hotel_id, is_active, sort_order);
 create index if not exists staff_messages_hotel_created_at_idx on public.staff_messages (hotel_id, created_at desc);
+
+create table if not exists public.cash_closings (
+  id uuid primary key default gen_random_uuid(),
+  hotel_id text not null references public.hotels(id) on update cascade on delete restrict,
+  close_date date not null,
+  amount numeric(12, 2) not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint cash_closings_hotel_id_close_date_key unique (hotel_id, close_date)
+);
 create unique index if not exists hotel_settings_hotel_id_key on public.hotel_settings (hotel_id);
 create index if not exists hotel_users_hotel_role_idx on public.hotel_users (hotel_id, role, is_active);
 
@@ -178,6 +188,11 @@ create trigger hotel_users_set_updated_at
 before update on public.hotel_users
 for each row execute function public.set_updated_at();
 
+drop trigger if exists cash_closings_set_updated_at on public.cash_closings;
+create trigger cash_closings_set_updated_at
+before update on public.cash_closings
+for each row execute function public.set_updated_at();
+
 alter table public.hotels enable row level security;
 alter table public.hotel_settings enable row level security;
 alter table public.hotel_users enable row level security;
@@ -186,6 +201,7 @@ alter table public.companies enable row level security;
 alter table public.stays enable row level security;
 alter table public.booking_colors enable row level security;
 alter table public.staff_messages enable row level security;
+alter table public.cash_closings enable row level security;
 
 create or replace function public.is_hotel_admin(target_hotel_id text)
 returns boolean
@@ -380,6 +396,13 @@ with check (true);
 drop policy if exists "Authenticated users can manage staff messages" on public.staff_messages;
 create policy "Authenticated users can manage staff messages"
 on public.staff_messages for all
+to authenticated
+using (true)
+with check (true);
+
+drop policy if exists "Authenticated users can manage cash closings" on public.cash_closings;
+create policy "Authenticated users can manage cash closings"
+on public.cash_closings for all
 to authenticated
 using (true)
 with check (true);
