@@ -305,11 +305,18 @@ const translations = {
       cashTill: "Cash in till",
       cashTillHint: "left at close",
       cashTillEmpty: "Not entered",
+      cashTillOpen: "tap to add or view history",
       cashTillAmount: "Amount left in till",
+      cashTillNotes: "Description",
+      cashTillNotesPlaceholder: "Shift note, handover, what changed",
       cashTillSave: "Save",
       cashTillSaved: "Saved.",
       cashTillError: "Could not save the cash amount. Try again.",
       cashTillRequired: "Enter the cash left in the till.",
+      cashTillHistoryTitle: "Day close",
+      cashTillHistory: "History",
+      cashTillHistoryEmpty: "No cash records yet.",
+      cashTillClose: "Close",
     },
     panels: {
       rooms: "Rooms",
@@ -642,11 +649,18 @@ const translations = {
       cashTill: "სალაროს ნაშთი",
       cashTillHint: "დღის ბოლოს სალაროში",
       cashTillEmpty: "არ არის შეტანილი",
+      cashTillOpen: "დააჭირეთ დასამატებლად ან ისტორიის სანახავად",
       cashTillAmount: "სალაროში დარჩენილი თანხა",
+      cashTillNotes: "აღწერა",
+      cashTillNotesPlaceholder: "ცვლის შენიშვნა, გადაცემა, რა შეიცვალა",
       cashTillSave: "შენახვა",
       cashTillSaved: "შენახულია.",
       cashTillError: "თანხის შენახვა ვერ მოხერხდა. სცადეთ თავიდან.",
       cashTillRequired: "შეიყვანეთ სალაროში დარჩენილი თანხა.",
+      cashTillHistoryTitle: "დღის დახურვა",
+      cashTillHistory: "ისტორია",
+      cashTillHistoryEmpty: "სალაროს ჩანაწერები ჯერ არ არის.",
+      cashTillClose: "დახურვა",
     },
     panels: {
       rooms: "ნომრები",
@@ -833,7 +847,8 @@ let openCustomDropdown = null;
 let editingRoomId = null;
 let roomEditorTypeMode = "existing";
 let todayCashTillAmount = null;
-let isCashTillEditing = false;
+let cashTillEntries = [];
+let isCashTillOpen = false;
 let editingStaffId = null;
 
 const selectors = {
@@ -894,11 +909,12 @@ const selectors = {
   cashTillCard: document.querySelector("#cashTillCard"),
   cashTillStat: document.querySelector("#cashTillStat"),
   cashTillHint: document.querySelector("#cashTillHint"),
-  cashTillDisplay: document.querySelector("#cashTillDisplay"),
+  cashTillOverlay: document.querySelector("#cashTillOverlay"),
   cashTillForm: document.querySelector("#cashTillForm"),
   cashTillInput: document.querySelector("#cashTillInput"),
-  cashTillCancel: document.querySelector("#cashTillCancel"),
+  cashTillNotes: document.querySelector("#cashTillNotes"),
   cashTillMessage: document.querySelector("#cashTillMessage"),
+  cashTillHistory: document.querySelector("#cashTillHistory"),
   statCards: document.querySelectorAll("[data-stat-filter]"),
   occupancyCalendar: document.querySelector("#occupancyCalendar"),
   bookingDetailsPanel: document.querySelector("#bookingDetailsPanel"),
@@ -1976,19 +1992,46 @@ function readLocalCashTillStore() {
   }
 }
 
-function readLocalCashTillAmount(date = todayCashTillDate()) {
-  const hotelStore = readLocalCashTillStore()[currentHotelId] || {};
-  if (!Object.prototype.hasOwnProperty.call(hotelStore, date)) return null;
-  const amount = Number(hotelStore[date]);
-  return Number.isFinite(amount) ? amount : null;
+function normalizeCashTillEntry(row = {}) {
+  const createdAt = row.createdAt || row.created_at || new Date().toISOString();
+  const date = row.date || row.close_date || toInputDate(toDate(createdAt));
+  return {
+    id: row.id || crypto.randomUUID(),
+    hotelId: row.hotelId || row.hotel_id || currentHotelId,
+    date,
+    amount: Number(row.amount || 0),
+    notes: String(row.notes || "").trim(),
+    authorName: String(row.authorName || row.author_name || "").trim(),
+    createdAt,
+  };
 }
 
-function writeLocalCashTillAmount(amount, date = todayCashTillDate()) {
+function migrateLocalCashTillEntries(raw) {
+  if (Array.isArray(raw)) return raw.map(normalizeCashTillEntry);
+  if (!raw || typeof raw !== "object") return [];
+  return Object.entries(raw)
+    .map(([date, amount]) =>
+      normalizeCashTillEntry({
+        date,
+        amount,
+        createdAt: `${date}T12:00:00.000Z`,
+      })
+    )
+    .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+}
+
+function readLocalCashTillEntries() {
+  return migrateLocalCashTillEntries(readLocalCashTillStore()[currentHotelId]);
+}
+
+function writeLocalCashTillEntries(entries) {
   const store = readLocalCashTillStore();
-  const hotelStore = { ...(store[currentHotelId] || {}) };
-  hotelStore[date] = Number(amount || 0);
-  store[currentHotelId] = hotelStore;
+  store[currentHotelId] = entries.slice(0, 120).map(normalizeCashTillEntry);
   localStorage.setItem(cashTillStorageKey, JSON.stringify(store));
+}
+
+function getLatestCashTillEntry(date = todayCashTillDate()) {
+  return cashTillEntries.find((entry) => entry.date === date) || null;
 }
 
 function setCashTillMessage(message = "", type = "") {
@@ -1997,77 +2040,133 @@ function setCashTillMessage(message = "", type = "") {
   selectors.cashTillMessage.className = `cash-till-message ${type}`.trim();
 }
 
-function setCashTillEditing(editing) {
-  isCashTillEditing = Boolean(editing);
-  selectors.cashTillCard?.classList.toggle("is-editing", isCashTillEditing);
-  selectors.cashTillDisplay?.classList.toggle("hidden", isCashTillEditing);
-  selectors.cashTillForm?.classList.toggle("hidden", !isCashTillEditing);
-  if (!isCashTillEditing) {
+function renderCashTillHistory() {
+  if (!selectors.cashTillHistory) return;
+  if (!cashTillEntries.length) {
+    selectors.cashTillHistory.innerHTML = `<p class="cash-till-history-empty">${escapeHtml(t("stats.cashTillHistoryEmpty"))}</p>`;
+    return;
+  }
+
+  selectors.cashTillHistory.innerHTML = cashTillEntries
+    .map((entry) => {
+      const note = entry.notes ? `<p>${escapeHtml(entry.notes)}</p>` : "";
+      const author = entry.authorName ? `<span>${escapeHtml(entry.authorName)}</span>` : "";
+      return `
+        <article class="cash-till-history-item">
+          <div class="cash-till-history-top">
+            <strong>${escapeHtml(formatMoney(entry.amount))}</strong>
+            <time>${escapeHtml(formatDate(entry.date))} · ${escapeHtml(formatStaffMessageTime(entry.createdAt))}</time>
+          </div>
+          ${note}
+          ${author}
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function setCashTillOpen(open) {
+  isCashTillOpen = Boolean(open);
+  selectors.cashTillOverlay?.classList.toggle("is-open", isCashTillOpen);
+  selectors.cashTillCard?.classList.toggle("is-open", isCashTillOpen);
+  if (!isCashTillOpen) {
     setCashTillMessage("", "");
     return;
   }
-  if (selectors.cashTillInput) {
-    selectors.cashTillInput.value = todayCashTillAmount === null ? "" : String(todayCashTillAmount);
-    requestAnimationFrame(() => selectors.cashTillInput?.focus());
-  }
+  const latest = getLatestCashTillEntry();
+  if (selectors.cashTillInput) selectors.cashTillInput.value = latest ? String(latest.amount) : "";
+  if (selectors.cashTillNotes) selectors.cashTillNotes.value = "";
+  setCashTillMessage("", "");
+  renderCashTillHistory();
+  requestAnimationFrame(() => selectors.cashTillInput?.focus());
 }
 
 function renderCashTill() {
+  const latest = getLatestCashTillEntry();
+  todayCashTillAmount = latest ? latest.amount : null;
   if (!selectors.cashTillStat || !selectors.cashTillHint) return;
   if (todayCashTillAmount === null) {
     selectors.cashTillStat.textContent = "—";
     selectors.cashTillHint.textContent = t("stats.cashTillEmpty");
+    if (isCashTillOpen) renderCashTillHistory();
     return;
   }
   selectors.cashTillStat.textContent = formatMoney(todayCashTillAmount);
-  selectors.cashTillHint.textContent = t("stats.cashTillHint");
+  selectors.cashTillHint.textContent = t("stats.cashTillOpen");
+  if (isCashTillOpen) renderCashTillHistory();
 }
 
 async function loadCashTill() {
-  const date = todayCashTillDate();
-  todayCashTillAmount = readLocalCashTillAmount(date);
+  cashTillEntries = readLocalCashTillEntries();
+  renderCashTill();
 
-  if (!usesSupabase) {
-    renderCashTill();
-    return todayCashTillAmount;
-  }
+  if (!usesSupabase) return cashTillEntries;
 
   const { data, error } = await supabaseClient
     .from("cash_closings")
-    .select("amount")
+    .select("id, hotel_id, close_date, amount, notes, author_name, created_at")
     .eq("hotel_id", currentHotelId)
-    .eq("close_date", date)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(120);
 
   if (error) {
-    console.error("Failed to load cash till amount", error);
+    console.error("Failed to load cash till history", error);
+    if (String(error.message || "").includes("notes") || String(error.message || "").includes("author_name")) {
+      const retry = await supabaseClient
+        .from("cash_closings")
+        .select("id, hotel_id, close_date, amount, created_at")
+        .eq("hotel_id", currentHotelId)
+        .order("created_at", { ascending: false })
+        .limit(120);
+      if (!retry.error) {
+        cashTillEntries = (retry.data || []).map(normalizeCashTillEntry);
+        writeLocalCashTillEntries(cashTillEntries);
+      }
+    }
     renderCashTill();
-    return todayCashTillAmount;
+    if (isCashTillOpen) renderCashTillHistory();
+    return cashTillEntries;
   }
 
-  todayCashTillAmount = data ? Number(data.amount || 0) : null;
-  if (todayCashTillAmount !== null) writeLocalCashTillAmount(todayCashTillAmount, date);
+  cashTillEntries = (data || []).map(normalizeCashTillEntry);
+  writeLocalCashTillEntries(cashTillEntries);
   renderCashTill();
-  return todayCashTillAmount;
+  if (isCashTillOpen) renderCashTillHistory();
+  return cashTillEntries;
 }
 
-async function saveCashTill(amount) {
-  const date = todayCashTillDate();
-  const nextAmount = Math.max(Number(amount || 0), 0);
-  todayCashTillAmount = nextAmount;
-  writeLocalCashTillAmount(nextAmount, date);
+async function saveCashTill(amount, notes) {
+  const entry = normalizeCashTillEntry({
+    id: crypto.randomUUID(),
+    date: todayCashTillDate(),
+    amount: Math.max(Number(amount || 0), 0),
+    notes,
+    authorName: getProfileDisplayName(),
+    createdAt: new Date().toISOString(),
+  });
+  cashTillEntries = [entry, ...cashTillEntries].slice(0, 120);
+  writeLocalCashTillEntries(cashTillEntries);
   renderCashTill();
+  renderCashTillHistory();
 
   if (!usesSupabase) return true;
 
-  const { error } = await supabaseClient.from("cash_closings").upsert(
-    {
-      hotel_id: currentHotelId,
-      close_date: date,
-      amount: nextAmount,
-    },
-    { onConflict: "hotel_id,close_date" }
-  );
+  const payload = {
+    id: entry.id,
+    hotel_id: currentHotelId,
+    close_date: entry.date,
+    amount: entry.amount,
+    notes: entry.notes,
+    author_name: entry.authorName,
+    author_user_id: currentUserProfile?.userId || null,
+  };
+
+  let { error } = await supabaseClient.from("cash_closings").insert(payload);
+  if (error && (String(error.message || "").includes("notes") || String(error.message || "").includes("author_name") || String(error.message || "").includes("author_user_id"))) {
+    const { notes: _notes, author_name: _authorName, author_user_id: _authorUserId, ...basicPayload } = payload;
+    const retry = await supabaseClient.from("cash_closings").insert(basicPayload);
+    error = retry.error;
+  }
 
   if (error) {
     console.error("Failed to save cash till amount", error);
@@ -4781,10 +4880,13 @@ function setAccountMenuOpen(isOpen) {
 async function signOut() {
   setSettingsOpen(false);
   setAccountMenuOpen(false);
+  setCashTillOpen(false);
   selectors.appShell?.classList.add("app-loading");
   if (usesSupabase) await supabaseClient.auth.signOut();
   stays = [];
   staffMessages = [];
+  cashTillEntries = [];
+  todayCashTillAmount = null;
   resetFormMode();
   renderAll();
   await requireSession();
@@ -4993,6 +5095,10 @@ function bindEvents() {
   selectors.dashboardNewStayAction?.addEventListener("click", () => navigateToSection("new-stay"));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && selectors.settingsOverlay?.classList.contains("is-open")) setSettingsOpen(false);
+    if (event.key === "Escape" && isCashTillOpen) {
+      setCashTillOpen(false);
+      return;
+    }
     if (event.key === "Escape") {
       setAccountMenuOpen(false);
       closeCustomDropdowns();
@@ -5368,41 +5474,32 @@ function bindEvents() {
     });
   });
 
-  const openCashTillEditor = () => {
-    if (isCashTillEditing) return;
-    setCashTillEditing(true);
-  };
+  const openCashTillEditor = () => setCashTillOpen(true);
 
-  selectors.cashTillCard?.addEventListener("click", (event) => {
-    if (event.target.closest("#cashTillForm")) return;
-    openCashTillEditor();
-  });
+  selectors.cashTillCard?.addEventListener("click", openCashTillEditor);
   selectors.cashTillCard?.addEventListener("keydown", (event) => {
-    if (isCashTillEditing) return;
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     openCashTillEditor();
   });
-  selectors.cashTillCancel?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setCashTillEditing(false);
+  selectors.cashTillOverlay?.querySelectorAll("[data-cash-till-close]").forEach((node) => {
+    node.addEventListener("click", () => setCashTillOpen(false));
   });
   selectors.cashTillForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    event.stopPropagation();
     const rawAmount = String(selectors.cashTillInput?.value ?? "").trim();
     if (rawAmount === "") {
       setCashTillMessage(t("stats.cashTillRequired"), "error");
       selectors.cashTillInput?.focus();
       return;
     }
-    const saved = await saveCashTill(rawAmount);
+    const saved = await saveCashTill(rawAmount, selectors.cashTillNotes?.value || "");
     if (!saved) {
       setCashTillMessage(t("stats.cashTillError"), "error");
       return;
     }
-    setCashTillEditing(false);
+    if (selectors.cashTillNotes) selectors.cashTillNotes.value = "";
+    setCashTillMessage(t("stats.cashTillSaved"), "success");
   });
 
   selectors.staysTable.addEventListener("click", (event) => {

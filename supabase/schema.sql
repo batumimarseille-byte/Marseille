@@ -207,10 +207,27 @@ create table if not exists public.cash_closings (
   hotel_id text not null references public.hotels(id) on update cascade on delete restrict,
   close_date date not null,
   amount numeric(12, 2) not null default 0,
+  notes text not null default '',
+  author_name text not null default '',
+  author_user_id uuid references auth.users(id) on update cascade on delete set null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint cash_closings_hotel_id_close_date_key unique (hotel_id, close_date)
+  updated_at timestamptz not null default now()
 );
+
+alter table public.cash_closings
+add column if not exists notes text not null default '';
+
+alter table public.cash_closings
+add column if not exists author_name text not null default '';
+
+alter table public.cash_closings
+add column if not exists author_user_id uuid references auth.users(id) on update cascade on delete set null;
+
+alter table public.cash_closings
+drop constraint if exists cash_closings_hotel_id_close_date_key;
+
+create index if not exists cash_closings_hotel_created_at_idx
+on public.cash_closings (hotel_id, created_at desc);
 
 alter table public.staff_messages
 add column if not exists color text not null default '#4f7cff';

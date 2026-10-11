@@ -144,17 +144,6 @@
                 <strong id="cashTillStat">—</strong>
                 <p id="cashTillHint">left at close</p>
               </div>
-              <form class="cash-till-form hidden" id="cashTillForm">
-                <label class="cash-till-field">
-                  <span data-i18n="stats.cashTillAmount">Amount left in till</span>
-                  <input id="cashTillInput" name="amount" type="number" min="0" step="1" inputmode="numeric" />
-                </label>
-                <div class="cash-till-actions">
-                  <button type="button" class="ghost-button" id="cashTillCancel" data-i18n="form.cancel">Cancel</button>
-                  <button type="submit" class="primary-button" id="cashTillSave" data-i18n="stats.cashTillSave">Save</button>
-                </div>
-                <p class="cash-till-message" id="cashTillMessage" role="status"></p>
-              </form>
             </article>
           </div>
 
@@ -693,6 +682,37 @@
           </article>
         </section>
       </main>
+    </div>
+
+    <div class="cash-till-overlay" id="cashTillOverlay">
+      <div class="cash-till-backdrop" data-cash-till-close></div>
+      <article class="cash-till-dialog" role="dialog" aria-modal="true" aria-labelledby="cashTillDialogTitle">
+        <header class="cash-till-dialog-header">
+          <div>
+            <p class="eyebrow" data-i18n="stats.cashTill">Cash in till</p>
+            <h2 id="cashTillDialogTitle" data-i18n="stats.cashTillHistoryTitle">Day close</h2>
+          </div>
+          <button type="button" class="cash-till-close" data-cash-till-close aria-label="Close">×</button>
+        </header>
+        <form class="cash-till-form" id="cashTillForm">
+          <label class="cash-till-field">
+            <span data-i18n="stats.cashTillAmount">Amount left in till</span>
+            <input id="cashTillInput" name="amount" type="number" min="0" step="1" inputmode="numeric" required />
+          </label>
+          <label class="cash-till-notes-field">
+            <span data-i18n="stats.cashTillNotes">Description</span>
+            <textarea id="cashTillNotes" name="notes" rows="3" maxlength="300" data-i18n-placeholder="stats.cashTillNotesPlaceholder" placeholder="Shift note, handover, what changed"></textarea>
+          </label>
+          <div class="cash-till-actions">
+            <p class="cash-till-message" id="cashTillMessage" role="status"></p>
+            <button type="submit" class="primary-button" id="cashTillSave" data-i18n="stats.cashTillSave">Save</button>
+          </div>
+        </form>
+        <div class="cash-till-history-block">
+          <h3 data-i18n="stats.cashTillHistory">History</h3>
+          <div class="cash-till-history" id="cashTillHistory"></div>
+        </div>
+      </article>
     </div>
 
     <script type="module" src="app.js"></script>

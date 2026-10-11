@@ -3,9 +3,11 @@ create table if not exists public.cash_closings (
   hotel_id text not null references public.hotels(id) on update cascade on delete restrict,
   close_date date not null,
   amount numeric(12, 2) not null default 0,
+  notes text not null default '',
+  author_name text not null default '',
+  author_user_id uuid references auth.users(id) on update cascade on delete set null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint cash_closings_hotel_id_close_date_key unique (hotel_id, close_date)
+  updated_at timestamptz not null default now()
 );
 
 alter table public.cash_closings enable row level security;
@@ -18,6 +20,9 @@ using (true)
 with check (true);
 
 grant select, insert, update, delete on public.cash_closings to authenticated;
+
+create index if not exists cash_closings_hotel_created_at_idx
+on public.cash_closings (hotel_id, created_at desc);
 
 drop trigger if exists cash_closings_set_updated_at on public.cash_closings;
 create trigger cash_closings_set_updated_at

@@ -143,9 +143,11 @@ create table if not exists public.cash_closings (
   hotel_id text not null references public.hotels(id) on update cascade on delete restrict,
   close_date date not null,
   amount numeric(12, 2) not null default 0,
+  notes text not null default '',
+  author_name text not null default '',
+  author_user_id uuid references auth.users(id) on update cascade on delete set null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint cash_closings_hotel_id_close_date_key unique (hotel_id, close_date)
+  updated_at timestamptz not null default now()
 );
 create unique index if not exists hotel_settings_hotel_id_key on public.hotel_settings (hotel_id);
 create index if not exists hotel_users_hotel_role_idx on public.hotel_users (hotel_id, role, is_active);

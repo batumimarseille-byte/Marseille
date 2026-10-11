@@ -4744,9 +4744,163 @@ input[type=color]::-webkit-color-swatch {
   cursor: pointer
 }
 
-.cash-till-card.is-editing {
-  cursor: default;
-  grid-template-rows: 34px auto
+.cash-till-overlay {
+  position: fixed;
+  z-index: 130;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease
+}
+
+.cash-till-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto
+}
+
+.cash-till-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, .28)
+}
+
+.cash-till-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  border: 1px solid var(--line, #dbe6f1);
+  border-radius: 18px;
+  background: var(--panel, #fff);
+  box-shadow: 0 20px 40px rgba(15, 35, 56, .15);
+  padding: 0 0 18px
+}
+
+.cash-till-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--line, #dbe6f1)
+}
+
+.cash-till-dialog-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.25
+}
+
+.cash-till-close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--line, #dbe6f1);
+  border-radius: 10px;
+  background: var(--panel, #fff);
+  color: var(--muted, #64748b);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer
+}
+
+.cash-till-dialog .cash-till-form {
+  padding: 18px 22px 8px
+}
+
+.cash-till-notes-field {
+  display: grid;
+  gap: 6px
+}
+
+.cash-till-notes-field span,
+.cash-till-dialog .cash-till-field span {
+  padding-left: 0;
+  min-height: auto;
+  color: var(--muted, #64748b);
+  font-size: .78rem;
+  font-weight: 800
+}
+
+.cash-till-notes-field textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #dbe6f1);
+  border-radius: 12px;
+  resize: vertical;
+  font: inherit
+}
+
+.cash-till-dialog .cash-till-actions {
+  justify-content: flex-end;
+  align-items: center
+}
+
+.cash-till-dialog .cash-till-actions .primary-button {
+  flex: 0 0 auto;
+  min-width: 110px
+}
+
+.cash-till-message.success {
+  color: var(--green, #047857)
+}
+
+.cash-till-history-block {
+  padding: 8px 22px 0
+}
+
+.cash-till-history-block h3 {
+  margin: 0 0 10px;
+  font-size: .86rem;
+  font-weight: 800
+}
+
+.cash-till-history {
+  display: grid;
+  gap: 8px
+}
+
+.cash-till-history-empty,
+.cash-till-history-item span {
+  color: var(--muted, #64748b);
+  font-size: .8rem
+}
+
+.cash-till-history-item {
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 12px;
+  padding: 12px
+}
+
+.cash-till-history-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px
+}
+
+.cash-till-history-top time {
+  color: var(--muted, #64748b);
+  font-size: .75rem;
+  white-space: nowrap
+}
+
+.cash-till-history-item p {
+  margin: 8px 0 0;
+  font-size: .86rem;
+  line-height: 1.4
+}
+
+.cash-till-history-item span {
+  display: block;
+  margin-top: 6px
 }
 
 .cash-till-value strong {
