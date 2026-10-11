@@ -313,6 +313,8 @@ const translations = {
       cashTillSaved: "Saved.",
       cashTillError: "Could not save the cash amount. Try again.",
       cashTillRequired: "Enter the cash left in the till.",
+      cashTillCurrent: "Now",
+      cashTillSaving: "Saving...",
       cashTillHistoryTitle: "Day close",
       cashTillHistory: "History",
       cashTillHistoryEmpty: "No cash records yet.",
@@ -657,6 +659,8 @@ const translations = {
       cashTillSaved: "შენახულია.",
       cashTillError: "თანხის შენახვა ვერ მოხერხდა. სცადეთ თავიდან.",
       cashTillRequired: "შეიყვანეთ სალაროში დარჩენილი თანხა.",
+      cashTillCurrent: "ახლა",
+      cashTillSaving: "ინახება...",
       cashTillHistoryTitle: "დღის დახურვა",
       cashTillHistory: "ისტორია",
       cashTillHistoryEmpty: "სალაროს ჩანაწერები ჯერ არ არის.",
@@ -849,6 +853,7 @@ let roomEditorTypeMode = "existing";
 let todayCashTillAmount = null;
 let cashTillEntries = [];
 let isCashTillOpen = false;
+let isCashTillSaving = false;
 let editingStaffId = null;
 
 const selectors = {
@@ -913,6 +918,8 @@ const selectors = {
   cashTillForm: document.querySelector("#cashTillForm"),
   cashTillInput: document.querySelector("#cashTillInput"),
   cashTillNotes: document.querySelector("#cashTillNotes"),
+  cashTillSave: document.querySelector("#cashTillSave"),
+  cashTillCurrent: document.querySelector("#cashTillCurrent"),
   cashTillMessage: document.querySelector("#cashTillMessage"),
   cashTillHistory: document.querySelector("#cashTillHistory"),
   statCards: document.querySelectorAll("[data-stat-filter]"),
@@ -2034,6 +2041,33 @@ function getLatestCashTillEntry(date = todayCashTillDate()) {
   return cashTillEntries.find((entry) => entry.date === date) || null;
 }
 
+function parseCashTillAmount(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  return amount;
+}
+
+function isCashTillFormReady() {
+  return parseCashTillAmount(selectors.cashTillInput?.value) !== null;
+}
+
+function updateCashTillSaveState() {
+  if (!selectors.cashTillSave) return;
+  const ready = isCashTillFormReady() && !isCashTillSaving;
+  selectors.cashTillSave.disabled = !ready;
+  selectors.cashTillSave.textContent = isCashTillSaving ? t("stats.cashTillSaving") : t("stats.cashTillSave");
+}
+
+function renderCashTillCurrent() {
+  if (!selectors.cashTillCurrent) return;
+  const latest = getLatestCashTillEntry();
+  selectors.cashTillCurrent.textContent = latest
+    ? `${t("stats.cashTillCurrent")}: ${formatMoney(latest.amount)}`
+    : t("stats.cashTillEmpty");
+}
+
 function setCashTillMessage(message = "", type = "") {
   if (!selectors.cashTillMessage) return;
   selectors.cashTillMessage.textContent = message;
@@ -2050,15 +2084,15 @@ function renderCashTillHistory() {
   selectors.cashTillHistory.innerHTML = cashTillEntries
     .map((entry) => {
       const note = entry.notes ? `<p>${escapeHtml(entry.notes)}</p>` : "";
-      const author = entry.authorName ? `<span>${escapeHtml(entry.authorName)}</span>` : "";
+      const meta = [entry.authorName, `${formatDate(entry.date)} · ${formatStaffMessageTime(entry.createdAt)}`]
+        .filter(Boolean)
+        .map((part) => escapeHtml(part))
+        .join(" · ");
       return `
         <article class="cash-till-history-item">
-          <div class="cash-till-history-top">
-            <strong>${escapeHtml(formatMoney(entry.amount))}</strong>
-            <time>${escapeHtml(formatDate(entry.date))} · ${escapeHtml(formatStaffMessageTime(entry.createdAt))}</time>
-          </div>
+          <strong>${escapeHtml(formatMoney(entry.amount))}</strong>
           ${note}
-          ${author}
+          <span>${meta}</span>
         </article>
       `;
     })
@@ -2070,14 +2104,16 @@ function setCashTillOpen(open) {
   selectors.cashTillOverlay?.classList.toggle("is-open", isCashTillOpen);
   selectors.cashTillCard?.classList.toggle("is-open", isCashTillOpen);
   if (!isCashTillOpen) {
+    isCashTillSaving = false;
     setCashTillMessage("", "");
     return;
   }
-  const latest = getLatestCashTillEntry();
-  if (selectors.cashTillInput) selectors.cashTillInput.value = latest ? String(latest.amount) : "";
+  if (selectors.cashTillInput) selectors.cashTillInput.value = "";
   if (selectors.cashTillNotes) selectors.cashTillNotes.value = "";
   setCashTillMessage("", "");
+  renderCashTillCurrent();
   renderCashTillHistory();
+  updateCashTillSaveState();
   requestAnimationFrame(() => selectors.cashTillInput?.focus());
 }
 
@@ -2088,12 +2124,20 @@ function renderCashTill() {
   if (todayCashTillAmount === null) {
     selectors.cashTillStat.textContent = "—";
     selectors.cashTillHint.textContent = t("stats.cashTillEmpty");
-    if (isCashTillOpen) renderCashTillHistory();
+    if (isCashTillOpen) {
+      renderCashTillCurrent();
+      renderCashTillHistory();
+      updateCashTillSaveState();
+    }
     return;
   }
   selectors.cashTillStat.textContent = formatMoney(todayCashTillAmount);
   selectors.cashTillHint.textContent = t("stats.cashTillOpen");
-  if (isCashTillOpen) renderCashTillHistory();
+  if (isCashTillOpen) {
+    renderCashTillCurrent();
+    renderCashTillHistory();
+    updateCashTillSaveState();
+  }
 }
 
 async function loadCashTill() {
@@ -2136,10 +2180,13 @@ async function loadCashTill() {
 }
 
 async function saveCashTill(amount, notes) {
+  const parsedAmount = parseCashTillAmount(amount);
+  if (parsedAmount === null) return false;
+
   const entry = normalizeCashTillEntry({
     id: crypto.randomUUID(),
     date: todayCashTillDate(),
-    amount: Math.max(Number(amount || 0), 0),
+    amount: parsedAmount,
     notes,
     authorName: getProfileDisplayName(),
     createdAt: new Date().toISOString(),
@@ -5485,20 +5532,35 @@ function bindEvents() {
   selectors.cashTillOverlay?.querySelectorAll("[data-cash-till-close]").forEach((node) => {
     node.addEventListener("click", () => setCashTillOpen(false));
   });
+  const onCashTillFormChange = () => {
+    if (!isCashTillSaving) setCashTillMessage("", "");
+    updateCashTillSaveState();
+  };
+  selectors.cashTillInput?.addEventListener("input", onCashTillFormChange);
+  selectors.cashTillNotes?.addEventListener("input", onCashTillFormChange);
   selectors.cashTillForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const rawAmount = String(selectors.cashTillInput?.value ?? "").trim();
-    if (rawAmount === "") {
+    if (isCashTillSaving) return;
+    const amount = parseCashTillAmount(selectors.cashTillInput?.value);
+    if (amount === null) {
       setCashTillMessage(t("stats.cashTillRequired"), "error");
+      updateCashTillSaveState();
       selectors.cashTillInput?.focus();
       return;
     }
-    const saved = await saveCashTill(rawAmount, selectors.cashTillNotes?.value || "");
+    isCashTillSaving = true;
+    updateCashTillSaveState();
+    const saved = await saveCashTill(amount, selectors.cashTillNotes?.value || "");
+    isCashTillSaving = false;
+    updateCashTillSaveState();
     if (!saved) {
       setCashTillMessage(t("stats.cashTillError"), "error");
       return;
     }
+    if (selectors.cashTillInput) selectors.cashTillInput.value = "";
     if (selectors.cashTillNotes) selectors.cashTillNotes.value = "";
+    renderCashTillCurrent();
+    updateCashTillSaveState();
     setCashTillMessage(t("stats.cashTillSaved"), "success");
   });
 

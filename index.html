@@ -140,10 +140,8 @@
             </article>
             <article class="stat-card cash-till-card" id="cashTillCard" role="button" tabindex="0">
               <span data-i18n="stats.cashTill">Cash in till</span>
-              <div class="cash-till-value" id="cashTillDisplay">
-                <strong id="cashTillStat">—</strong>
-                <p id="cashTillHint">left at close</p>
-              </div>
+              <strong id="cashTillStat">—</strong>
+              <p id="cashTillHint">left at close</p>
             </article>
           </div>
 
@@ -691,13 +689,17 @@
           <div>
             <p class="eyebrow" data-i18n="stats.cashTill">Cash in till</p>
             <h2 id="cashTillDialogTitle" data-i18n="stats.cashTillHistoryTitle">Day close</h2>
+            <p class="cash-till-current" id="cashTillCurrent"></p>
           </div>
           <button type="button" class="cash-till-close" data-cash-till-close aria-label="Close">×</button>
         </header>
-        <form class="cash-till-form" id="cashTillForm">
+        <form class="cash-till-form" id="cashTillForm" novalidate>
           <label class="cash-till-field">
             <span data-i18n="stats.cashTillAmount">Amount left in till</span>
-            <input id="cashTillInput" name="amount" type="number" min="0" step="1" inputmode="numeric" required />
+            <span class="cash-till-amount-wrap">
+              <input id="cashTillInput" name="amount" type="number" min="0" step="1" inputmode="numeric" autocomplete="off" />
+              <span data-currency-symbol aria-hidden="true">₾</span>
+            </span>
           </label>
           <label class="cash-till-notes-field">
             <span data-i18n="stats.cashTillNotes">Description</span>
@@ -705,7 +707,7 @@
           </label>
           <div class="cash-till-actions">
             <p class="cash-till-message" id="cashTillMessage" role="status"></p>
-            <button type="submit" class="primary-button" id="cashTillSave" data-i18n="stats.cashTillSave">Save</button>
+            <button type="submit" class="primary-button" id="cashTillSave" data-i18n="stats.cashTillSave" disabled>Save</button>
           </div>
         </form>
         <div class="cash-till-history-block">
