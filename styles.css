@@ -4750,7 +4750,7 @@ input[type=color]::-webkit-color-swatch {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 16px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease
@@ -4773,7 +4773,8 @@ input[type=color]::-webkit-color-swatch {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   width: min(480px, calc(100vw - 32px));
-  max-height: calc(100dvh - 48px);
+  height: calc(100dvh - 32px);
+  max-height: calc(100dvh - 32px);
   overflow: hidden;
   border: 1px solid var(--line, #e2e8f0);
   border-radius: 18px;
@@ -4791,7 +4792,7 @@ input[type=color]::-webkit-color-swatch {
 
 .cash-till-dialog-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 20px 22px 16px;
@@ -4814,17 +4815,25 @@ input[type=color]::-webkit-color-swatch {
 
 .cash-till-close {
   display: grid;
+  place-items: center;
+  flex: 0 0 36px;
   width: 36px;
   height: 36px;
+  margin: 0;
   padding: 0;
-  place-items: center;
   border: 1px solid var(--line, #e2e8f0);
   border-radius: 10px;
   background: #fff;
   color: var(--muted, #64748b);
-  font-size: 22px;
-  line-height: 1;
+  font-size: 0;
+  line-height: 0;
   cursor: pointer
+}
+
+.cash-till-close svg {
+  display: block;
+  width: 16px;
+  height: 16px
 }
 
 .cash-till-close:hover,
@@ -4961,7 +4970,7 @@ input[type=color]::-webkit-color-swatch {
   align-content: start;
   gap: 8px;
   min-height: 0;
-  max-height: min(320px, 42dvh);
+  height: 100%;
   overflow: auto
 }
 
