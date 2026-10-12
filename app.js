@@ -129,7 +129,12 @@ const translations = {
       administrator: "Administrator",
       role: "Hotel staff",
       profile: "Profile",
-      profileHint: "Name, avatar, and chat color.",
+      profileHint: "Name, email, password, avatar, and chat color.",
+      accountEmail: "Email",
+      accountEmailHint: "Used to sign in to the dashboard.",
+      accountPassword: "Password",
+      accountPasswordHint: "Leave blank to keep the current password.",
+      accountSaveError: "Could not update email or password. Try a different email.",
       displayName: "Display name",
       position: "Position",
       avatarUrl: "Avatar URL",
@@ -480,7 +485,12 @@ const translations = {
       administrator: "ადმინისტრატორი",
       role: "სასტუმროს პერსონალი",
       profile: "პროფილი",
-      profileHint: "სახელი, ავატარი და ჩატის ფერი.",
+      profileHint: "სახელი, ელფოსტა, პაროლი, ავატარი და ჩატის ფერი.",
+      accountEmail: "ელფოსტა",
+      accountEmailHint: "გამოიყენება პანელში შესასვლელად.",
+      accountPassword: "პაროლი",
+      accountPasswordHint: "ძველი პაროლის შესანარჩუნებლად დატოვეთ ცარიელი.",
+      accountSaveError: "ელფოსტის ან პაროლის განახლება ვერ მოხერხდა. სცადეთ სხვა ელფოსტა.",
       displayName: "სახელი",
       position: "პოზიცია",
       avatarUrl: "ავატარის მისამართი",
@@ -992,6 +1002,9 @@ const selectors = {
   profileSettingsForm: document.querySelector("#profileSettingsForm"),
   profileSettingsMessage: document.querySelector("#profileSettingsMessage"),
   settingsProfileName: document.querySelector("#settingsProfileName"),
+  settingsProfileEmail: document.querySelector("#settingsProfileEmail"),
+  settingsProfilePassword: document.querySelector("#settingsProfilePassword"),
+  profileAccountFields: document.querySelectorAll("[data-profile-account-field]"),
   profileLanguageRow: document.querySelector("#profileLanguageRow"),
   settingsProfileLanguage: document.querySelector("#settingsProfileLanguage"),
   settingsProfileLanguageDropdown: document.querySelector("#settingsProfileLanguageDropdown"),
@@ -1395,6 +1408,12 @@ function applyRoleAccess() {
     selectors.profileLanguageRow.hidden = isAdmin;
   }
 
+  selectors.profileAccountFields?.forEach((row) => {
+    row.classList.toggle("hidden", isAdmin);
+    row.hidden = isAdmin;
+  });
+  if (selectors.settingsProfileEmail) selectors.settingsProfileEmail.required = !isAdmin;
+
   if (currentSectionName === "settings") {
     applyPageHeader("settings");
   }
@@ -1456,6 +1475,8 @@ function renderProfileColorOptions() {
 function populateProfileSettingsForm() {
   if (!selectors.profileSettingsForm) return;
   selectors.settingsProfileName.value = getProfileDisplayName();
+  if (selectors.settingsProfileEmail) selectors.settingsProfileEmail.value = currentUserProfile?.email || "";
+  if (selectors.settingsProfilePassword) selectors.settingsProfilePassword.value = "";
   if (selectors.settingsProfileLanguage) selectors.settingsProfileLanguage.value = currentLanguage;
   selectors.settingsProfileChatColor.value = currentUserProfile?.chatColor || staffMessagePalette[0];
   setProfileSettingsMessage("", "");
@@ -1467,6 +1488,8 @@ function readProfileSettingsForm() {
   const formData = new FormData(selectors.profileSettingsForm);
   return {
     displayName: String(formData.get("displayName") || "").trim(),
+    email: String(formData.get("email") || "").trim().toLowerCase(),
+    password: String(formData.get("password") || ""),
     position: currentUserProfile?.position || "",
     avatarUrl: currentUserProfile?.avatarUrl || "",
     chatColor: normalizeBookingColor(String(formData.get("chatColor") || "")) || currentUserProfile?.chatColor || staffMessagePalette[0],
@@ -1499,8 +1522,44 @@ async function saveOwnProfile(nextProfile) {
   }
 
   currentUserProfile = normalizeHotelUserProfile(data);
+  if (nextProfile.email) currentUserProfile.email = nextProfile.email;
   applyUserProfile();
   renderStaffChat();
+  return true;
+}
+
+async function saveOwnAccount(nextProfile) {
+  if (!usesSupabase || isCurrentUserAdmin()) return true;
+
+  const email = String(nextProfile.email || "").trim().toLowerCase();
+  const password = String(nextProfile.password || "");
+  const currentEmail = String(currentUserProfile?.email || "").trim().toLowerCase();
+  if (!email || !looksLikeEmail(email)) return false;
+  if (email === currentEmail && !password) return true;
+  if (password && password.length < 6) return false;
+
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (!accessToken) return false;
+
+  const response = await fetch("/api/update-own-account", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    console.error("Failed to update account", result?.error || response.statusText);
+    return false;
+  }
+
+  currentUserProfile = {
+    ...(currentUserProfile || {}),
+    email: result?.email || email,
+  };
   return true;
 }
 
@@ -4974,6 +5033,9 @@ async function requireSession() {
 
   if (session) {
     currentUserProfile = await loadCurrentUserProfile(session.user?.id);
+    if (currentUserProfile) {
+      currentUserProfile.email = session.user?.email || currentUserProfile.email || "";
+    }
     setCurrentHotelId(currentUserProfile?.hotelId || getRouteHotelId());
     if (currentUserProfile) rememberLoginStaff(currentUserProfile);
     hotelStaffUsers = currentUserProfile ? [currentUserProfile] : [];
@@ -5264,11 +5326,19 @@ function bindEvents() {
     submitButton.disabled = true;
     submitButton.textContent = t("settings.saving");
     setProfileSettingsMessage(t("settings.saving"), "");
-    const saved = await saveOwnProfile(nextProfile);
+    const savedProfile = await saveOwnProfile(nextProfile);
+    const savedAccount = savedProfile ? await saveOwnAccount(nextProfile) : false;
     submitButton.disabled = false;
     submitButton.textContent = t("settings.save");
-    if (saved) populateProfileSettingsForm();
-    setProfileSettingsMessage(saved ? t("settings.profileSaved") : t("settings.profileSaveError"), saved ? "success" : "error");
+    if (savedProfile && savedAccount) {
+      populateProfileSettingsForm();
+      setProfileSettingsMessage(t("settings.profileSaved"), "success");
+      return;
+    }
+    setProfileSettingsMessage(
+      savedProfile ? t("settings.accountSaveError") : t("settings.profileSaveError"),
+      "error"
+    );
   });
   selectors.staffSettingsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();

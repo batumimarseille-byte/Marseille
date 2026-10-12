@@ -591,6 +591,24 @@
                       <input id="settingsProfileName" name="displayName" type="text" autocomplete="name" required />
                     </div>
                   </div>
+                  <div class="settings-detail-row" data-profile-account-field>
+                    <label class="settings-detail-copy" for="settingsProfileEmail">
+                      <strong data-i18n="settings.accountEmail">Email</strong>
+                      <p data-i18n="settings.accountEmailHint">Used to sign in to the dashboard.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <input id="settingsProfileEmail" name="email" type="email" autocomplete="email" required />
+                    </div>
+                  </div>
+                  <div class="settings-detail-row" data-profile-account-field>
+                    <label class="settings-detail-copy" for="settingsProfilePassword">
+                      <strong data-i18n="settings.accountPassword">Password</strong>
+                      <p data-i18n="settings.accountPasswordHint">Leave blank to keep the current password.</p>
+                    </label>
+                    <div class="settings-detail-control">
+                      <input id="settingsProfilePassword" name="password" type="password" autocomplete="new-password" minlength="6" />
+                    </div>
+                  </div>
                   <div class="settings-detail-row hidden" id="profileLanguageRow" hidden>
                     <label class="settings-detail-copy" for="settingsProfileLanguage">
                       <strong data-i18n="settings.profileLanguage">Language</strong>
