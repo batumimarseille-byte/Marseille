@@ -22,20 +22,27 @@
           </div>
         </div>
         <div>
-          <p class="eyebrow" data-i18n="auth.privateAccess">Private access</p>
-          <h2 data-i18n="auth.title">Sign in to dashboard</h2>
-          <p data-i18n="auth.description">Use the hotel account to manage stays, rooms, payments, and the calendar.</p>
+          <div class="auth-intro-row">
+            <p class="eyebrow" data-i18n="auth.privateAccess">Private access</p>
+            <button type="button" class="auth-edit-login hidden" id="loginEditButton" data-i18n="auth.editProfiles">Edit</button>
+          </div>
+          <h2 data-i18n="auth.title">Who is signing in?</h2>
+          <p data-i18n="auth.description">Tap your profile, then enter your password.</p>
         </div>
-        <label>
-          <span data-i18n="auth.email">Email</span>
-          <input name="email" type="email" placeholder="batumimarseille@gmail.com" autocomplete="email" required data-i18n-placeholder="auth.emailPlaceholder" />
+        <div class="auth-staff-block hidden" id="loginStaffBlock">
+          <div class="auth-staff-picker" id="loginStaffPicker" role="listbox" aria-label="Staff"></div>
+        </div>
+        <label class="auth-identifier-field" id="loginIdentifierField">
+          <span data-i18n="auth.email">Name or email</span>
+          <input name="email" type="text" placeholder="Name or email" autocomplete="username" autocapitalize="none" spellcheck="false" data-i18n-placeholder="auth.emailPlaceholder" />
         </label>
-        <label>
+        <label class="auth-password-field" id="loginPasswordField">
           <span data-i18n="auth.password">Password</span>
           <input name="password" type="password" placeholder="Password" autocomplete="current-password" required data-i18n-placeholder="auth.passwordPlaceholder" />
         </label>
         <p class="form-message" id="loginMessage" role="status"></p>
-        <button type="submit" class="primary-button" data-i18n="auth.signIn">Sign in</button>
+        <button type="submit" class="primary-button" id="loginSubmit" data-i18n="auth.signIn">Sign in</button>
+        <button type="button" class="auth-other-login hidden" id="loginOtherButton" data-i18n="auth.useOtherAccount">Use name or email</button>
       </form>
     </section>
 

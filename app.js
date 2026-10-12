@@ -34,6 +34,7 @@ const favoriteGuestStorageKey = "hotel-desk-favorite-guests-v1";
 const favoriteGuestMigrationStorageKey = "hotel-desk-favorite-guests-supabase-migrated-v1";
 const staffMessagesStorageKey = "hotel-desk-staff-messages-v1";
 const cashTillStorageKey = "hotel-desk-cash-till-v1";
+const loginStaffStorageKey = "hotel-desk-login-staff-v1";
 const defaultBookingColor = "#4f7cff";
 const bookingCustomColorsStorageKey = "hotel-desk-booking-custom-colors-v2";
 const bookingColorPalette = ["#4f7cff", "#6376ee", "#7c68e9", "#9a6bf2", "#b98df3", "#e978e0", "#e978b7", "#ef6669", "#ee8061", "#e89b43", "#d6bf38", "#b9df42", "#75c95d", "#6bcd65", "#3fbc83", "#2fb8aa", "#1cb7b8", "#22b8cf", "#36a4e9", "#5d85f2"];
@@ -107,7 +108,6 @@ const supabaseAnonKey =
   env.VITE_SUPABASE_ANON_KEY ||
   window.HOTEL_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYnJjeWV6cWlpdXptd2xreWR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzEwMzAsImV4cCI6MjEwMDMwNzAzMH0.1yhkwib_Aqf2DKfbM5eRBQCSzgQ7cy9NWcq08oZg58I";
-const configuredLoginEmail = env.VITE_APP_LOGIN_EMAIL || "batumimarseille@gmail.com";
 const supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const usesSupabase = Boolean(supabaseClient);
 const hotelAssetsBucketName = "hotel-assets";
@@ -203,15 +203,20 @@ const translations = {
     },
     auth: {
       privateAccess: "Private access",
-      title: "Sign in to dashboard",
-      description: "Use the hotel account to manage stays, rooms, payments, and the calendar.",
-      email: "Email",
-      emailPlaceholder: "batumimarseille@gmail.com",
+      title: "Who is signing in?",
+      description: "Tap your profile, then enter your password.",
+      email: "Name or email",
+      emailPlaceholder: "Name or email",
       password: "Password",
       passwordPlaceholder: "Password",
       signIn: "Sign in",
       signingIn: "Signing in...",
-      signInError: "Could not sign in. Check email and password.",
+      signInError: "Could not sign in. Check your profile and password.",
+      useOtherAccount: "Use name or email",
+      chooseProfile: "Choose a profile",
+      editProfiles: "Edit",
+      doneProfiles: "Done",
+      removeProfile: "Remove from quick access",
     },
     nav: {
       dashboard: "Overview",
@@ -549,15 +554,20 @@ const translations = {
     },
     auth: {
       privateAccess: "პირადი წვდომა",
-      title: "პანელში შესვლა",
-      description: "გამოიყენეთ სასტუმროს ანგარიში ჯავშნების, ნომრების, გადახდებისა და კალენდრის სამართავად.",
-      email: "ელფოსტა",
-      emailPlaceholder: "batumimarseille@gmail.com",
+      title: "ვინ შედის?",
+      description: "აირჩიეთ პროფილი და შემდეგ შეიყვანეთ პაროლი.",
+      email: "სახელი ან ელფოსტა",
+      emailPlaceholder: "სახელი ან ელფოსტა",
       password: "პაროლი",
       passwordPlaceholder: "პაროლი",
       signIn: "შესვლა",
       signingIn: "შესვლა მიმდინარეობს...",
-      signInError: "შესვლა ვერ მოხერხდა. გადაამოწმეთ ელფოსტა და პაროლი.",
+      signInError: "შესვლა ვერ მოხერხდა. გადაამოწმეთ პროფილი და პაროლი.",
+      useOtherAccount: "სახელი ან ელფოსტა",
+      chooseProfile: "პროფილის არჩევა",
+      editProfiles: "რედაქტირება",
+      doneProfiles: "მზადაა",
+      removeProfile: "წაშლა სწრაფი წვდომიდან",
     },
     nav: {
       dashboard: "მიმოხილვა",
@@ -835,6 +845,10 @@ let currentLanguage = getStoredLanguage();
 let hotelSettings = { ...defaultHotelSettings };
 let currentUserProfile = null;
 let hotelStaffUsers = [];
+let loginStaffUsers = [];
+let selectedLoginStaffId = "";
+let loginUseOtherAccount = false;
+let loginEditingQuickAccess = false;
 let currentSectionName = "dashboard";
 let didJustSignIn = false;
 let calendarDragState = null;
@@ -933,6 +947,13 @@ const selectors = {
   authScreen: document.querySelector("#authScreen"),
   appShell: document.querySelector("#appShell"),
   loginForm: document.querySelector("#loginForm"),
+  loginStaffBlock: document.querySelector("#loginStaffBlock"),
+  loginStaffPicker: document.querySelector("#loginStaffPicker"),
+  loginEditButton: document.querySelector("#loginEditButton"),
+  loginIdentifierField: document.querySelector("#loginIdentifierField"),
+  loginPasswordField: document.querySelector("#loginPasswordField"),
+  loginSubmit: document.querySelector("#loginSubmit"),
+  loginOtherButton: document.querySelector("#loginOtherButton"),
   loginMessage: document.querySelector("#loginMessage"),
   logoutButtons: document.querySelectorAll("[data-logout-button]"),
   storageModeTitles: document.querySelectorAll("[data-storage-title]"),
@@ -1857,6 +1878,7 @@ function applyStaticTranslations() {
   applyHotelSettings();
   applyUserProfile();
   renderStaffSettings();
+  renderLoginStaffPicker();
 }
 
 function updateLanguageToggle() {
@@ -4953,6 +4975,7 @@ async function requireSession() {
   if (session) {
     currentUserProfile = await loadCurrentUserProfile(session.user?.id);
     setCurrentHotelId(currentUserProfile?.hotelId || getRouteHotelId());
+    if (currentUserProfile) rememberLoginStaff(currentUserProfile);
     hotelStaffUsers = currentUserProfile ? [currentUserProfile] : [];
     selectors.authScreen?.classList.add("hidden");
     selectors.appShell?.classList.remove("hidden");
@@ -4966,7 +4989,7 @@ async function requireSession() {
   setCurrentHotelId(getRouteHotelId());
   selectors.appShell?.classList.add("hidden");
   selectors.authScreen?.classList.remove("hidden");
-  selectors.loginForm.email.value = configuredLoginEmail;
+  await loadLoginStaff();
   return false;
 }
 
@@ -4974,6 +4997,196 @@ function setLoginMessage(message, type) {
   if (!selectors.loginMessage) return;
   selectors.loginMessage.textContent = message;
   selectors.loginMessage.className = `form-message ${type || ""}`;
+}
+
+function looksLikeEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+async function resolveLoginEmail(identifier) {
+  const value = String(identifier || "").trim();
+  if (!value) return "";
+  if (looksLikeEmail(value)) return value.toLowerCase();
+
+  const { data, error } = await supabaseClient.rpc("resolve_login_email", {
+    identifier: value,
+    target_hotel_id: currentHotelId || getRouteHotelId(),
+  });
+
+  if (error) {
+    console.error("Failed to resolve login name", error);
+    return "";
+  }
+
+  return String(data || "").trim().toLowerCase();
+}
+
+function getLoginQuickAccessKey() {
+  return `${loginStaffStorageKey}:${currentHotelId || getRouteHotelId()}:list`;
+}
+
+function getStoredLoginStaffId() {
+  try {
+    return String(localStorage.getItem(`${loginStaffStorageKey}:${currentHotelId || getRouteHotelId()}`) || "");
+  } catch {
+    return "";
+  }
+}
+
+function storeLoginStaffId(staffId) {
+  try {
+    const key = `${loginStaffStorageKey}:${currentHotelId || getRouteHotelId()}`;
+    if (staffId) localStorage.setItem(key, staffId);
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+function normalizeLoginStaff(row) {
+  if (!row) return null;
+  return {
+    id: row.id || "",
+    displayName: row.display_name || row.displayName || "",
+    avatarUrl: row.avatar_url || row.avatarUrl || "",
+    chatColor: normalizeBookingColor(row.chat_color || row.chatColor) || staffMessagePalette[0],
+  };
+}
+
+function readLoginQuickAccess() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(getLoginQuickAccessKey()) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw.map(normalizeLoginStaff).filter((user) => user?.id && user.displayName);
+  } catch {
+    return [];
+  }
+}
+
+function writeLoginQuickAccess(users) {
+  try {
+    localStorage.setItem(getLoginQuickAccessKey(), JSON.stringify(users.slice(0, 12)));
+  } catch {
+    /* ignore */
+  }
+}
+
+function rememberLoginStaff(user) {
+  const next = normalizeLoginStaff(user);
+  if (!next?.id || !next.displayName) return;
+  writeLoginQuickAccess([next, ...readLoginQuickAccess().filter((item) => item.id !== next.id)]);
+}
+
+function removeLoginQuickAccess(staffId) {
+  if (!staffId) return;
+  writeLoginQuickAccess(readLoginQuickAccess().filter((user) => user.id !== staffId));
+  if (selectedLoginStaffId === staffId) {
+    selectedLoginStaffId = "";
+    storeLoginStaffId("");
+  }
+  loginStaffUsers = readLoginQuickAccess();
+  if (!loginStaffUsers.length) {
+    loginUseOtherAccount = false;
+    loginEditingQuickAccess = false;
+  }
+  renderLoginStaffPicker();
+}
+
+function syncLoginFormMode() {
+  const hasPicker = loginStaffUsers.length > 0 && !loginUseOtherAccount;
+  const hasSelection = Boolean(selectedLoginStaffId);
+  const showPassword = !hasPicker || hasSelection;
+  const identifierInput = selectors.loginForm?.email;
+
+  selectors.loginStaffBlock?.classList.toggle("hidden", !hasPicker);
+  selectors.loginForm?.classList.toggle("is-editing-profiles", hasPicker && loginEditingQuickAccess);
+  selectors.loginStaffPicker?.classList.toggle("is-editing", hasPicker && loginEditingQuickAccess);
+  selectors.loginIdentifierField?.classList.toggle("hidden", hasPicker);
+  selectors.loginPasswordField?.classList.toggle("hidden", !showPassword);
+  selectors.loginSubmit?.classList.toggle("hidden", !showPassword);
+  selectors.loginOtherButton?.classList.toggle("hidden", !loginStaffUsers.length);
+  selectors.loginEditButton?.classList.toggle("hidden", !hasPicker);
+  selectors.loginForm?.classList.toggle("has-staff-picker", hasPicker);
+
+  if (selectors.loginEditButton) {
+    selectors.loginEditButton.dataset.i18n = loginEditingQuickAccess ? "auth.doneProfiles" : "auth.editProfiles";
+    selectors.loginEditButton.textContent = t(selectors.loginEditButton.dataset.i18n);
+    selectors.loginEditButton.setAttribute("aria-pressed", String(loginEditingQuickAccess));
+  }
+
+  if (selectors.loginOtherButton) {
+    selectors.loginOtherButton.dataset.i18n = loginUseOtherAccount ? "auth.chooseProfile" : "auth.useOtherAccount";
+    selectors.loginOtherButton.textContent = t(selectors.loginOtherButton.dataset.i18n);
+  }
+
+  if (identifierInput) {
+    identifierInput.required = !hasPicker;
+    if (hasPicker && hasSelection) {
+      const staff = loginStaffUsers.find((user) => user.id === selectedLoginStaffId);
+      identifierInput.value = staff?.displayName || "";
+    } else if (hasPicker) {
+      identifierInput.value = "";
+    }
+  }
+}
+
+function renderLoginStaffPicker() {
+  if (!selectors.loginStaffPicker) return;
+
+  selectors.loginStaffPicker.innerHTML = loginStaffUsers
+    .map((user) => {
+      const selected = user.id === selectedLoginStaffId;
+      const avatarStyle = [
+        `--staff-color:${user.chatColor}`,
+        user.avatarUrl ? `background-image:url('${user.avatarUrl.replace(/'/g, "%27")}')` : `background-color:color-mix(in srgb, ${user.chatColor} 16%, #fff)`,
+      ].join(";");
+      return `<div class="auth-staff-chip-wrap">
+        <button type="button" class="auth-staff-chip${selected && !loginEditingQuickAccess ? " is-selected" : ""}" role="option" aria-selected="${selected && !loginEditingQuickAccess}" data-login-staff="${escapeHtml(user.id)}">
+          <span class="auth-staff-avatar" style="${avatarStyle}">${user.avatarUrl ? "" : escapeHtml(getStaffInitials(user))}</span>
+          <span class="auth-staff-name">${escapeHtml(user.displayName)}</span>
+        </button>
+        ${loginEditingQuickAccess ? `<button type="button" class="auth-staff-remove" data-remove-login-staff="${escapeHtml(user.id)}" aria-label="${escapeHtml(t("auth.removeProfile"))}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+        </button>` : ""}
+      </div>`;
+    })
+    .join("");
+
+  syncLoginFormMode();
+}
+
+function selectLoginStaff(staffId, { focusPassword = true } = {}) {
+  if (loginEditingQuickAccess) return;
+  selectedLoginStaffId = staffId || "";
+  loginUseOtherAccount = false;
+  storeLoginStaffId(selectedLoginStaffId);
+  renderLoginStaffPicker();
+  if (focusPassword && selectedLoginStaffId) {
+    selectors.loginForm?.password?.focus();
+  }
+}
+
+async function loadLoginStaff() {
+  loginUseOtherAccount = false;
+  loginEditingQuickAccess = false;
+  loginStaffUsers = readLoginQuickAccess();
+  const savedId = getStoredLoginStaffId();
+  selectedLoginStaffId = loginStaffUsers.some((user) => user.id === savedId) ? savedId : "";
+  renderLoginStaffPicker();
+}
+
+async function resolveSelectedLoginEmail(identifier) {
+  if (selectedLoginStaffId && !loginUseOtherAccount) {
+    const { data, error } = await supabaseClient.rpc("resolve_login_staff_id", {
+      staff_id: selectedLoginStaffId,
+    });
+    if (!error && data) return String(data).trim().toLowerCase();
+
+    const staff = loginStaffUsers.find((user) => user.id === selectedLoginStaffId);
+    if (staff?.displayName) return resolveLoginEmail(staff.displayName);
+  }
+
+  return resolveLoginEmail(identifier);
 }
 
 function bindEvents() {
@@ -5891,15 +6104,60 @@ function bindEvents() {
     renderCalendar();
   });
 
+  selectors.loginStaffPicker?.addEventListener("click", (event) => {
+    const removeButton = event.target.closest("[data-remove-login-staff]");
+    if (removeButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      removeLoginQuickAccess(removeButton.dataset.removeLoginStaff);
+      setLoginMessage("", "");
+      return;
+    }
+
+    const button = event.target.closest("[data-login-staff]");
+    if (!button) return;
+    selectLoginStaff(button.dataset.loginStaff);
+    setLoginMessage("", "");
+  });
+
+  selectors.loginEditButton?.addEventListener("click", () => {
+    loginEditingQuickAccess = !loginEditingQuickAccess;
+    renderLoginStaffPicker();
+    setLoginMessage("", "");
+  });
+
+  selectors.loginOtherButton?.addEventListener("click", () => {
+    loginUseOtherAccount = !loginUseOtherAccount;
+    loginEditingQuickAccess = false;
+    if (loginUseOtherAccount) {
+      selectedLoginStaffId = "";
+      if (selectors.loginForm?.email) selectors.loginForm.email.value = "";
+    } else {
+      const savedId = getStoredLoginStaffId();
+      selectedLoginStaffId = loginStaffUsers.some((user) => user.id === savedId) ? savedId : "";
+    }
+    renderLoginStaffPicker();
+    setLoginMessage("", "");
+    const focusField = loginUseOtherAccount ? selectors.loginForm?.email : selectors.loginForm?.password;
+    focusField?.focus();
+  });
+
   selectors.loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!usesSupabase) return;
 
     const formData = new FormData(selectors.loginForm);
-    const email = String(formData.get("email") || "").trim();
+    const identifier = String(formData.get("email") || "").trim();
     const password = String(formData.get("password") || "");
 
     setLoginMessage(t("auth.signingIn"), "");
+    const email = await resolveSelectedLoginEmail(identifier);
+
+    if (!email || !password) {
+      setLoginMessage(t("auth.signInError"), "error");
+      return;
+    }
+
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     if (error) {

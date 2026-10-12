@@ -90,6 +90,136 @@ button {
   margin-bottom: 8px
 }
 
+.auth-card.has-staff-picker {
+  width: min(520px, 100%)
+}
+
+.auth-intro-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px
+}
+
+.auth-intro-row .eyebrow {
+  margin: 0
+}
+
+.auth-staff-block {
+  display: grid;
+  gap: 8px
+}
+
+.auth-edit-login {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted, #64748b);
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer
+}
+
+.auth-edit-login:hover,
+.auth-edit-login:focus-visible,
+.auth-card.is-editing-profiles .auth-edit-login {
+  color: var(--ink);
+  border-color: #cbd5e1;
+  background: #f8fafc
+}
+
+.auth-staff-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px 6px
+}
+
+.auth-staff-chip-wrap {
+  position: relative;
+  display: grid;
+  justify-items: center
+}
+
+.auth-staff-chip {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 8px 4px 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer
+}
+
+.auth-staff-remove {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  z-index: 1;
+  top: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #d9e3ef;
+  border-radius: 50%;
+  background: #fff;
+  color: #64748b;
+  box-shadow: 0 4px 10px #10203314;
+  cursor: pointer
+}
+
+.auth-staff-remove svg {
+  display: block;
+  width: 10px;
+  height: 10px
+}
+
+.auth-staff-avatar {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 0 0 1px #d9e3ef, 0 10px 20px #10203314;
+  color: var(--staff-color, var(--accent));
+  font-size: 1.05rem;
+  font-weight: 800
+}
+
+.auth-staff-chip.is-selected .auth-staff-avatar,
+.auth-staff-chip:focus-visible .auth-staff-avatar {
+  box-shadow: 0 0 0 3px var(--staff-color, var(--accent)), 0 10px 20px #1020331f
+}
+
+.auth-staff-name {
+  max-width: 88px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: .78rem;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.auth-other-login {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-strong, var(--accent));
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer
+}
+
 .sidebar-logout {
   width: 100%;
   margin-top: 22px
