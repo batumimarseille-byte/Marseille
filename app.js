@@ -843,6 +843,7 @@ let highlightedStayId = null;
 let highlightedCalendarStayId = null;
 let editingStayId = null;
 let checkoutOnlyEditStayId = null;
+let stayFormSaving = false;
 let calendarStart = getDefaultCalendarStart();
 let selectedCalendarStayId = null;
 let formCalendarMonth = new Date(todayDate().getFullYear(), todayDate().getMonth(), 1);
@@ -913,6 +914,7 @@ const selectors = {
   formTitle: document.querySelector("#formTitle"),
   formMessage: document.querySelector("#formMessage"),
   formSubmitButton: document.querySelector("#formSubmitButton"),
+  deleteStayButton: document.querySelector("#deleteStayButton"),
   cancelEditButton: document.querySelector("#cancelEditButton"),
   roomMap: document.querySelector("#roomMap"),
   roomGroups: document.querySelector("#roomGroups"),
@@ -3134,6 +3136,31 @@ async function deleteStay(stayId) {
   return true;
 }
 
+async function confirmAndDeleteStay(stayId) {
+  if (!stayId || !confirm(t("table.confirmDelete"))) return false;
+
+  const previousStays = stays;
+  stays = stays.filter((stay) => stay.id !== stayId);
+  if (selectedCalendarStayId === stayId) selectedCalendarStayId = null;
+  if (highlightedCalendarStayId === stayId) highlightedCalendarStayId = null;
+  if (highlightedStayId === stayId) highlightedStayId = null;
+
+  const wasEditing = editingStayId === stayId;
+  if (wasEditing) resetFormMode();
+
+  const saved = await deleteStay(stayId);
+  if (!saved) {
+    stays = previousStays;
+    setFormMessage(t("common.saveError"), "error");
+    await refreshStays();
+    return false;
+  }
+
+  await refreshStays();
+  if (wasEditing) showSection("stays");
+  return true;
+}
+
 async function refreshStays() {
   rooms = await loadRooms();
   stays = await loadStays();
@@ -3410,7 +3437,7 @@ function hasRoomConflict(nextStay) {
   return stays.some((stay) => {
     if (stay.id === nextStay.id) return false;
     if (stay.roomId !== nextStay.roomId) return false;
-    if (["checked-out", "cancelled"].includes(getStayStatus(stay))) return false;
+    if (getStayStatus(stay) === "cancelled") return false;
     return datesOverlap(nextStay.checkIn, nextStay.checkOut, stay.checkIn, stay.checkOut);
   });
 }
@@ -3419,15 +3446,34 @@ function hasRoomConflictForRange(stayId, roomId, checkIn, checkOut) {
   return stays.some((stay) => {
     if (stay.id === stayId) return false;
     if (stay.roomId !== roomId) return false;
-    if (["checked-out", "cancelled"].includes(getStayStatus(stay))) return false;
+    if (getStayStatus(stay) === "cancelled") return false;
     return datesOverlap(checkIn, checkOut, stay.checkIn, stay.checkOut);
   });
 }
 
+function getStayFormRoomValue() {
+  const selected = String(selectors.roomSelect?.value || "");
+  if (selected) return selected;
+  if (editingStayId) {
+    const stay = stays.find((item) => item.id === editingStayId);
+    if (stay?.roomId) return stay.roomId;
+  }
+  return "";
+}
+
 function populateRoomSelect() {
-  selectors.roomSelect.innerHTML = rooms
-    .map((room) => `<option value="${room.id}">${room.id} · ${roomTypeLabel(room.type)}</option>`)
-    .join("");
+  if (!selectors.roomSelect) return;
+
+  const currentValue = getStayFormRoomValue();
+  const roomIds = new Set(rooms.map((room) => room.id));
+  const options = rooms.map((room) => `<option value="${escapeHtml(room.id)}">${escapeHtml(room.id)} · ${escapeHtml(roomTypeLabel(room.type))}</option>`);
+
+  if (currentValue && !roomIds.has(currentValue)) {
+    options.unshift(`<option value="${escapeHtml(currentValue)}">${escapeHtml(currentValue)}</option>`);
+  }
+
+  selectors.roomSelect.innerHTML = options.join("");
+  if (currentValue) selectors.roomSelect.value = currentValue;
   renderCustomDropdown("room");
 }
 
@@ -3552,7 +3598,9 @@ function renderCustomDropdown(type) {
 
   const isOpen = openCustomDropdown === type && !config.container.classList.contains("hidden");
   const selectedValue = config.select.value;
-  const selectedItem = config.items.find((item) => item.value === selectedValue) || config.items[0] || {
+  const selectedItem = config.items.find((item) => item.value === selectedValue) || (selectedValue
+    ? { value: selectedValue, title: selectedValue, meta: "", color: "#cbd5e1" }
+    : config.items[0]) || {
     value: "",
     title: config.placeholder,
     meta: "",
@@ -4065,7 +4113,10 @@ function renderStaysTable() {
               : `<span>${t("table.paid")}: ${formatMoney(getPaidAmount(stay))}</span>
             <span class="${debt > 0 ? "debt-text" : "paid-text"}">${t("table.debt")}: ${formatMoney(debt)}</span>`}
           </td>
-          <td><span class="status-pill ${getStatusClass(status)}">${getStatusLabel(status)}</span></td>
+          <td>
+            <span class="status-pill ${getStatusClass(status)}">${getStatusLabel(status)}</span>
+            <button type="button" class="records-delete-button" data-stay-delete="${stay.id}">${t("table.delete")}</button>
+          </td>
         </tr>
       `;
     })
@@ -4603,6 +4654,7 @@ function readFormStay() {
   const selectedCompanyId = String(formData.get("companyId") || "");
   const selectedCompany = companies.find((company) => company.id === selectedCompanyId);
   const newCompanyName = normalizeCompanyName(formData.get("companyNewName"));
+  const selectedRoomId = String(formData.get("roomId") || "");
   const checkIn = isCheckoutOnlyDateEdit() && existing?.checkIn ? existing.checkIn : String(formData.get("checkIn"));
   const checkOut = String(formData.get("checkOut"));
   const nights = Number(formData.get("nights") || getNightCount(checkIn, checkOut));
@@ -4617,7 +4669,9 @@ function readFormStay() {
     guestName: String(formData.get("guestName")).trim(),
     companyId: companyMode === "existing" ? selectedCompany?.id : undefined,
     companyName: companyMode === "existing" ? normalizeCompanyName(selectedCompany?.name) : newCompanyName,
-    roomId: String(formData.get("roomId")),
+    roomId: isCheckoutOnlyDateEdit() && existing?.roomId
+      ? existing.roomId
+      : selectedRoomId || existing?.roomId || "",
     checkIn,
     checkOut,
     nights,
@@ -4639,59 +4693,70 @@ function readFormStay() {
 
 async function handleFormSubmit(event) {
   event.preventDefault();
+  if (stayFormSaving) return;
 
-  const wasEditing = Boolean(editingStayId);
-  const stay = readFormStay();
+  stayFormSaving = true;
+  const submitButton = selectors.formSubmitButton;
+  if (submitButton) submitButton.disabled = true;
 
-  if (!["checked-out", "cancelled"].includes(getStayStatus(stay)) && getActiveBookingColors(stay.id).has(stay.color.toLowerCase())) {
-    setFormMessage("Choose an available color.", "error");
-    return;
+  try {
+    const wasEditing = Boolean(editingStayId);
+    const stay = readFormStay();
+
+    if (!["checked-out", "cancelled"].includes(getStayStatus(stay)) && getActiveBookingColors(stay.id).has(stay.color.toLowerCase())) {
+      setFormMessage("Choose an available color.", "error");
+      return;
+    }
+
+    if (!stay.checkIn || !stay.checkOut) {
+      setFormMessage(t("common.selectBothDates"), "error");
+      return;
+    }
+
+    const existingStay = editingStayId ? stays.find((item) => item.id === editingStayId) : null;
+    const keepsExistingPastCheckIn = Boolean(existingStay && stay.checkIn === existingStay.checkIn);
+    if (toDate(stay.checkIn) < todayDate() && !keepsExistingPastCheckIn && !canUseNightCheckInDate(toDate(stay.checkIn))) {
+      setFormMessage(t("common.pastDate"), "error");
+      return;
+    }
+
+    if (toDate(stay.checkOut) <= toDate(stay.checkIn)) {
+      setFormMessage(t("common.checkoutAfterCheckin"), "error");
+      return;
+    }
+
+    if (hasRoomConflict(stay)) {
+      setFormMessage(t("common.roomConflict"), "error");
+      return;
+    }
+
+    const companyName = normalizeCompanyName(stay.companyName);
+    if (companyName) {
+      pendingCompanyColorUpdates.set(companyName.toLocaleLowerCase(), stay.color || defaultBookingColor);
+    }
+
+    const previousStays = stays;
+    if (editingStayId) {
+      stays = stays.map((item) => (item.id === editingStayId ? stay : item));
+    } else {
+      stays = [stay, ...stays];
+    }
+
+    const saved = await saveStay(stay.id);
+    if (!saved) {
+      stays = previousStays;
+      setFormMessage(t("common.saveError"), "error");
+      return;
+    }
+
+    setFormMessage(wasEditing ? t("common.recordUpdated") : t("common.staySaved"), "success");
+    resetFormMode();
+    await refreshStays();
+    showSection(wasEditing ? "stays" : "dashboard");
+  } finally {
+    stayFormSaving = false;
+    if (submitButton) submitButton.disabled = false;
   }
-
-  if (!stay.checkIn || !stay.checkOut) {
-    setFormMessage(t("common.selectBothDates"), "error");
-    return;
-  }
-
-  const existingStay = editingStayId ? stays.find((item) => item.id === editingStayId) : null;
-  const keepsExistingPastCheckIn = Boolean(existingStay && stay.checkIn === existingStay.checkIn);
-  if (toDate(stay.checkIn) < todayDate() && !keepsExistingPastCheckIn && !canUseNightCheckInDate(toDate(stay.checkIn))) {
-    setFormMessage(t("common.pastDate"), "error");
-    return;
-  }
-
-  if (toDate(stay.checkOut) <= toDate(stay.checkIn)) {
-    setFormMessage(t("common.checkoutAfterCheckin"), "error");
-    return;
-  }
-
-  if (hasRoomConflict(stay)) {
-    setFormMessage(t("common.roomConflict"), "error");
-    return;
-  }
-
-  const companyName = normalizeCompanyName(stay.companyName);
-  if (companyName) {
-    pendingCompanyColorUpdates.set(companyName.toLocaleLowerCase(), stay.color || defaultBookingColor);
-  }
-
-  if (editingStayId) {
-    stays = stays.map((item) => (item.id === editingStayId ? stay : item));
-    setFormMessage(t("common.recordUpdated"), "success");
-  } else {
-    stays = [stay, ...stays];
-    setFormMessage(t("common.staySaved"), "success");
-  }
-
-  const saved = await saveStay(stay.id);
-  if (!saved) {
-    setFormMessage(t("common.saveError"), "error");
-    return;
-  }
-
-  resetFormMode();
-  await refreshStays();
-  showSection(wasEditing ? "stays" : "dashboard");
 }
 
 function startEditStay(id) {
@@ -4742,6 +4807,7 @@ function startEditStay(id) {
 
   selectors.formTitle.textContent = t("form.editStay");
   selectors.formSubmitButton.textContent = t("form.saveChanges");
+  selectors.deleteStayButton?.classList.remove("hidden");
   selectors.cancelEditButton.classList.remove("hidden");
   setFormMessage(t("form.updateHint"), "success");
   showSection("edit-stay");
@@ -4765,6 +4831,7 @@ function resetFormMode() {
   setCompanyMode("existing");
   selectors.formTitle.textContent = t("form.addStay");
   selectors.formSubmitButton.textContent = t("form.saveStay");
+  selectors.deleteStayButton?.classList.add("hidden");
   selectors.cancelEditButton.classList.add("hidden");
   setFormMessage("", "");
   setDefaultDates();
@@ -5778,6 +5845,10 @@ function bindEvents() {
     renderFormDateCalendar();
   });
 
+  selectors.deleteStayButton?.addEventListener("click", () => {
+    confirmAndDeleteStay(editingStayId);
+  });
+
   selectors.cancelEditButton.addEventListener("click", () => {
     const wasEditing = Boolean(editingStayId);
     resetFormMode();
@@ -5848,6 +5919,14 @@ function bindEvents() {
   });
 
   selectors.staysTable.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-stay-delete]");
+    if (deleteButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      confirmAndDeleteStay(deleteButton.dataset.stayDelete);
+      return;
+    }
+
     const row = event.target.closest("[data-stay-row]");
     if (!row) return;
     startEditStay(row.dataset.stayRow);
@@ -6047,15 +6126,7 @@ function bindEvents() {
     }
 
     if (!deleteButton) return;
-    if (!confirm(t("table.confirmDelete"))) return;
-    const deletedStayId = deleteButton.dataset.detailDelete;
-    stays = stays.filter((stay) => stay.id !== deletedStayId);
-    selectedCalendarStayId = null;
-    if (highlightedCalendarStayId === deletedStayId) highlightedCalendarStayId = null;
-    deleteStay(deletedStayId).then((saved) => {
-      if (!saved) console.error("Delete was not saved.");
-      refreshStays();
-    });
+    confirmAndDeleteStay(deleteButton.dataset.detailDelete);
   });
 
   selectors.roomMap.addEventListener("click", (event) => {
