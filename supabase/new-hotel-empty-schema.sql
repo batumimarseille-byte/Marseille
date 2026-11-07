@@ -97,6 +97,7 @@ create table if not exists public.stays (
   is_cancelled boolean not null default false,
   is_pinned boolean not null default false,
   is_complimentary boolean not null default false,
+  check_in_time time,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint stays_valid_dates check (check_out > check_in),

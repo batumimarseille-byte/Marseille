@@ -135,6 +135,7 @@ create table if not exists public.stays (
   notes text not null default '',
   is_cancelled boolean not null default false,
   is_complimentary boolean not null default false,
+  check_in_time time,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint stays_valid_dates check (check_out > check_in),
@@ -159,6 +160,9 @@ add column if not exists is_pinned boolean not null default false;
 
 alter table public.stays
 add column if not exists is_complimentary boolean not null default false;
+
+alter table public.stays
+add column if not exists check_in_time time;
 
 update public.stays
 set night_count = greatest(check_out - check_in, 0)

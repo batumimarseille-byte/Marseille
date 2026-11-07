@@ -1626,6 +1626,22 @@ select {
   grid-template-columns: minmax(0, 1fr) !important;
 }
 
+.stay-form-section .checkin-time-field {
+  max-width: 220px;
+  margin-top: 8px;
+}
+
+.stay-form-section .checkin-time-field > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stay-form-section .checkin-time-field input[type="time"] {
+  min-height: 48px;
+  border-radius: 16px;
+}
+
 /* Keep the date control full width while its calendar opens softly in the viewport center. */
 .stay-form-section .date-range-field .form-date-calendar {
   position: fixed;

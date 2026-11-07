@@ -414,6 +414,7 @@ const translations = {
       customPalette: "Added colors",
       room: "Room",
       stayDates: "Stay dates",
+      checkInTime: "Check-in time",
       selectStayDates: "Select stay dates",
       selectCheckout: "select check-out",
       clearDates: "Clear dates",
@@ -456,6 +457,7 @@ const translations = {
     },
     activeGuests: {
       empty: "No active guests right now.",
+      checkin: "Check-in",
       checkout: "Check-out",
       review: "Click to review and edit",
     },
@@ -770,6 +772,7 @@ const translations = {
       customPalette: "დამატებული ფერები",
       room: "ნომერი",
       stayDates: "ცხოვრების თარიღები",
+      checkInTime: "შესვლის დრო",
       selectStayDates: "აირჩიეთ ცხოვრების თარიღები",
       selectCheckout: "აირჩიეთ გასვლის თარიღი",
       clearDates: "თარიღების გასუფთავება",
@@ -812,6 +815,7 @@ const translations = {
     },
     activeGuests: {
       empty: "აქტიური სტუმრები ახლა არ არის.",
+      checkin: "შესვლა",
       checkout: "გასვლა",
       review: "რედაქტირებისთვის დააჭირეთ",
     },
@@ -2897,6 +2901,7 @@ function mapStayFromDatabase(row) {
     companyName: company?.name || row.company_name || "",
     roomId: row.room_id,
     checkIn: row.check_in,
+    checkInTime: normalizeCheckInTime(row.check_in_time),
     checkOut: row.check_out,
     nights: Number(row.night_count ?? getNightCount(row.check_in, row.check_out)),
     total: Number(row.total_amount || 0),
@@ -2923,6 +2928,7 @@ function mapStayToDatabase(stay) {
     company_id: stay.companyId || null,
     room_id: stay.roomId,
     check_in: stay.checkIn,
+    check_in_time: normalizeCheckInTime(stay.checkInTime) || null,
     check_out: stay.checkOut,
     night_count: Number(stay.nights ?? getNightCount(stay.checkIn, stay.checkOut)),
     color: stay.color || defaultBookingColor,
@@ -3108,6 +3114,14 @@ async function saveStay(stayId) {
     upsertError = retryResult.error;
   }
 
+  if (upsertError && String(upsertError.message || "").includes("check_in_time")) {
+    const { check_in_time: _checkInTime, ...rowWithoutCheckInTime } = mapStayToDatabase(stay);
+    const retryResult = await supabaseClient
+      .from("stays")
+      .upsert(rowWithoutCheckInTime, { onConflict: "id" });
+    upsertError = retryResult.error;
+  }
+
   if (upsertError) {
     console.error("Failed to save stays", upsertError);
     return false;
@@ -3252,6 +3266,29 @@ function getStatusClass(status) {
 
 function datesOverlap(startA, endA, startB, endB) {
   return toDate(startA) < toDate(endB) && toDate(endA) > toDate(startB);
+}
+
+function normalizeCheckInTime(value) {
+  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "";
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || hours > 23 || minutes > 59) return "";
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function currentCheckInTime() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+function formatStayCheckInTime(stay) {
+  return normalizeCheckInTime(stay?.checkInTime);
+}
+
+function setDefaultCheckInTime() {
+  if (!selectors.stayForm?.checkInTime || editingStayId) return;
+  selectors.stayForm.checkInTime.value = currentCheckInTime();
 }
 
 function getNightCount(checkIn, checkOut) {
@@ -3980,6 +4017,7 @@ function renderActiveGuests() {
             <strong>${stay.guestName}</strong>
             <span>${room.id} · ${roomTypeLabel(room.type)}${stay.companyName ? " · " + stay.companyName : ""}</span>
           </div>
+          ${formatStayCheckInTime(stay) ? `<p>${t("activeGuests.checkin")}: ${formatStayCheckInTime(stay)}</p>` : ""}
           <p>${t("activeGuests.checkout")}: ${formatDate(stay.checkOut)}</p>
           ${stay.notes ? `<p class="guest-note">${stay.notes}</p>` : ""}
           <small>${t("activeGuests.review")}</small>
@@ -4105,7 +4143,7 @@ function renderStaysTable() {
             <span>${[stay.companyName, stay.notes || t("table.noNotes")].filter(Boolean).join(" · ")}</span>
           </td>
           <td>${room.id}<span>${roomTypeLabel(room.type)}</span></td>
-          <td>${formatDate(stay.checkIn)} - ${formatDate(stay.checkOut)}</td>
+          <td>${formatDate(stay.checkIn)} - ${formatDate(stay.checkOut)}${formatStayCheckInTime(stay) ? `<span>${t("form.checkInTime")}: ${formatStayCheckInTime(stay)}</span>` : ""}</td>
           <td>${isComplimentaryStay(stay) ? t("table.complimentary") : formatMoney(stay.total)}${!isComplimentaryStay(stay) && Number(stay.discount || 0) > 0 ? `<span>${t("form.discount")}: ${formatMoney(stay.discount)}</span>` : ""}</td>
           <td>
             ${isComplimentaryStay(stay)
@@ -4163,6 +4201,7 @@ function renderBookingDetails() {
     stay.companyName ? '  <p class="detail-company">' + stay.companyName + '</p>' : '',
     '  <div class="detail-meta"><span>' + t("calendar.room") + ' ' + room.id + '</span><span>' + roomTypeLabel(room.type) + '</span><span>' + getStatusLabel(status) + '</span></div>',
     '  <div class="detail-dates"><strong>' + formatDate(stay.checkIn) + '</strong><span>' + t("calendar.to") + '</span><strong>' + formatDate(stay.checkOut) + '</strong></div>',
+    formatStayCheckInTime(stay) ? '  <div class="detail-checkin-time">' + t("form.checkInTime") + ': <strong>' + formatStayCheckInTime(stay) + '</strong></div>' : '',
     '  <div class="detail-total"><span>' + t("calendar.total") + '</span><strong>' + (isComplimentaryStay(stay) ? t("table.complimentary") : formatMoney(stay.total)) + '</strong></div>',
     !isComplimentaryStay(stay) && discount > 0 ? '  <div class="detail-discount"><span>' + t("form.discount") + '</span><strong>-' + formatMoney(discount) + '</strong></div>' : '',
     isComplimentaryStay(stay) ? '' : '  <div class="detail-payments">' + payments + '</div>',
@@ -4657,6 +4696,7 @@ function readFormStay() {
   const selectedRoomId = String(formData.get("roomId") || "");
   const checkIn = isCheckoutOnlyDateEdit() && existing?.checkIn ? existing.checkIn : String(formData.get("checkIn"));
   const checkOut = String(formData.get("checkOut"));
+  const checkInTime = normalizeCheckInTime(formData.get("checkInTime"));
   const nights = Number(formData.get("nights") || getNightCount(checkIn, checkOut));
   const isComplimentary = isComplimentaryFormChecked();
   const total = isComplimentary ? 0 : Number(formData.get("total") || 0);
@@ -4673,6 +4713,7 @@ function readFormStay() {
       ? existing.roomId
       : selectedRoomId || existing?.roomId || "",
     checkIn,
+    checkInTime,
     checkOut,
     nights,
     total,
@@ -4782,6 +4823,7 @@ function startEditStay(id) {
   renderCustomDropdowns();
   selectors.stayForm.checkIn.value = stay.checkIn;
   selectors.stayForm.checkOut.value = stay.checkOut;
+  if (selectors.stayForm.checkInTime) selectors.stayForm.checkInTime.value = normalizeCheckInTime(stay.checkInTime);
   formDateHover = null;
   activeDateField = "checkOut";
   isDatePickerOpen = false;
@@ -4961,6 +5003,7 @@ function resetFormDates() {
 
 function setDefaultDates() {
   resetFormDates();
+  setDefaultCheckInTime();
 }
 
 function showSection(sectionName) {
